@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react'
 import { catalogue, id, seedState } from './seed'
-import type { Agent, AppState, Purchase, User } from './types'
+import { seedDev, type ApiKey, type DevState, type Member, type Mode, type WebhookEndpoint } from './dev/devData'
+import type { Agent, AppState, Prefs, Purchase, User } from './types'
 
 /**
  * Dashboard state for the preview. It lives in this browser only (localStorage);
  * there is no server, no real account and no real money behind it.
  */
 
-const STORAGE_KEY = 'oryne.dashboard.v2'
+const STORAGE_KEY = 'oryne.dashboard.v3'
 const WINDOW_MS = 30 * 86_400_000
 const round = (value: number) => Math.round(value * 100) / 100
 
@@ -21,6 +22,17 @@ type Action =
   | { type: 'removeAgent'; id: string }
   | { type: 'attemptPurchase'; purchase: Omit<Purchase, 'status' | 'reason'> }
   | { type: 'reset' }
+  | { type: 'setMode'; mode: Mode }
+  | { type: 'createKey'; key: ApiKey }
+  | { type: 'revokeKey'; id: string }
+  | { type: 'addWebhook'; webhook: WebhookEndpoint }
+  | { type: 'updateWebhook'; id: string; patch: Partial<WebhookEndpoint> }
+  | { type: 'removeWebhook'; id: string }
+  | { type: 'resolveApproval'; id: string; approve: boolean }
+  | { type: 'setPref'; pref: keyof Prefs; value: boolean }
+  | { type: 'inviteMember'; member: Member }
+  | { type: 'removeMember'; id: string }
+  | { type: 'updateOrg'; patch: Partial<DevState['org']> }
 
 /** What an agent has spent in the last 30 days (settled purchases only). */
 export function spentBy(purchases: Purchase[], agentId?: string) {
@@ -86,13 +98,73 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'reset':
       return { ...seedState(), user: state.user }
+    case 'setMode':
+      return { ...state, dev: { ...state.dev, mode: action.mode } }
+    case 'createKey':
+      return { ...state, dev: { ...state.dev, keys: [action.key, ...state.dev.keys] } }
+    case 'revokeKey':
+      return { ...state, dev: { ...state.dev, keys: state.dev.keys.filter((key) => key.id !== action.id) } }
+    case 'addWebhook':
+      return { ...state, dev: { ...state.dev, webhooks: [action.webhook, ...state.dev.webhooks] } }
+    case 'updateWebhook':
+      return {
+        ...state,
+        dev: {
+          ...state.dev,
+          webhooks: state.dev.webhooks.map((webhook) =>
+            webhook.id === action.id ? { ...webhook, ...action.patch } : webhook,
+          ),
+        },
+      }
+    case 'removeWebhook':
+      return {
+        ...state,
+        dev: { ...state.dev, webhooks: state.dev.webhooks.filter((webhook) => webhook.id !== action.id) },
+      }
+    case 'resolveApproval': {
+      const approval = state.approvals.find((candidate) => candidate.id === action.id)
+      if (!approval) return state
+      // The owner's yes overrides the agent's limits, but not an empty balance.
+      const short = action.approve && approval.amount > state.balance
+      const settled = action.approve && !short
+      const purchase: Purchase = {
+        id: id('pay'),
+        agentId: approval.agentId,
+        merchant: approval.merchant,
+        item: approval.item,
+        category: approval.category,
+        amount: approval.amount,
+        status: settled ? 'settled' : 'declined',
+        reason: settled ? undefined : short ? 'Not enough funds' : 'Declined by you',
+        approvedByOwner: settled || undefined,
+        at: new Date().toISOString(),
+      }
+      return {
+        ...state,
+        balance: settled ? round(state.balance - approval.amount) : state.balance,
+        approvals: state.approvals.filter((candidate) => candidate.id !== action.id),
+        purchases: [purchase, ...state.purchases],
+      }
+    }
+    case 'setPref':
+      return { ...state, prefs: { ...state.prefs, [action.pref]: action.value } }
+    case 'inviteMember':
+      return { ...state, dev: { ...state.dev, team: [...state.dev.team, action.member] } }
+    case 'removeMember':
+      return { ...state, dev: { ...state.dev, team: state.dev.team.filter((member) => member.id !== action.id) } }
+    case 'updateOrg':
+      return { ...state, dev: { ...state.dev, org: { ...state.dev.org, ...action.patch } } }
   }
 }
 
 function load(): AppState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return JSON.parse(stored) as AppState
+    if (stored) {
+      // Fill in any sections added since this state was saved.
+      const saved = JSON.parse(stored) as Partial<AppState>
+      return { ...seedState(), ...saved, dev: { ...seedDev(), ...saved.dev } }
+    }
   } catch {
     // Unreadable or blocked storage: fall through to fresh sample data.
   }

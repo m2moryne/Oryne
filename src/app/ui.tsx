@@ -127,6 +127,49 @@ export function EmptyState({
   )
 }
 
+/** An on/off switch with its label and a line of explanation. */
+export function Toggle({
+  label,
+  note,
+  checked,
+  onChange,
+}: {
+  label: string
+  note?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const id = useId()
+  return (
+    <div className="flex items-center justify-between gap-6">
+      <div>
+        <p id={id} className="text-sm font-medium">
+          {label}
+        </p>
+        {note && <p className="mt-0.5 text-sm text-muted">{note}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={id}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
+          checked ? 'bg-charcoal' : 'bg-taupe/50',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform duration-200 ease-quiet',
+            checked && 'translate-x-5',
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
 export const inputClasses =
   'block w-full rounded-lg border border-taupe/70 bg-white px-4 py-3 text-base outline-none transition-colors duration-200 placeholder:text-charcoal/40 hover:border-charcoal/50 focus:border-burgundy focus:ring-1 focus:ring-burgundy'
 
@@ -184,7 +227,7 @@ export function Dialog({
         // A click on the backdrop lands on the dialog element itself.
         if (event.target === ref.current) onClose()
       }}
-      className="tone-white m-auto w-[min(34rem,calc(100vw-2rem))] border border-taupe/50 p-0 backdrop:bg-charcoal/55"
+      className="tone-white m-auto w-[min(34rem,calc(100vw-2rem))] border border-taupe/50 p-0 backdrop:bg-ink/60"
     >
       {open && (
         <div className="p-6 md:p-8">

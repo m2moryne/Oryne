@@ -1,8 +1,98 @@
+import { Check, X } from 'lucide-react'
+import { useState } from 'react'
+import { Icon } from '../components/Icon'
 import { formatDateTime, money } from './format'
 import type { Agent, Purchase } from './types'
-import { StatusPill } from './ui'
+import { Dialog, StatusPill } from './ui'
 
-/** What the agents bought. A table on wide screens, stacked rows on narrow ones. */
+/** The three checks every purchase passes through, and which one stopped this one. */
+function checks(purchase: Purchase, agent?: Agent) {
+  const failed = (reason: string) => purchase.reason === reason
+  return [
+    {
+      label: 'Within the per-purchase limit',
+      detail: agent ? `Limit ${money(agent.perPurchase)}` : undefined,
+      passed: !failed('Over the per-purchase limit'),
+    },
+    {
+      label: 'Within the monthly budget',
+      detail: agent ? `Budget ${money(agent.budget)}` : undefined,
+      passed: !failed('Budget reached'),
+    },
+    { label: 'Balance covers it', detail: undefined, passed: !failed('Not enough funds') },
+  ]
+}
+
+function Receipt({ purchase, agent, onClose }: { purchase: Purchase | null; agent?: Agent; onClose: () => void }) {
+  return (
+    <Dialog open={purchase !== null} onClose={onClose} title={purchase?.item ?? ''}>
+      {purchase && (
+        <div className="space-y-6">
+          <div className="flex items-end justify-between gap-6">
+            <p className="text-4xl tracking-[-0.03em] tabular-nums">{money(purchase.amount)}</p>
+            <StatusPill status={purchase.status} />
+          </div>
+
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-taupe/40 py-5 text-sm">
+            <div>
+              <dt className="text-muted">Merchant</dt>
+              <dd className="mt-1">{purchase.merchant}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Category</dt>
+              <dd className="mt-1">{purchase.category}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Agent</dt>
+              <dd className="mt-1">{agent?.name ?? 'Disconnected agent'}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">When</dt>
+              <dd className="mt-1">{formatDateTime(purchase.at)}</dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-muted">Reference</dt>
+              <dd className="mt-1 font-mono text-[0.8125rem]">{purchase.id}</dd>
+            </div>
+          </dl>
+
+          <div>
+            <p className="text-sm font-medium">Checks</p>
+            <ul className="mt-3 space-y-2.5 text-sm">
+              {purchase.approvedByOwner ? (
+                <li className="flex items-center gap-2.5">
+                  <Icon icon={Check} size={16} className="text-muted" /> You approved this request, outside
+                  the agent&rsquo;s usual limits
+                </li>
+              ) : purchase.reason === 'Declined by you' ? (
+                <li className="flex items-center gap-2.5 text-burgundy">
+                  <Icon icon={X} size={16} /> You declined this request
+                </li>
+              ) : (
+                checks(purchase, agent).map((check) => (
+                  <li key={check.label} className="flex items-center gap-2.5">
+                    <Icon
+                      icon={check.passed ? Check : X}
+                      size={16}
+                      className={check.passed ? 'text-muted' : 'text-burgundy'}
+                    />
+                    <span className={check.passed ? undefined : 'text-burgundy'}>{check.label}</span>
+                    {check.detail && <span className="ml-auto text-muted tabular-nums">{check.detail}</span>}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+    </Dialog>
+  )
+}
+
+/**
+ * What the agents bought. A table on wide screens, stacked rows on narrow
+ * ones; opening a purchase shows its receipt and the checks it went through.
+ */
 export function PurchaseList({
   purchases,
   agents,
@@ -12,6 +102,7 @@ export function PurchaseList({
   agents: Agent[]
   showAgent?: boolean
 }) {
+  const [open, setOpen] = useState<Purchase | null>(null)
   const agentFor = (purchase: Purchase) => agents.find((agent) => agent.id === purchase.agentId)
 
   return (
@@ -30,20 +121,23 @@ export function PurchaseList({
           {purchases.map((purchase) => {
             const agent = agentFor(purchase)
             return (
-              <tr key={purchase.id}>
+              <tr
+                key={purchase.id}
+                onClick={() => setOpen(purchase)}
+                className="cursor-pointer transition-colors duration-150 hover:bg-cream/50"
+              >
                 <td className="px-6 py-4">
-                  <p className="font-medium">{purchase.item}</p>
+                  {/* A real button, so the receipt opens from the keyboard too. */}
+                  <button type="button" onClick={() => setOpen(purchase)} className="text-left font-medium">
+                    {purchase.item}
+                  </button>
                   <p className="mt-0.5 text-muted">
                     {purchase.merchant} · {purchase.category}
                   </p>
                 </td>
                 {showAgent && (
-                  <td className="px-4 py-4">
-                    <span className="flex items-center gap-2.5">
-                      <span className={agent ? undefined : 'text-muted'}>
-                        {agent?.name ?? 'Disconnected agent'}
-                      </span>
-                    </span>
+                  <td className={agent ? 'px-4 py-4' : 'px-4 py-4 text-muted'}>
+                    {agent?.name ?? 'Disconnected agent'}
                   </td>
                 )}
                 <td className="px-4 py-4 whitespace-nowrap text-muted">{formatDateTime(purchase.at)}</td>
@@ -66,32 +160,42 @@ export function PurchaseList({
         {purchases.map((purchase) => {
           const agent = agentFor(purchase)
           return (
-            <li key={purchase.id} className="flex gap-4 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{purchase.item}</p>
-                <p className="mt-0.5 text-sm text-muted">
-                  {purchase.merchant}
-                  {showAgent && ` · ${agent?.name ?? 'Disconnected agent'}`}
-                </p>
-                <p className="mt-0.5 text-sm text-muted">{formatDateTime(purchase.at)}</p>
-                {purchase.reason && <p className="mt-1 text-xs text-burgundy">{purchase.reason}</p>}
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <span
-                  className={
-                    purchase.status === 'declined'
-                      ? 'tabular-nums text-muted line-through'
-                      : 'font-medium tabular-nums'
-                  }
-                >
-                  {money(purchase.amount)}
+            <li key={purchase.id}>
+              <button
+                type="button"
+                onClick={() => setOpen(purchase)}
+                className="flex w-full gap-4 px-5 py-4 text-left"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{purchase.item}</span>
+                  <span className="mt-0.5 block text-sm text-muted">
+                    {purchase.merchant}
+                    {showAgent && ` · ${agent?.name ?? 'Disconnected agent'}`}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-muted">{formatDateTime(purchase.at)}</span>
+                  {purchase.reason && (
+                    <span className="mt-1 block text-xs text-burgundy">{purchase.reason}</span>
+                  )}
                 </span>
-                <StatusPill status={purchase.status} />
-              </div>
+                <span className="flex flex-col items-end gap-2">
+                  <span
+                    className={
+                      purchase.status === 'declined'
+                        ? 'tabular-nums text-muted line-through'
+                        : 'font-medium tabular-nums'
+                    }
+                  >
+                    {money(purchase.amount)}
+                  </span>
+                  <StatusPill status={purchase.status} />
+                </span>
+              </button>
             </li>
           )
         })}
       </ul>
+
+      <Receipt purchase={open} agent={open ? agentFor(open) : undefined} onClose={() => setOpen(null)} />
     </>
   )
 }

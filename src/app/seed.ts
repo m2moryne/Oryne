@@ -1,4 +1,5 @@
-import type { Agent, AgentKind, AppState, Funding, Purchase } from './types'
+import { seedDev } from './dev/devData'
+import type { Agent, AgentKind, AppState, Approval, Funding, Purchase } from './types'
 
 /**
  * Sample data for the dashboard preview. Everything here is invented: the
@@ -48,6 +49,10 @@ function sequence(seed: number) {
   }
 }
 
+/** Eight characters that read like a real object ID. */
+const hex = (random: () => number) =>
+  Array.from({ length: 8 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(random() * 31)]).join('')
+
 export function id(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 }
@@ -58,7 +63,7 @@ export function seedState(): AppState {
 
   const agents: Agent[] = [
     {
-      id: 'agt_research',
+      id: 'agt_8f2k1mq7',
       name: 'Research assistant',
       kind: 'Research',
       status: 'active',
@@ -67,16 +72,16 @@ export function seedState(): AppState {
       connectedAt: new Date(now - 29 * DAY).toISOString(),
     },
     {
-      id: 'agt_travel',
+      id: 'agt_3nx7pd2c',
       name: 'Travel planner',
       kind: 'Travel',
       status: 'active',
-      budget: 350,
+      budget: 450,
       perPurchase: 60,
       connectedAt: new Date(now - 19 * DAY).toISOString(),
     },
     {
-      id: 'agt_ops',
+      id: 'agt_w5h9zt4e',
       name: 'Ops monitor',
       kind: 'Operations',
       status: 'paused',
@@ -110,7 +115,7 @@ export function seedState(): AppState {
               : undefined
         if (!reason) running.set(agent.id, soFar + amount)
         purchases.push({
-          id: `pur_${day}_${agent.id}_${n}`,
+          id: `pay_${hex(random)}`,
           agentId: agent.id,
           merchant: template.merchant,
           item: template.item,
@@ -131,6 +136,40 @@ export function seedState(): AppState {
     { id: 'fund_1', amount: 500, method: 'Card', at: new Date(now - 29 * DAY).toISOString() },
   ]
 
+  // Purchases the agents could not make on their own and have asked about.
+  const approvals: Approval[] = [
+    {
+      id: 'apr_k2m8x4qd',
+      agentId: 'agt_3nx7pd2c',
+      merchant: 'Railpoint',
+      item: 'Train ticket, return, flexible',
+      category: 'Tickets',
+      amount: 84.5,
+      why: 'Over its $60.00 per-purchase limit',
+      requestedAt: new Date(now - 18 * 60_000).toISOString(),
+    },
+    {
+      id: 'apr_p7v3n9wz',
+      agentId: 'agt_8f2k1mq7',
+      merchant: 'Fathom Market Data',
+      item: 'Quarterly filings archive, one-off',
+      category: 'Data',
+      amount: 39,
+      why: 'Over its $25.00 per-purchase limit',
+      requestedAt: new Date(now - 2.4 * 3_600_000).toISOString(),
+    },
+    {
+      id: 'apr_d4h6t2rb',
+      agentId: 'agt_8f2k1mq7',
+      merchant: 'Meridian Translate',
+      item: 'Certified translation, 6 pages',
+      category: 'Language',
+      amount: 21.6,
+      why: 'First purchase from a new merchant',
+      requestedAt: new Date(now - 5.1 * 3_600_000).toISOString(),
+    },
+  ]
+
   const spent = purchases
     .filter((purchase) => purchase.status === 'settled')
     .reduce((total, purchase) => total + purchase.amount, 0)
@@ -140,6 +179,9 @@ export function seedState(): AppState {
     balance: Math.round((1050 - spent) * 100) / 100,
     agents,
     purchases,
+    approvals,
     fundings,
+    prefs: { approvals: true, declined: true, lowBalance: true, budgetNearlyUsed: true, weeklySummary: false },
+    dev: seedDev(),
   }
 }

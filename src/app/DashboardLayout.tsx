@@ -1,13 +1,21 @@
 import {
+  Activity,
   Bot,
+  ClipboardCheck,
+  CreditCard,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
+  Package,
   Plus,
   Receipt,
+  Rocket,
+  ScrollText,
   Settings,
-  Terminal,
+  Users,
   Wallet,
+  Webhook,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -27,34 +35,98 @@ import { Wordmark } from '../components/Wordmark'
 import { cn } from '../lib/cn'
 import { AddFundsDialog } from './AddFundsDialog'
 import { ConnectAgentDialog } from './ConnectAgentDialog'
+import { CreateKeyDialog } from './dev/CreateKeyDialog'
 import { initials, money } from './format'
 import { useSimulatedActivity, useStore } from './store'
 
-const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
-  { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/app/agents', label: 'Agents', icon: Bot },
-  { to: '/app/funds', label: 'Funds', icon: Wallet },
-  { to: '/app/activity', label: 'Activity', icon: Receipt },
-  { to: '/app/settings', label: 'Settings', icon: Settings },
-]
+type Area = 'agents' | 'developers'
+type Item = { to: string; label: string; icon: LucideIcon; end?: boolean }
+type Group = { heading?: string; items: Item[] }
 
-type DashboardContext = { openConnect: () => void; openFunds: () => void }
+/** The two halves of the product: running agents, and building on the API. */
+const areas: Record<Area, { label: string; home: string; action: string; groups: Group[] }> = {
+  agents: {
+    label: 'Agents',
+    home: '/app',
+    action: 'Connect agent',
+    groups: [
+      {
+        items: [
+          { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
+          { to: '/app/agents', label: 'Agents', icon: Bot },
+          { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
+          { to: '/app/funds', label: 'Funds', icon: Wallet },
+          { to: '/app/activity', label: 'Activity', icon: Receipt },
+          { to: '/app/settings', label: 'Settings', icon: Settings },
+        ],
+      },
+    ],
+  },
+  developers: {
+    label: 'Developers',
+    home: '/dev',
+    action: 'Create API key',
+    groups: [
+      {
+        heading: 'Build',
+        items: [
+          { to: '/dev', label: 'Quickstart', icon: Rocket, end: true },
+          { to: '/dev/keys', label: 'API keys', icon: KeyRound },
+          { to: '/dev/webhooks', label: 'Webhooks', icon: Webhook },
+          { to: '/dev/sdks', label: 'SDKs & tools', icon: Package },
+        ],
+      },
+      {
+        heading: 'Monitor',
+        items: [
+          { to: '/dev/agents', label: 'Agents', icon: Bot },
+          { to: '/dev/logs', label: 'Logs', icon: ScrollText },
+          { to: '/dev/usage', label: 'Usage', icon: Activity },
+        ],
+      },
+      {
+        heading: 'Organization',
+        items: [
+          { to: '/dev/team', label: 'Team', icon: Users },
+          { to: '/dev/billing', label: 'Billing', icon: CreditCard },
+          { to: '/dev/settings', label: 'Settings', icon: Settings },
+        ],
+      },
+    ],
+  },
+}
 
-/** Lets any dashboard page open the shared connect-agent and add-funds dialogs. */
+type DashboardContext = {
+  openConnect: () => void
+  openFunds: () => void
+  openCreateKey: () => void
+}
+
+/** Lets any dashboard page open the shared dialogs. */
 export const useDashboard = () => useOutletContext<DashboardContext>()
 
+const segment = 'flex-1 py-1.5 text-center text-xs font-medium transition-colors duration-200'
+const segmentOn = 'bg-cream text-charcoal'
+const segmentOff = 'text-cream/65 hover:text-cream'
+
 function Sidebar({
+  area,
   onNavigate,
-  onAddFunds,
-  onConnect,
+  dialogs,
 }: {
+  area: Area
   onNavigate?: () => void
-  onAddFunds: () => void
-  onConnect: () => void
+  dialogs: DashboardContext
 }) {
   const { state, dispatch } = useStore()
   const navigate = useNavigate()
   const user = state.user!
+  const current = areas[area]
+
+  const act = (open: () => void) => () => {
+    onNavigate?.()
+    open()
+  }
 
   return (
     <div className="flex h-full flex-col px-4 pb-4 pt-6">
@@ -62,67 +134,98 @@ function Sidebar({
         <Wordmark />
       </Link>
 
-      <button
-        type="button"
-        onClick={() => {
-          onNavigate?.()
-          onConnect()
-        }}
-        className="mt-8 flex h-10 w-full items-center justify-center gap-2.5 rounded-full bg-cream text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-charcoal transition-colors duration-300 hover:bg-burgundy hover:text-cream"
-      >
-        <Icon icon={Plus} size={16} />
-        Connect agent
-      </button>
-
-      <nav aria-label="Dashboard" className="mt-6">
-        <ul className="space-y-1">
-          {items.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                onClick={onNavigate}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-200',
-                    isActive ? 'bg-cream/10 text-cream' : 'text-cream/65 hover:bg-cream/5 hover:text-cream',
-                  )
-                }
-              >
-                <Icon icon={item.icon} size={18} />
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+      <nav aria-label="Dashboard area" className="mt-7 flex border border-cream/20 p-1">
+        {(Object.keys(areas) as Area[]).map((key) => (
+          <Link
+            key={key}
+            to={areas[key].home}
+            onClick={onNavigate}
+            aria-current={key === area ? 'page' : undefined}
+            className={cn(segment, key === area ? segmentOn : segmentOff)}
+          >
+            {areas[key].label}
+          </Link>
+        ))}
       </nav>
 
-      <div className="mt-auto space-y-3">
-        <div className="rounded-xl border border-cream/15 p-4">
-          <p className="type-label text-cream/60">Balance</p>
-          <p className="mt-3 text-2xl tracking-[-0.02em] tabular-nums">{money(state.balance)}</p>
-          <button
-            type="button"
-            onClick={() => {
-              onNavigate?.()
-              onAddFunds()
-            }}
-            className="mt-4 w-full rounded-full bg-cream py-2 text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-charcoal transition-colors duration-300 hover:bg-burgundy hover:text-cream"
-          >
-            Add funds
-          </button>
-        </div>
+      <button
+        type="button"
+        onClick={act(area === 'agents' ? dialogs.openConnect : dialogs.openCreateKey)}
+        className="mt-4 flex h-10 w-full shrink-0 items-center justify-center gap-2.5 rounded-full bg-cream text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-charcoal transition-colors duration-300 hover:bg-burgundy hover:text-cream"
+      >
+        <Icon icon={Plus} size={16} />
+        {current.action}
+      </button>
 
-        <Link
-          to="/developers"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/65 transition-colors duration-200 hover:bg-cream/5 hover:text-cream"
-        >
-          <Icon icon={Terminal} size={18} />
-          Developers
-          <span className="ml-auto rounded-full border border-cream/25 px-2 py-0.5 text-[0.625rem] uppercase tracking-[0.14em]">
-            Soon
-          </span>
-        </Link>
+      <nav aria-label={current.label} className="mt-6 space-y-5">
+        {current.groups.map((group) => (
+          <div key={group.heading ?? 'main'}>
+            {group.heading && <p className="type-label mb-2 px-3 text-cream/45">{group.heading}</p>}
+            <ul className="space-y-0.5">
+              {group.items.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 px-3 py-2.5 text-sm transition-colors duration-200',
+                        isActive ? 'bg-cream/10 text-cream' : 'text-cream/65 hover:bg-cream/5 hover:text-cream',
+                      )
+                    }
+                  >
+                    <Icon icon={item.icon} size={18} />
+                    {item.label}
+                    {item.to === '/app/approvals' && state.approvals.length > 0 && (
+                      <span className="ml-auto min-w-5 rounded-full bg-cream px-1.5 text-center text-xs font-semibold tabular-nums text-charcoal">
+                        {state.approvals.length}
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <div className="mt-auto space-y-3 pt-6">
+        {area === 'agents' ? (
+          <div className="border border-cream/15 p-4">
+            <p className="type-label text-cream/60">Balance</p>
+            <p className="mt-3 text-2xl tracking-[-0.02em] tabular-nums">{money(state.balance)}</p>
+            <button
+              type="button"
+              onClick={act(dialogs.openFunds)}
+              className="mt-4 w-full rounded-full bg-cream py-2 text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-charcoal transition-colors duration-300 hover:bg-burgundy hover:text-cream"
+            >
+              Add funds
+            </button>
+          </div>
+        ) : (
+          <div className="border border-cream/15 p-4">
+            <p className="type-label text-cream/60">Environment</p>
+            <div role="group" aria-label="Environment" className="mt-3 flex border border-cream/20 p-1">
+              {(['test', 'live'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={state.dev.mode === mode}
+                  onClick={() => dispatch({ type: 'setMode', mode })}
+                  className={cn(segment, 'capitalize', state.dev.mode === mode ? segmentOn : segmentOff)}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-cream/60">
+              {state.dev.mode === 'test'
+                ? 'Sandbox data. No real money moves.'
+                : 'Live data. Keys here spend real balance.'}
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 border-t border-cream/15 px-1 pt-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cream text-xs font-semibold text-charcoal">
@@ -150,13 +253,14 @@ function Sidebar({
   )
 }
 
-export function DashboardLayout() {
+export function DashboardLayout({ area }: { area: Area }) {
   const { state } = useStore()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [fundsOpen, setFundsOpen] = useState(false)
+  const [keyOpen, setKeyOpen] = useState(false)
   const navigate = useNavigate()
 
   useSimulatedActivity()
@@ -170,17 +274,26 @@ export function DashboardLayout() {
   }, [wantsConnect, state.user, setParams])
 
   useEffect(() => {
-    document.title = 'Dashboard — Oryne'
-  }, [])
+    document.title = area === 'developers' ? 'Developers — Oryne' : 'Dashboard — Oryne'
+  }, [area])
 
   if (!state.user) {
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   }
 
+  // The developer console is dark throughout.
+  const dark = area === 'developers'
+
+  const dialogs: DashboardContext = {
+    openConnect: () => setConnectOpen(true),
+    openFunds: () => setFundsOpen(true),
+    openCreateKey: () => setKeyOpen(true),
+  }
+
   return (
     <div className="tone-cream min-h-svh lg:pl-64">
-      <aside className="tone-charcoal fixed inset-y-0 left-0 z-30 hidden w-64 lg:block">
-        <Sidebar onAddFunds={() => setFundsOpen(true)} onConnect={() => setConnectOpen(true)} />
+      <aside className="tone-charcoal fixed inset-y-0 left-0 z-30 hidden w-64 overflow-y-auto border-r border-cream/10 lg:block">
+        <Sidebar area={area} dialogs={dialogs} />
       </aside>
 
       <header className="tone-charcoal sticky top-0 z-30 flex h-16 items-center justify-between px-5 lg:hidden">
@@ -200,32 +313,31 @@ export function DashboardLayout() {
 
       {menuOpen && (
         <div className="tone-charcoal fixed inset-x-0 bottom-0 top-16 z-20 overflow-y-auto lg:hidden">
-          <Sidebar
-            onNavigate={() => setMenuOpen(false)}
-            onAddFunds={() => setFundsOpen(true)}
-            onConnect={() => setConnectOpen(true)}
-          />
+          <Sidebar area={area} dialogs={dialogs} onNavigate={() => setMenuOpen(false)} />
         </div>
       )}
 
       {/* Cards run edge to edge, with only a narrow margin around them. */}
-      <main className="p-3 md:p-4">
-        <Outlet
-          context={
-            {
-              openConnect: () => setConnectOpen(true),
-              openFunds: () => setFundsOpen(true),
-            } satisfies DashboardContext
-          }
-        />
+      <main className={cn('min-h-svh p-3 md:p-4', dark && 'theme-dark tone-cream')}>
+        {area === 'developers' && (
+          <p className="mb-3 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
+            <span className="font-medium text-charcoal">Preview.</span> The developer console runs on
+            mock data. The API, SDKs and keys shown here are not live yet.
+          </p>
+        )}
+        <Outlet context={dialogs} />
       </main>
 
-      <ConnectAgentDialog
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        onConnected={(agent) => navigate(`/app/agents/${agent.id}`)}
-      />
-      <AddFundsDialog open={fundsOpen} onClose={() => setFundsOpen(false)} />
+      {/* Dialogs sit outside <main>, so they need the theme handed to them. */}
+      <div className={dark ? 'theme-dark' : undefined}>
+        <ConnectAgentDialog
+          open={connectOpen}
+          onClose={() => setConnectOpen(false)}
+          onConnected={(agent) => navigate(`/app/agents/${agent.id}`)}
+        />
+        <AddFundsDialog open={fundsOpen} onClose={() => setFundsOpen(false)} />
+        <CreateKeyDialog open={keyOpen} onClose={() => setKeyOpen(false)} />
+      </div>
     </div>
   )
 }

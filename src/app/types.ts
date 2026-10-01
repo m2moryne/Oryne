@@ -1,3 +1,5 @@
+import type { DevState } from './dev/devData'
+
 export type AgentKind = 'Research' | 'Shopping' | 'Travel' | 'Operations' | 'Other'
 
 export type Agent = {
@@ -22,7 +24,22 @@ export type Purchase = {
   status: 'settled' | 'declined'
   /** Why a purchase was declined, when it was. */
   reason?: string
+  /** True when the owner approved it by hand, overriding the agent's limits. */
+  approvedByOwner?: boolean
   at: string
+}
+
+/** A purchase an agent wants to make that is waiting for its owner to decide. */
+export type Approval = {
+  id: string
+  agentId: string
+  merchant: string
+  item: string
+  category: string
+  amount: number
+  /** Why the agent could not simply go ahead. */
+  why: string
+  requestedAt: string
 }
 
 export type Funding = {
@@ -32,12 +49,30 @@ export type Funding = {
   at: string
 }
 
-export type User = { name: string; email: string }
+export type User = {
+  name: string
+  email: string
+  /** How they signed in: "email", "Google", "GitHub" or "Hugging Face". */
+  provider?: string
+}
+
+/** Which emails the owner wants. */
+export type Prefs = {
+  approvals: boolean
+  declined: boolean
+  lowBalance: boolean
+  budgetNearlyUsed: boolean
+  weeklySummary: boolean
+}
 
 export type AppState = {
   user: User | null
   balance: number
   agents: Agent[]
   purchases: Purchase[]
+  approvals: Approval[]
   fundings: Funding[]
+  prefs: Prefs
+  /** Developer console: API keys, webhooks, team and test/live mode. */
+  dev: DevState
 }

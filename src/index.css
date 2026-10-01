@@ -12,6 +12,9 @@
   --color-purple: #43305a;
   --color-taupe: #b8aea1;
   --color-white: #ffffff;
+  /* Fixed in both themes: the darkest surface, and the light text that sits on it. */
+  --color-ink: #141414;
+  --color-paper: #f5f0e8;
 
   --font-sans: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
@@ -61,6 +64,22 @@
     outline: 2px solid var(--tone-accent);
     outline-offset: 4px;
   }
+}
+
+/*
+ * Dark theme, used by the developer console. It re-points the palette rather
+ * than restyling components: "charcoal" becomes the light text colour, "cream"
+ * the page, "white" the card surface, and the accents lighten so they still
+ * read on a dark ground. Everything built from those names follows.
+ */
+.theme-dark {
+  color-scheme: dark;
+  --color-charcoal: #f5f0e8;
+  --color-cream: #141414;
+  --color-white: #202020;
+  --color-taupe: #6f6961;
+  --color-burgundy: #d97f8c;
+  --color-purple: #b7a0d8;
 }
 
 /* Section tones */

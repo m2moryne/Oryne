@@ -4,7 +4,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { useStore } from '../store'
-import { Field, Panel, inputClasses } from '../ui'
+import type { Prefs } from '../types'
+import { Field, Panel, Toggle, inputClasses } from '../ui'
+
+const notifications: Array<{ pref: keyof Prefs; label: string; note: string }> = [
+  { pref: 'approvals', label: 'An agent needs my approval', note: 'Sent straight away, so the agent is not left waiting.' },
+  { pref: 'declined', label: 'A purchase is declined', note: 'With the reason, and which limit stopped it.' },
+  { pref: 'budgetNearlyUsed', label: 'An agent has used 80% of its budget', note: 'Once per agent, per period.' },
+  { pref: 'lowBalance', label: 'My balance is running low', note: 'When it can no longer cover what the agents may spend.' },
+  { pref: 'weeklySummary', label: 'Weekly summary', note: 'Every Monday: what each agent bought and what it cost.' },
+]
 
 export default function Settings() {
   const { state, dispatch } = useStore()
@@ -25,7 +34,8 @@ export default function Settings() {
     <div className="grid gap-4 lg:min-h-[calc(100svh-2rem)] xl:grid-cols-3">
       <h1 className="sr-only">Settings</h1>
 
-      <Panel title="Profile" className="xl:col-span-2">
+      <div className="flex flex-col gap-4 xl:col-span-2">
+      <Panel title="Profile">
         <form onSubmit={submit} onChange={() => setSaved(false)} className="space-y-5">
           <div className="grid gap-5 md:grid-cols-2">
             <Field label="Name">
@@ -69,16 +79,32 @@ export default function Settings() {
         </form>
       </Panel>
 
+      <Panel title="Email me when" flush className="flex-1">
+        <ul className="divide-y divide-taupe/30">
+          {notifications.map((entry) => (
+            <li key={entry.pref} className="px-5 py-4 md:px-6">
+              <Toggle
+                label={entry.label}
+                note={entry.note}
+                checked={state.prefs[entry.pref]}
+                onChange={(value) => dispatch({ type: 'setPref', pref: entry.pref, value })}
+              />
+            </li>
+          ))}
+        </ul>
+      </Panel>
+      </div>
+
       <div className="flex flex-col gap-4">
         <Panel title="Building your own agent?">
           <p className="text-sm leading-relaxed text-muted">
-            A separate developer dashboard, with SDKs and keys for building on Oryne, is on its way.
+            The developer console has API keys, webhooks, request logs and SDKs for building on Oryne.
           </p>
           <Link
-            to="/developers"
+            to="/dev"
             className="mt-4 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
           >
-            <Icon icon={Terminal} size={16} /> Developer dashboard
+            <Icon icon={Terminal} size={16} /> Open the developer console
           </Link>
         </Panel>
 

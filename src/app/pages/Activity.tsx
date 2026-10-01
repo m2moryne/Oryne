@@ -36,13 +36,6 @@ export default function Activity() {
 
       {/* Filters sit in one row above the table they control. */}
       <div className="flex flex-wrap items-center gap-3">
-        <p className="flex items-center gap-2 px-2 text-sm text-muted max-sm:w-full">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-burgundy opacity-60 motion-reduce:hidden" />
-            <span className="relative inline-flex size-2 rounded-full bg-burgundy" />
-          </span>
-          Updating live
-        </p>
         <div className="relative min-w-56 flex-1">
           <Icon
             icon={Search}
@@ -58,7 +51,7 @@ export default function Activity() {
             }}
             placeholder="Search purchases"
             aria-label="Search purchases"
-            className={cn(inputClasses, 'py-2.5 pl-11')}
+            className={cn(inputClasses, 'rounded-none! py-2.5 pl-11')}
           />
         </div>
 
@@ -69,7 +62,7 @@ export default function Activity() {
             setShown(PAGE)
           }}
           aria-label="Filter by agent"
-          className={cn(inputClasses, 'w-auto! py-2.5 max-sm:flex-1')}
+          className={cn(inputClasses, 'w-auto! rounded-none! py-2.5 max-sm:flex-1')}
         >
           <option value="all">All agents</option>
           {state.agents.map((agent) => (
@@ -79,7 +72,7 @@ export default function Activity() {
           ))}
         </select>
 
-        <div role="group" aria-label="Filter by status" className="flex rounded-lg border border-taupe/70 bg-white p-1">
+        <div role="group" aria-label="Filter by status" className="flex border border-taupe/70 bg-white p-1">
           {statuses.map((option) => (
             <button
               key={option.value}
@@ -90,7 +83,7 @@ export default function Activity() {
                 setShown(PAGE)
               }}
               className={cn(
-                'rounded-md px-3.5 py-1.5 text-sm transition-colors duration-200',
+                'px-3.5 py-1.5 text-sm transition-colors duration-200',
                 status === option.value ? 'bg-charcoal text-cream' : 'text-muted hover:text-charcoal',
               )}
             >
@@ -100,7 +93,19 @@ export default function Activity() {
         </div>
       </div>
 
-      <Panel flush>
+      <Panel
+        flush
+        title="Purchases"
+        action={
+          <p className="flex items-center gap-2 text-sm text-muted">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-burgundy opacity-60 motion-reduce:hidden" />
+              <span className="relative inline-flex size-2 rounded-full bg-burgundy" />
+            </span>
+            Updating live
+          </p>
+        }
+      >
         {matches.length === 0 ? (
           <EmptyState icon={Receipt} title="Nothing matches">
             {state.purchases.length === 0
