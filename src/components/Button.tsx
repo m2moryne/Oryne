@@ -6,12 +6,17 @@ import { Icon } from './Icon'
 
 type ButtonProps = {
   children: ReactNode
-  variant?: 'primary' | 'accent' | 'light'
+  variant?: 'primary' | 'accent' | 'light' | 'outline'
   size?: 'sm' | 'md'
+  /** Trailing icon; nudges forward on hover. */
   icon?: LucideIcon
+  /** Leading icon; stays put. */
+  leadingIcon?: LucideIcon
   /** Internal route. Renders a router link. */
   to?: string
   type?: 'button' | 'submit'
+  onClick?: () => void
+  disabled?: boolean
   className?: string
 }
 
@@ -20,6 +25,7 @@ const variants = {
   accent: 'border-burgundy bg-burgundy text-cream hover:border-charcoal hover:bg-charcoal',
   /** For dark surfaces such as the navigation bar. */
   light: 'border-cream bg-cream text-charcoal hover:border-burgundy hover:bg-burgundy hover:text-cream',
+  outline: 'border-taupe bg-transparent text-charcoal hover:border-charcoal',
 }
 
 const sizes = {
@@ -32,12 +38,15 @@ export function Button({
   variant = 'primary',
   size = 'md',
   icon,
+  leadingIcon,
   to,
   type = 'button',
+  onClick,
+  disabled,
   className,
 }: ButtonProps) {
   const classes = cn(
-    'group inline-flex shrink-0 items-center justify-center gap-3 rounded-full border font-medium uppercase whitespace-nowrap transition-colors duration-300 ease-quiet',
+    'group inline-flex shrink-0 items-center justify-center gap-3 rounded-full border font-medium uppercase whitespace-nowrap transition-colors duration-300 ease-quiet disabled:pointer-events-none disabled:opacity-45',
     variants[variant],
     sizes[size],
     className,
@@ -45,6 +54,7 @@ export function Button({
 
   const content = (
     <>
+      {leadingIcon && <Icon icon={leadingIcon} size={16} />}
       {children}
       {icon && (
         <Icon
@@ -58,14 +68,14 @@ export function Button({
 
   if (to) {
     return (
-      <Link to={to} className={classes}>
+      <Link to={to} onClick={onClick} className={classes}>
         {content}
       </Link>
     )
   }
 
   return (
-    <button type={type} className={classes}>
+    <button type={type} onClick={onClick} disabled={disabled} className={classes}>
       {content}
     </button>
   )

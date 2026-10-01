@@ -1,6 +1,7 @@
 import { Menu, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { useStore } from '../app/store'
 import { cn } from '../lib/cn'
 import { navLinks } from '../lib/site'
 import { Button } from './Button'
@@ -8,9 +9,14 @@ import { Icon } from './Icon'
 import { Container } from './Section'
 import { Wordmark } from './Wordmark'
 
+/** Opens the dashboard with the connect-agent flow ready; signs the visitor in first if needed. */
+const CONNECT_PATH = '/app/agents?connect=1'
+
 export function Navigation() {
+  const { state } = useStore()
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
+  const account = state.user ? { to: '/app', label: 'Dashboard' } : { to: '/login', label: 'Sign in' }
 
   useEffect(() => {
     if (!open) return
@@ -71,9 +77,15 @@ export function Navigation() {
             ))}
           </nav>
 
-          <div className="col-start-3 justify-self-end">
-            <Button to="/contact" variant="light" size="sm" className="max-xl:hidden">
-              Start a conversation
+          <div className="col-start-3 flex items-center gap-7 justify-self-end">
+            <Link
+              to={account.to}
+              className="type-label text-cream/70 transition-colors duration-300 ease-quiet hover:text-cream max-xl:hidden"
+            >
+              {account.label}
+            </Link>
+            <Button to={CONNECT_PATH} variant="light" size="sm" className="max-xl:hidden">
+              Connect agent
             </Button>
             <button
               type="button"
@@ -116,10 +128,13 @@ export function Navigation() {
                 ))}
               </ul>
             </nav>
-            <div className="mt-auto pt-10" onClick={close}>
-              <Button to="/contact" variant="light" className="w-full">
-                Start a conversation
+            <div className="mt-auto pt-10 text-center" onClick={close}>
+              <Button to={CONNECT_PATH} variant="light" className="w-full">
+                Connect agent
               </Button>
+              <Link to={account.to} className="type-label mt-6 inline-block py-2 text-cream/70">
+                {account.label}
+              </Link>
             </div>
           </Container>
         </div>

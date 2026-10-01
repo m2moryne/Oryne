@@ -18,6 +18,7 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
     title: 'Product',
     links: [
       { label: 'Overview', to: '/product' },
+      { label: 'Dashboard', to: '/app' },
       { label: 'Developers', to: '/developers' },
       { label: 'Documentation', to: '/docs' },
       { label: 'Status', to: '/status' },
