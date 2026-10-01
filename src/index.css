@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope/index.css";
+@import "@fontsource/dm-serif-display/400.css";
+@import "@fontsource/dm-serif-display/400-italic.css";
+
+/* The Oryne palette is deliberately closed: six colours, nothing else. */
+@theme {
+  --color-*: initial;
+  --color-charcoal: #202020;
+  --color-cream: #f5f0e8;
+  --color-burgundy: #6e1f2a;
+  --color-purple: #43305a;
+  --color-taupe: #b8aea1;
+  --color-white: #ffffff;
+
+  --font-sans: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
+
+  --ease-quiet: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/*
+ * Tone-aware colours. Each section sets a tone (see below); these utilities
+ * (text-muted, border-line, bg-accent, bg-surface…) then resolve against it,
+ * so the same component works on any background.
+ */
+@theme inline {
+  --color-muted: var(--tone-muted);
+  --color-line: var(--tone-line);
+  --color-accent: var(--tone-accent);
+  --color-surface: var(--tone-bg);
+}
+
+@layer base {
+  :root {
+    --nav-h: 4.5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  [id] {
+    scroll-margin-top: var(--nav-h);
+  }
+
+  ::selection {
+    background-color: var(--color-burgundy);
+    color: var(--color-cream);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--tone-accent);
+    outline-offset: 4px;
+  }
+}
+
+/* Section tones */
+body,
+.tone-cream,
+.tone-white {
+  color: var(--color-charcoal);
+  --tone-muted: color-mix(in srgb, var(--color-charcoal) 72%, transparent);
+  --tone-line: var(--color-taupe);
+  --tone-accent: var(--color-burgundy);
+}
+
+.tone-charcoal,
+.tone-purple,
+.tone-burgundy {
+  color: var(--color-cream);
+  --tone-muted: color-mix(in srgb, var(--color-cream) 74%, transparent);
+  --tone-line: color-mix(in srgb, var(--color-cream) 28%, transparent);
+  --tone-accent: var(--color-cream);
+}
+
+body,
+.tone-cream {
+  --tone-bg: var(--color-cream);
+}
+.tone-white {
+  --tone-bg: var(--color-white);
+}
+.tone-charcoal {
+  --tone-bg: var(--color-charcoal);
+}
+.tone-purple {
+  --tone-bg: var(--color-purple);
+}
+.tone-burgundy {
+  --tone-bg: var(--color-burgundy);
+}
+
+body,
+.tone-cream,
+.tone-white,
+.tone-charcoal,
+.tone-purple,
+.tone-burgundy {
+  background-color: var(--tone-bg);
+}
+
+/* Type scale */
+@utility type-display {
+  font-size: clamp(3.25rem, 8.4vw, 8.5rem);
+  line-height: 0.97;
+  letter-spacing: -0.045em;
+  font-weight: 400;
+}
+
+@utility type-statement {
+  font-size: clamp(2.25rem, 5.4vw, 5.25rem);
+  line-height: 1.03;
+  letter-spacing: -0.038em;
+  font-weight: 400;
+}
+
+@utility type-lede {
+  font-size: clamp(1.0625rem, 1.3vw, 1.25rem);
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+}
+
+@utility type-label {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Scroll reveal: content stays fully visible when motion is reduced. */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 900ms var(--ease-quiet),
+    transform 900ms var(--ease-quiet);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero headline: the rotating word lifts out, the next one rises in. */
+.swap {
+  display: inline-block;
+  animation: swap-in 420ms var(--ease-quiet) backwards;
+  transition:
+    opacity 320ms var(--ease-quiet),
+    transform 320ms var(--ease-quiet);
+}
+
+.swap.is-leaving {
+  opacity: 0;
+  transform: translateY(-0.16em);
+}
+
+@keyframes swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.16em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .swap {
+    animation: none;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
