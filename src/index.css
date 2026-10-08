@@ -3,18 +3,22 @@
 @import "@fontsource/dm-serif-display/400.css";
 @import "@fontsource/dm-serif-display/400-italic.css";
 
-/* The Oryne palette is deliberately closed: six colours, nothing else. */
+/*
+ * The Oryne palette is deliberately closed. Light surfaces are pure white:
+ * "cream" is kept as a name (it is the light ground and the light text on dark
+ * sections) but resolves to white.
+ */
 @theme {
   --color-*: initial;
   --color-charcoal: #202020;
-  --color-cream: #f5f0e8;
+  --color-cream: #ffffff;
   --color-burgundy: #6e1f2a;
   --color-purple: #43305a;
   --color-taupe: #b8aea1;
   --color-white: #ffffff;
   /* Fixed in both themes: the darkest surface, and the light text that sits on it. */
   --color-ink: #141414;
-  --color-paper: #f5f0e8;
+  --color-paper: #ffffff;
 
   --font-sans: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
@@ -129,21 +133,21 @@ body,
 
 /* Type scale */
 @utility type-display {
-  font-size: clamp(3.25rem, 8.4vw, 8.5rem);
+  font-size: clamp(2.75rem, 7vw, 7rem);
   line-height: 0.97;
   letter-spacing: -0.045em;
   font-weight: 400;
 }
 
 @utility type-statement {
-  font-size: clamp(2.25rem, 5.4vw, 5.25rem);
+  font-size: clamp(2rem, 4.6vw, 4.5rem);
   line-height: 1.03;
   letter-spacing: -0.038em;
   font-weight: 400;
 }
 
 @utility type-lede {
-  font-size: clamp(1.0625rem, 1.3vw, 1.25rem);
+  font-size: clamp(1rem, 1.2vw, 1.125rem);
   line-height: 1.6;
   letter-spacing: -0.005em;
 }

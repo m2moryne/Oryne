@@ -3,6 +3,8 @@ import {
   Bot,
   ClipboardCheck,
   CreditCard,
+  FileCode2,
+  FlaskConical,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -13,6 +15,8 @@ import {
   Rocket,
   ScrollText,
   Settings,
+  ShieldCheck,
+  Store,
   Users,
   Wallet,
   Webhook,
@@ -55,6 +59,8 @@ const areas: Record<Area, { label: string; home: string; action: string; groups:
           { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
           { to: '/app/agents', label: 'Agents', icon: Bot },
           { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
+          { to: '/app/services', label: 'Services', icon: Store },
+          { to: '/app/wallet', label: 'Wallet', icon: ShieldCheck },
           { to: '/app/funds', label: 'Funds', icon: Wallet },
           { to: '/app/activity', label: 'Activity', icon: Receipt },
           { to: '/app/settings', label: 'Settings', icon: Settings },
@@ -71,15 +77,18 @@ const areas: Record<Area, { label: string; home: string; action: string; groups:
         heading: 'Build',
         items: [
           { to: '/dev', label: 'Quickstart', icon: Rocket, end: true },
+          { to: '/dev/playground', label: 'Playground', icon: FlaskConical },
           { to: '/dev/keys', label: 'API keys', icon: KeyRound },
           { to: '/dev/webhooks', label: 'Webhooks', icon: Webhook },
           { to: '/dev/sdks', label: 'SDKs & tools', icon: Package },
+          { to: '/dev/merchant', label: 'Accept payments', icon: Store },
         ],
       },
       {
         heading: 'Monitor',
         items: [
           { to: '/dev/agents', label: 'Agents', icon: Bot },
+          { to: '/dev/contracts', label: 'Contracts', icon: FileCode2 },
           { to: '/dev/logs', label: 'Logs', icon: ScrollText },
           { to: '/dev/usage', label: 'Usage', icon: Activity },
         ],
@@ -193,7 +202,7 @@ function Sidebar({
       <div className="mt-auto space-y-3 pt-6">
         {area === 'agents' ? (
           <div className="border border-cream/15 p-4">
-            <p className="type-label text-cream/60">Balance</p>
+            <p className="type-label text-cream/60">Wallet · USDC</p>
             <p className="mt-3 text-2xl tracking-[-0.02em] tabular-nums">{money(state.balance)}</p>
             <button
               type="button"
@@ -319,12 +328,12 @@ export function DashboardLayout({ area }: { area: Area }) {
 
       {/* Cards run edge to edge, with only a narrow margin around them. */}
       <main className={cn('min-h-svh p-3 md:p-4', dark && 'theme-dark tone-cream')}>
-        {area === 'developers' && (
-          <p className="mb-3 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
-            <span className="font-medium text-charcoal">Preview.</span> The developer console runs on
-            mock data. The API, SDKs and keys shown here are not live yet.
-          </p>
-        )}
+        <p className="mb-3 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
+          <span className="font-medium text-charcoal">Preview.</span>{' '}
+          {area === 'developers'
+            ? 'The developer console runs on mock data. The API, SDKs, keys and contracts shown here are not live yet.'
+            : 'Simulated data. Wallet addresses and transactions are shaped like Stellar’s but are not on any ledger, and no real money moves.'}
+        </p>
         <Outlet context={dialogs} />
       </main>
 

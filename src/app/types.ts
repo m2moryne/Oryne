@@ -12,6 +12,10 @@ export type Agent = {
   /** Most the agent may spend on a single purchase. */
   perPurchase: number
   connectedAt: string
+  /** Merchants the agent may pay. Empty or missing means any merchant. */
+  payees?: string[]
+  /** When the agent's session key stops working. Missing means never. */
+  expiresAt?: string
 }
 
 export type Purchase = {

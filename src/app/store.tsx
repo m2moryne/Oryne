@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react'
 import { catalogue, id, seedState } from './seed'
 import { seedDev, type ApiKey, type DevState, type Member, type Mode, type WebhookEndpoint } from './dev/devData'
-import type { Agent, AppState, Prefs, Purchase, User } from './types'
+import type { Agent, AppState, Approval, Prefs, Purchase, User } from './types'
 
 /**
  * Dashboard state for the preview. It lives in this browser only (localStorage);
@@ -29,6 +29,7 @@ type Action =
   | { type: 'updateWebhook'; id: string; patch: Partial<WebhookEndpoint> }
   | { type: 'removeWebhook'; id: string }
   | { type: 'resolveApproval'; id: string; approve: boolean }
+  | { type: 'requestApproval'; approval: Approval }
   | { type: 'setPref'; pref: keyof Prefs; value: boolean }
   | { type: 'inviteMember'; member: Member }
   | { type: 'removeMember'; id: string }
@@ -47,6 +48,15 @@ export function spentBy(purchases: Purchase[], agentId?: string) {
       )
       .reduce((total, purchase) => total + purchase.amount, 0),
   )
+}
+
+/** Why the wallet would refuse this payment, or undefined if it goes through. */
+export function declineReason(state: AppState, agent: Agent, amount: number, merchant: string) {
+  if (agent.payees?.length && !agent.payees.includes(merchant)) return 'Payee not on allowlist'
+  if (amount > agent.perPurchase) return 'Over the per-purchase limit'
+  if (spentBy(state.purchases, agent.id) + amount > agent.budget) return 'Budget reached'
+  if (amount > state.balance) return 'Not enough funds'
+  return undefined
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -77,18 +87,12 @@ function reducer(state: AppState, action: Action): AppState {
     case 'removeAgent':
       return { ...state, agents: state.agents.filter((agent) => agent.id !== action.id) }
     case 'attemptPurchase': {
-      // The same three checks a real purchase would have to pass.
+      // The same checks the agent-wallet contract runs in __check_auth.
       const agent = state.agents.find((candidate) => candidate.id === action.purchase.agentId)
       if (!agent || agent.status !== 'active') return state
+      if (agent.expiresAt && new Date(agent.expiresAt).getTime() < Date.now()) return state
       const { amount } = action.purchase
-      const reason =
-        amount > agent.perPurchase
-          ? 'Over the per-purchase limit'
-          : spentBy(state.purchases, agent.id) + amount > agent.budget
-            ? 'Budget reached'
-            : amount > state.balance
-              ? 'Not enough funds'
-              : undefined
+      const reason = declineReason(state, agent, amount, action.purchase.merchant)
       const purchase: Purchase = { ...action.purchase, status: reason ? 'declined' : 'settled', reason }
       return {
         ...state,
@@ -146,6 +150,8 @@ function reducer(state: AppState, action: Action): AppState {
         purchases: [purchase, ...state.purchases],
       }
     }
+    case 'requestApproval':
+      return { ...state, approvals: [action.approval, ...state.approvals] }
     case 'setPref':
       return { ...state, prefs: { ...state.prefs, [action.pref]: action.value } }
     case 'inviteMember':

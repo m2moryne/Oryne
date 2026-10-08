@@ -242,7 +242,7 @@ export function Dialog({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="-mr-2 -mt-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-cream hover:text-charcoal"
+              className="-mr-2 -mt-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-taupe/20 hover:text-charcoal"
             >
               <Icon icon={X} size={18} />
             </button>

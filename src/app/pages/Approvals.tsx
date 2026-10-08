@@ -71,7 +71,7 @@ export default function Approvals() {
                       disabled={short}
                       onClick={() => dispatch({ type: 'resolveApproval', id: approval.id, approve: true })}
                     >
-                      Approve
+                      Approve once
                     </Button>
                   </div>
                 </li>
@@ -85,13 +85,17 @@ export default function Approvals() {
         <Panel title="When an agent has to ask">
           <ul className="space-y-3 text-sm leading-relaxed text-muted">
             <li>The purchase is over the agent&rsquo;s per-purchase limit.</li>
+            <li>The merchant is not on the agent&rsquo;s payee allowlist.</li>
             <li>It is the first purchase from a merchant the agent has not used before.</li>
             <li>The purchase would take the agent past its monthly budget.</li>
           </ul>
         </Panel>
         <Panel title="What happens next">
           <ul className="space-y-3 text-sm leading-relaxed text-muted">
-            <li>Approve, and the payment goes through at once, this one time.</li>
+            <li>
+              Approve, and your passkey signs <code className="font-mono text-[0.8125rem]">approve_once</code> on
+              your wallet: the payment goes through at once, this one time.
+            </li>
             <li>Decline, and the agent is told no. Nothing is charged.</li>
             <li>Requests you do not answer expire after 24 hours.</li>
           </ul>

@@ -1,9 +1,12 @@
 import { ArrowLeft, Check, Pause, Play, Receipt, Unplug } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
+import { shortKey } from '../../lib/network'
+import { agentKey, baseUnits } from '../chain'
 import { MoneyInput } from '../ConnectAgentDialog'
+import { CopyButton } from '../dev/devUi'
 import { formatDate, money } from '../format'
 import { PurchaseList } from '../PurchaseList'
 import { spentBy, useStore } from '../store'
@@ -51,6 +54,88 @@ function BudgetForm({ agent }: { agent: Agent }) {
         </p>
       </div>
     </form>
+  )
+}
+
+const DAY = 86_400_000
+const expiryOptions = [
+  { label: 'Never', days: 0 },
+  { label: 'In 7 days', days: 7 },
+  { label: 'In 30 days', days: 30 },
+  { label: 'In 90 days', days: 90 },
+]
+
+/** The agent's policy as the wallet contract stores it. */
+function Mandate({ agent }: { agent: Agent }) {
+  const { dispatch } = useStore()
+  const key = agentKey(agent)
+  const rows: Array<[string, ReactNode]> = [
+    ['token', 'USDC'],
+    ['per_tx', `${baseUnits(agent.perPurchase)}`],
+    ['budget', `${baseUnits(agent.budget)}`],
+    ['window_secs', '2,592,000 (30 days)'],
+    [
+      'payees',
+      agent.payees?.length ? (
+        <Link to="/app/services" className="underline underline-offset-4">
+          {agent.payees.length} {agent.payees.length === 1 ? 'service' : 'services'}
+        </Link>
+      ) : (
+        <Link to="/app/services" className="underline underline-offset-4">
+          any
+        </Link>
+      ),
+    ],
+    ['expires_at', agent.expiresAt ? formatDate(agent.expiresAt) : '0 (never)'],
+  ]
+
+  return (
+    <Panel title="On-chain mandate">
+      <p className="text-sm text-muted">Session key</p>
+      <p className="mt-1 flex items-center gap-2">
+        <span className="font-mono text-[0.8125rem]">{shortKey(key, 8, 8)}</span>
+        <CopyButton value={key} className="text-muted hover:text-charcoal" />
+      </p>
+      <dl className="mt-4 space-y-1.5 border-t border-taupe/40 pt-4 font-mono text-[0.8125rem]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4">
+            <dt className="text-muted">{label}</dt>
+            <dd className="text-right">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <label className="mt-5 block text-sm font-medium" htmlFor="expiry">
+        Key expires
+      </label>
+      <select
+        id="expiry"
+        className="mt-2 block w-full rounded-lg border border-taupe/70 bg-white px-3 py-2 text-sm"
+        value={
+          agent.expiresAt
+            ? String(expiryOptions.find((option) => option.days && Math.abs(new Date(agent.expiresAt!).getTime() - Date.now() - option.days * DAY) < DAY)?.days ?? 'custom')
+            : '0'
+        }
+        onChange={(event) => {
+          const days = Number(event.target.value)
+          dispatch({
+            type: 'updateAgent',
+            id: agent.id,
+            patch: { expiresAt: days ? new Date(Date.now() + days * DAY).toISOString() : undefined },
+          })
+        }}
+      >
+        {expiryOptions.map((option) => (
+          <option key={option.days} value={option.days}>
+            {option.label}
+          </option>
+        ))}
+        {agent.expiresAt && <option value="custom" disabled>{formatDate(agent.expiresAt)}</option>}
+      </select>
+      <p className="mt-4 text-xs leading-relaxed text-muted">
+        Enforced by your wallet contract in <code className="font-mono">__check_auth</code>. Changes
+        are signed with your passkey; Oryne can&rsquo;t change them for you.
+      </p>
+    </Panel>
   )
 }
 
@@ -135,6 +220,7 @@ export default function AgentDetail() {
         </div>
 
         <div className="space-y-4">
+          <Mandate agent={agent} />
           <Panel title="Limits">
             {/* Remount when the agent changes so the fields pick up its values. */}
             <BudgetForm key={agent.id} agent={agent} />
@@ -142,8 +228,8 @@ export default function AgentDetail() {
 
           <Panel title="Disconnect">
             <p className="text-sm leading-relaxed text-muted">
-              The agent loses the ability to spend straight away. Its past purchases stay in your
-              activity.
+              Calls remove_agent on your wallet: the agent&rsquo;s key stops working on the next
+              ledger, about five seconds. Its past purchases stay in your activity.
             </p>
             <Button
               variant="outline"

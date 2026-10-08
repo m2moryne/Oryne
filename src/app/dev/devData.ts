@@ -610,11 +610,25 @@ export const sdks = [
     note: 'Tail logs, forward webhooks to localhost and trigger test events.',
   },
   {
+    name: 'Agent SDK',
+    pkg: '@oryne/agent',
+    version: '0.1.0',
+    install: 'npm install @oryne/agent',
+    note: 'A fetch() that pays: answers x402 and MPP challenges from the agent wallet, inside its mandate.',
+  },
+  {
+    name: 'Merchant kit',
+    pkg: '@oryne/merchant',
+    version: '0.1.0',
+    install: 'npm install @oryne/merchant',
+    note: 'Paywall middleware for Express, Next.js and FastAPI. Get paid in USDC on Stellar.',
+  },
+  {
     name: 'MCP server',
     pkg: '@oryne/mcp',
     version: '0.1.3',
     install: 'npx @oryne/mcp --key $ORYNE_API_KEY',
-    note: 'Gives any MCP-capable agent a pay tool, with your limits enforced.',
+    note: 'Tools for any MCP agent: pay, balance, find_service, request_approval. Limits enforced on-chain.',
   },
   {
     name: 'REST API',

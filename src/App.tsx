@@ -5,9 +5,14 @@ import AgentDetail from './app/pages/AgentDetail'
 import Approvals from './app/pages/Approvals'
 import Agents from './app/pages/Agents'
 import Funds from './app/pages/Funds'
+import Services from './app/pages/Services'
+import Wallet from './app/pages/Wallet'
 import Overview from './app/pages/Overview'
 import Settings from './app/pages/Settings'
 import Billing from './app/dev/pages/Billing'
+import Contracts from './app/dev/pages/Contracts'
+import Merchant from './app/dev/pages/Merchant'
+import Playground from './app/dev/pages/Playground'
 import DevAgents from './app/dev/pages/DevAgents'
 import DevSettings from './app/dev/pages/DevSettings'
 import Keys from './app/dev/pages/Keys'
@@ -24,7 +29,10 @@ import { ScrollManager } from './components/ScrollManager'
 import { soonPages } from './lib/site'
 import ComingSoon from './pages/ComingSoon'
 import Contact from './pages/Contact'
+import Directory from './pages/Directory'
 import Home from './pages/Home'
+import Network from './pages/Network'
+import Product from './pages/Product'
 import SignIn from './pages/SignIn'
 import Vision from './pages/Vision'
 
@@ -54,6 +62,9 @@ export default function App() {
       <Routes>
         <Route element={<SiteLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/product" element={<Product />} />
+          <Route path="/network" element={<Network />} />
+          <Route path="/directory" element={<Directory />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/contact" element={<Contact />} />
           {soonPages.map((page) => (
@@ -69,6 +80,8 @@ export default function App() {
           <Route path="agents" element={<Agents />} />
           <Route path="agents/:agentId" element={<AgentDetail />} />
           <Route path="approvals" element={<Approvals />} />
+          <Route path="services" element={<Services />} />
+          <Route path="wallet" element={<Wallet />} />
           <Route path="funds" element={<Funds />} />
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
@@ -77,6 +90,9 @@ export default function App() {
         {/* The developer console: the same shell, a different set of pages. */}
         <Route path="/dev" element={<DashboardLayout area="developers" />}>
           <Route index element={<Quickstart />} />
+          <Route path="playground" element={<Playground />} />
+          <Route path="merchant" element={<Merchant />} />
+          <Route path="contracts" element={<Contracts />} />
           <Route path="keys" element={<Keys />} />
           <Route path="webhooks" element={<Webhooks />} />
           <Route path="logs" element={<Logs />} />

@@ -2,6 +2,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { AutonomousSystems } from '../sections/vision/AutonomousSystems'
 import { Infrastructure } from '../sections/vision/Infrastructure'
 import { LongTerm } from '../sections/vision/LongTerm'
+import { Roadmap } from '../sections/vision/Roadmap'
 import { VisionHero } from '../sections/vision/VisionHero'
 
 export default function Vision() {
@@ -15,6 +16,7 @@ export default function Vision() {
       <VisionHero />
       <AutonomousSystems />
       <Infrastructure />
+      <Roadmap />
       <LongTerm />
     </>
   )

@@ -8,32 +8,37 @@ const faqs = [
   {
     question: 'What is Oryne?',
     answer:
-      'Oryne is building infrastructure for autonomous commerce: the layer that lets software discover services, authorize spending and transact on behalf of the people and organizations it works for.',
+      'Oryne is the mandate layer for agent payments on Stellar. It gives an AI agent a wallet it can spend from, and enforces the limits you set (budget, per-payment cap, allowed services, expiry) in a smart contract, so they hold even if the agent or its key is compromised.',
   },
   {
-    question: 'What does “machines can pay” mean?',
+    question: 'Does Oryne hold my money?',
     answer:
-      'Software is starting to act, not just advise. To finish a task it often needs to pay for something along the way, such as data, compute or a service. Oryne is working on the infrastructure that lets it do that directly, within limits someone has set.',
+      'No. Funds sit in an agent-wallet contract that you own, unlocked by your passkey. Oryne never has custody and cannot move your funds; neither can an agent, beyond its mandate.',
   },
   {
-    question: 'Who is Oryne for?',
+    question: 'Why Stellar?',
     answer:
-      'People building autonomous systems, and the companies whose services those systems will need to reach and pay for.',
+      'Agent payments are tiny and constant. Stellar settles in about five seconds for a fraction of a cent, has USDC natively, and already runs the open agent-payment protocols x402 and MPP. Its anchor network also lets people fund wallets and cash out in local currency.',
   },
   {
-    question: 'How does an autonomous system stay under control?',
+    question: 'What happens when an agent wants to spend more than its limit?',
     answer:
-      'Agency only works with limits. Identity, authorization, permissions and accountability are central to what we are building, so that every action traces back to a mandate someone gave.',
+      'The contract refuses the payment and the agent asks you instead. You approve it once with your passkey, which signs a one-time allowance on-chain, or you decline. Nothing moves until you decide.',
+  },
+  {
+    question: 'Which agents work with Oryne?',
+    answer:
+      'Any agent that can call a tool. The Oryne MCP server plugs into Claude, Cursor and other MCP clients, and the TypeScript and Python SDKs cover everything else.',
+  },
+  {
+    question: 'I run an API. How do I get paid by agents?',
+    answer:
+      'Add the Oryne middleware to the routes you want to charge for and set a price. Agents get a 402 Payment Required, pay in USDC, and you are paid within seconds. You are listed in the directory automatically.',
   },
   {
     question: 'Can I use Oryne today?',
     answer:
-      'Not yet. Oryne is at the beginning and is being introduced gradually. If you want to talk before then, we would like to hear from you.',
-  },
-  {
-    question: 'How do I get involved?',
-    answer:
-      'Write to us. We are interested in conversations with builders, researchers and companies thinking seriously about autonomous systems.',
+      'The dashboard and developer console on this site are a working preview on simulated data. The agent-wallet contract is open source and runs on Stellar testnet. Write to us to join the pilot.',
   },
 ]
 

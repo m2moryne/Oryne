@@ -1,14 +1,22 @@
 import { Check, X } from 'lucide-react'
 import { useState } from 'react'
 import { Icon } from '../components/Icon'
+import { shortKey } from '../lib/network'
+import { agentKey, contractErrors, onchain } from './chain'
+import { CopyButton } from './dev/devUi'
 import { formatDateTime, money } from './format'
 import type { Agent, Purchase } from './types'
 import { Dialog, StatusPill } from './ui'
 
-/** The three checks every purchase passes through, and which one stopped this one. */
+/** The checks every purchase passes through in the wallet contract, and which one stopped this one. */
 function checks(purchase: Purchase, agent?: Agent) {
   const failed = (reason: string) => purchase.reason === reason
   return [
+    {
+      label: 'Payee is allowed',
+      detail: agent?.payees?.length ? `${agent.payees.length} on allowlist` : 'Any payee',
+      passed: !failed('Payee not on allowlist'),
+    },
     {
       label: 'Within the per-purchase limit',
       detail: agent ? `Limit ${money(agent.perPurchase)}` : undefined,
@@ -21,6 +29,47 @@ function checks(purchase: Purchase, agent?: Agent) {
     },
     { label: 'Balance covers it', detail: undefined, passed: !failed('Not enough funds') },
   ]
+}
+
+/** Where the payment lives on Stellar, or why it never got there. */
+function OnStellar({ purchase, agent }: { purchase: Purchase; agent?: Agent }) {
+  const chain = onchain(purchase)
+  if (!chain.onLedger) {
+    return (
+      <div className="rounded-lg border border-burgundy/30 px-4 py-3 text-sm">
+        <p className="font-medium text-burgundy">Never reached the ledger</p>
+        <p className="mt-1 text-muted">
+          Refused before signing:{' '}
+          <code className="font-mono text-[0.8125rem]">{contractErrors[purchase.reason ?? ''] ?? purchase.reason}</code>.
+          No funds moved and no fee was paid.
+        </p>
+      </div>
+    )
+  }
+  const rows: Array<[string, string, string?]> = [
+    ['Protocol', `${chain.protocol} · USDC on Stellar`],
+    ['Transaction', shortKey(chain.hash, 10, 8), chain.hash],
+    ['Ledger', `#${chain.ledger.toLocaleString('en-US')}`],
+    ['Paid to', shortKey(chain.payee, 6, 6), chain.payee],
+    ['Signed by', agent ? `${shortKey(agentKey(agent), 6, 6)} (agent key)` : 'Removed agent key'],
+    ['Network fee', `${chain.feeXlm} XLM, sponsored`],
+  ]
+  return (
+    <div>
+      <p className="text-sm font-medium">On Stellar</p>
+      <dl className="mt-3 space-y-2 text-sm">
+        {rows.map(([label, value, copy]) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <dt className="text-muted">{label}</dt>
+            <dd className="flex items-center gap-1 font-mono text-[0.8125rem]">
+              {value}
+              {copy && <CopyButton value={copy} className="h-6 px-1 text-muted hover:text-charcoal" />}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
 }
 
 function Receipt({ purchase, agent, onClose }: { purchase: Purchase | null; agent?: Agent; onClose: () => void }) {
@@ -55,6 +104,8 @@ function Receipt({ purchase, agent, onClose }: { purchase: Purchase | null; agen
               <dd className="mt-1 font-mono text-[0.8125rem]">{purchase.id}</dd>
             </div>
           </dl>
+
+          <OnStellar purchase={purchase} agent={agent} />
 
           <div>
             <p className="text-sm font-medium">Checks</p>
@@ -124,7 +175,7 @@ export function PurchaseList({
               <tr
                 key={purchase.id}
                 onClick={() => setOpen(purchase)}
-                className="cursor-pointer transition-colors duration-150 hover:bg-cream/50"
+                className="cursor-pointer transition-colors duration-150 hover:bg-taupe/10"
               >
                 <td className="px-6 py-4">
                   {/* A real button, so the receipt opens from the keyboard too. */}

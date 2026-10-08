@@ -65,7 +65,7 @@ export function CreateKeyDialog({ open, onClose }: { open: boolean; onClose: () 
             <Icon icon={TriangleAlert} size={18} className="mt-0.5 shrink-0 text-burgundy" />
             This is the only time the full key is shown. Copy it into your secret manager now.
           </p>
-          <div className="flex items-center gap-2 border border-taupe/70 bg-cream/60 py-1.5 pl-4 pr-1.5">
+          <div className="flex items-center gap-2 border border-taupe/70 bg-taupe/10 py-1.5 pl-4 pr-1.5">
             <code className="min-w-0 flex-1 truncate font-mono text-sm">{secret}</code>
             <CopyButton value={secret} className="hover:bg-white" />
           </div>

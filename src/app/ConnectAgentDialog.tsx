@@ -3,6 +3,8 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
 import { cn } from '../lib/cn'
+import { shortKey, strkey } from '../lib/network'
+import { CodeBlock } from './dev/devUi'
 import { money } from './format'
 import { id } from './seed'
 import { useStore } from './store'
@@ -17,7 +19,7 @@ const kinds: Array<{ kind: AgentKind; note: string }> = [
   { kind: 'Other', note: 'Something else' },
 ]
 
-const steps = ['Your agent', 'Its budget', 'Connect']
+const steps = ['Your agent', 'Its mandate', 'Connect']
 
 type Props = {
   open: boolean
@@ -52,7 +54,7 @@ export function ConnectAgentDialog({ open, onClose, onConnected }: Props) {
     if (step === 0) setStep(1)
     if (step === 1) {
       // Placeholder code. A real one would be issued by the Oryne backend.
-      setCode(`oryne-${id('link').slice(5)}-${id('key').slice(4)}`)
+      setCode(`oryne_agent_${id('link').slice(5)}${id('key').slice(4)}`)
       setStep(2)
     }
   }
@@ -86,7 +88,7 @@ export function ConnectAgentDialog({ open, onClose, onConnected }: Props) {
       open={open}
       onClose={close}
       title="Connect an agent"
-      description="No code needed. It takes about a minute."
+      description="Give it a key and a mandate. It takes about a minute."
     >
       <ol className="mb-7 flex gap-2" aria-label="Progress">
         {steps.map((label, index) => (
@@ -189,13 +191,23 @@ export function ConnectAgentDialog({ open, onClose, onConnected }: Props) {
         </form>
       ) : (
         <div className="space-y-6">
+          <p className="flex items-start gap-2.5 rounded-lg border border-taupe/50 px-4 py-3 text-sm">
+            <Icon icon={Check} size={16} className="mt-0.5 shrink-0" />
+            <span>
+              A new session key{' '}
+              <code className="font-mono text-[0.8125rem]">{shortKey(strkey(`session-${code}`), 6, 6)}</code>{' '}
+              is ready. Finishing signs <code className="font-mono text-[0.8125rem]">add_agent</code> on
+              your wallet with your passkey, so the mandate below is enforced on Stellar.
+            </span>
+          </p>
+
           <div>
-            <p className="text-sm font-medium">Give this code to your agent</p>
+            <p className="text-sm font-medium">Give your agent its key</p>
             <p className="mt-1 text-sm text-muted">
-              Paste it wherever your agent keeps its payment or tool settings. It tells the agent to
-              pay through Oryne, inside the limits you just set.
+              Paste it into the Oryne MCP server, or pass it to the SDK. The key can only spend
+              inside the limits you just set.
             </p>
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-taupe/70 bg-cream/60 py-2 pl-4 pr-2">
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-taupe/70 bg-taupe/10 py-2 pl-4 pr-2">
               <code className="min-w-0 flex-1 truncate font-mono text-sm">{code}</code>
               <button
                 type="button"
@@ -205,6 +217,29 @@ export function ConnectAgentDialog({ open, onClose, onConnected }: Props) {
                 <Icon icon={copied ? Check : Copy} size={15} />
                 {copied ? 'Copied' : 'Copy'}
               </button>
+            </div>
+            <div className="mt-3">
+              <CodeBlock
+                samples={{
+                  'Claude / MCP': `{
+  "mcpServers": {
+    "oryne": {
+      "command": "npx",
+      "args": ["@oryne/mcp"],
+      "env": { "ORYNE_AGENT_KEY": "${code}" }
+    }
+  }
+}`,
+                  TypeScript: `import { OryneAgent } from '@oryne/agent'
+
+const agent = new OryneAgent({ key: '${code}' })
+const res = await agent.fetch(url) // pays 402s inside the mandate`,
+                  Python: `from oryne import OryneAgent
+
+agent = OryneAgent(key="${code}")
+res = agent.fetch(url)  # pays 402s inside the mandate`,
+                }}
+              />
             </div>
           </div>
 
@@ -232,7 +267,7 @@ export function ConnectAgentDialog({ open, onClose, onConnected }: Props) {
               Back
             </Button>
             <Button size="sm" onClick={finish}>
-              Finish connecting
+              Sign with passkey
             </Button>
           </div>
         </div>

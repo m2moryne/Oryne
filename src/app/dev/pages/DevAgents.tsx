@@ -80,7 +80,7 @@ export default function DevAgents() {
                   <tr
                     key={agent.id}
                     onClick={() => setOpen(agent)}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-cream/50"
+                    className="cursor-pointer transition-colors duration-150 hover:bg-taupe/10"
                   >
                     <td className="px-6 py-3.5">
                       <button type="button" onClick={() => setOpen(agent)} className="text-left font-medium">

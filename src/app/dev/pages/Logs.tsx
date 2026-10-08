@@ -113,7 +113,7 @@ export default function Logs() {
                     <tr
                       key={log.id}
                       onClick={() => setOpen(log)}
-                      className="cursor-pointer transition-colors duration-150 hover:bg-cream/50"
+                      className="cursor-pointer transition-colors duration-150 hover:bg-taupe/10"
                     >
                       <td className="px-6 py-3">
                         <span className="flex items-center gap-3">

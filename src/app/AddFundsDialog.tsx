@@ -1,18 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { Button } from '../components/Button'
 import { cn } from '../lib/cn'
+import { shortKey } from '../lib/network'
+import { walletAddress } from './chain'
 import { MoneyInput } from './ConnectAgentDialog'
+import { CopyButton } from './dev/devUi'
 import { wholeMoney } from './format'
 import { useStore } from './store'
 import { Dialog, Field, inputClasses } from './ui'
 
 const presets = [50, 100, 250, 500]
-const methods = ['Bank transfer', 'Card']
+const methods = [
+  { name: 'USDC on Stellar', note: 'Send USDC from any Stellar wallet or exchange to your wallet address.' },
+  { name: 'Bank transfer', note: 'Through a Stellar anchor. Arrives as USDC, usually within the hour.' },
+  { name: 'Mobile money', note: 'M-Pesa and others, through a Stellar anchor. Arrives as USDC in minutes.' },
+  { name: 'Card', note: 'Through an on-ramp partner. Arrives as USDC in minutes; a fee applies.' },
+]
 
 export function AddFundsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { dispatch } = useStore()
   const [amount, setAmount] = useState('100')
-  const [method, setMethod] = useState(methods[0])
+  const [method, setMethod] = useState(methods[0].name)
+  const { state } = useStore()
+  const chosen = methods.find((option) => option.name === method)!
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -25,7 +35,7 @@ export function AddFundsDialog({ open, onClose }: { open: boolean; onClose: () =
       open={open}
       onClose={onClose}
       title="Add funds"
-      description="Funds sit in your Oryne balance until an agent spends them."
+      description="Funds sit in your own agent wallet on Stellar, as USDC, until an agent spends them."
     >
       <form onSubmit={submit} className="space-y-6">
         <div>
@@ -63,13 +73,23 @@ export function AddFundsDialog({ open, onClose }: { open: boolean; onClose: () =
               className={inputClasses}
             >
               {methods.map((option) => (
-                <option key={option}>{option}</option>
+                <option key={option.name}>{option.name}</option>
               ))}
             </select>
           )}
         </Field>
 
-        <p className="rounded-lg bg-cream/70 px-4 py-3 text-sm text-muted">
+        <div className="text-sm">
+          <p className="text-muted">{chosen.note}</p>
+          {method === 'USDC on Stellar' && (
+            <p className="mt-2 flex items-center gap-2">
+              <span className="font-mono text-[0.8125rem]">{shortKey(walletAddress(state.user), 10, 10)}</span>
+              <CopyButton value={walletAddress(state.user)} className="text-muted hover:text-charcoal" />
+            </p>
+          )}
+        </div>
+
+        <p className="rounded-lg bg-taupe/15 px-4 py-3 text-sm text-muted">
           This is a preview. No payment is taken and no real money moves.
         </p>
 

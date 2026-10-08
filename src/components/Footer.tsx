@@ -24,7 +24,7 @@ function FooterLink({ label, to, href }: { label: string; to?: string; href?: st
 
 export function Footer() {
   return (
-    <footer className="tone-cream border-t border-line">
+    <footer className="tone-white border-t border-line">
       <Container className="pb-8 pt-16 md:pt-24">
         <div>
           <div className="grid gap-y-12 lg:grid-cols-12 lg:gap-x-8">
@@ -33,7 +33,7 @@ export function Footer() {
                 <Wordmark />
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-                Infrastructure for autonomous commerce and machine-to-machine payments.
+                Wallets for AI agents, with limits enforced on Stellar. Infrastructure for autonomous commerce.
               </p>
 
               <ul className="mt-6 flex items-center gap-5">

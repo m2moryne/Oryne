@@ -213,7 +213,7 @@ export default function Quickstart() {
                 <li key={resource.label}>
                   <Link
                     to={resource.to}
-                    className="group flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-200 hover:bg-cream/50 md:px-6"
+                    className="group flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-200 hover:bg-taupe/10 md:px-6"
                   >
                     <span>
                       <span className="block text-sm font-medium">{resource.label}</span>
