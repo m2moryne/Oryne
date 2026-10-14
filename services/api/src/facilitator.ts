@@ -1,4 +1,5 @@
 import {
+  addressCredentialsOf,
   readAuthorization,
   StellarError,
   submitSigned,
@@ -32,10 +33,10 @@ function check(chain: Chain, payload: PaymentPayload, requirements: PaymentRequi
 
   // Which agent key signed it: the AgentSignature struct in the credentials.
   let agent: string | undefined
-  const credentials = auth.entry.credentials
-  if (credentials.type === 'sorobanCredentialsAddress') {
+  const credentials = addressCredentialsOf(auth.entry)
+  if (credentials) {
     try {
-      const signature = scValToNative(credentials.address.signature) as { public_key?: Uint8Array }
+      const signature = scValToNative(credentials.signature) as { public_key?: Uint8Array }
       if (signature?.public_key) agent = StrKey.encodeEd25519PublicKey(Buffer.from(signature.public_key))
     } catch {
       // Not an Oryne agent signature; the contract will decide.

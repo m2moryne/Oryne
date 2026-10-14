@@ -19,7 +19,7 @@ export function Closing() {
             it pay, approve what it asks for.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
-            <Button to="/app/agents?connect=1" variant="light" icon={ArrowRight}>
+            <Button to="/demo/agents?connect=1" variant="light" icon={ArrowRight}>
               Try the dashboard
             </Button>
             <TextLink to="/contact" className="type-label">

@@ -446,7 +446,6 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     return c.json({ id }, 201)
   })
 
-  app.route('/v1', owner)
 
   // ---------------------------------------------------------------- agents
 
@@ -493,7 +492,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     return c.json(approvalView(row))
   })
 
+  // Agent routes first: the owner sign-in middleware is mounted on all of /v1.
   app.route('/v1/agent', agentApi)
+  app.route('/v1', owner)
 
   return app
 }

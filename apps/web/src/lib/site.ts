@@ -2,12 +2,12 @@ import { EMAIL, socials } from './social'
 
 type FooterLink = { label: string; to?: string; href?: string }
 
-/** Top navigation. Pages that are not built yet open the coming-soon page. */
+/**
+ * Top navigation. Product, Network and Directory are left out for now; their
+ * pages still exist and are linked from the footer.
+ */
 export const navLinks = [
   { to: '/', label: 'Home' },
-  { to: '/product', label: 'Product' },
-  { to: '/network', label: 'Network' },
-  { to: '/directory', label: 'Directory' },
   { to: '/dev', label: 'Developers' },
   { to: '/vision', label: 'Vision' },
   { to: '/contact', label: 'Contact' },
@@ -20,6 +20,7 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
     links: [
       { label: 'Overview', to: '/product' },
       { label: 'Dashboard', to: '/app' },
+      { label: 'Demo', to: '/demo' },
       { label: 'Network', to: '/network' },
       { label: 'Directory', to: '/directory' },
       { label: 'Developers', to: '/dev' },

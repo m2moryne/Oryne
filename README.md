@@ -7,9 +7,10 @@ agent a wallet it can spend from, and enforces the limits you set (budget, per-p
 allowed services, expiry) in a Soroban smart contract. The limits hold even if the agent is
 prompt-injected, its key leaks, or Oryne's own servers are breached.
 
-> **Status: preview.** The website, the dashboard and the developer console in this repo run
-> end to end on **simulated data**. The agent-wallet contract in [`contracts/`](contracts) is
-> written and unit-tested, but not yet audited or deployed. See
+> **Status: working MVP on Stellar testnet.** Owners sign in with Freighter, deploy their own
+> agent-wallet contract, connect agents with on-chain mandates, and approve out-of-policy
+> payments. Agents pay x402-style services in (test) USDC, and the contract refuses anything
+> outside the mandate. The contract is not yet audited; don't use it with real funds. See
 > [What's real today](#whats-real-today).
 
 ---
@@ -246,60 +247,87 @@ runs off-chain makes the product pleasant to use, but cannot spend a cent.
 
 | Piece | Status |
 |---|---|
-| Agent-wallet contract ([`contracts/agent-wallet`](contracts/agent-wallet)) | ✅ Written with unit tests for every rule. ⏳ Not yet audited or deployed |
-| Website (Home, Product, Network, Directory, Vision) | ✅ Built |
-| Owner dashboard (`/app`) | ✅ Works end to end on **simulated** data in the browser |
-| Developer console (`/dev`) | ✅ Works end to end on **simulated** data |
-| Passkey wallets, backend API, indexer | ⏳ To build |
-| `@oryne/agent` SDK, `@oryne/mcp`, `@oryne/merchant` | ⏳ To build. The names and APIs shown are the planned design |
-| x402 facilitator with fee sponsorship | ⏳ To build, or use an existing Stellar facilitator |
+| Agent-wallet contract ([`contracts/agent-wallet`](contracts/agent-wallet)) | ✅ Built and unit-tested in CI (10 tests); running on **testnet**. ⏳ Not audited |
+| API ([`services/api`](services/api)): sign-in, wallets, agents, approvals, x402 facilitator | ✅ Working on testnet |
+| Agent SDK ([`packages/agent`](packages/agent)): `fetch()` that pays | ✅ Working on testnet |
+| Merchant middleware ([`packages/merchant`](packages/merchant)) + [demo merchant](examples/demo-merchant) | ✅ Working on testnet |
+| MCP server ([`packages/mcp`](packages/mcp)) | ✅ Built on the agent SDK. ⏳ Not yet tried inside Claude Desktop |
+| Live dashboard at `/app` (Freighter) | ✅ Built and wired to the API. ⏳ Not yet clicked through in a browser with Freighter |
+| End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet: pay → refused over limit → approve once → pay |
+| Demo dashboard at `/demo` and the developer console at `/dev` | Simulated data, for showing the full vision |
+| Passkey owners (no browser extension) | ⏳ Next. The contract's owner is any Stellar address, so a passkey smart wallet can own it without contract changes |
+| Mainnet, audit, anchors for fiat in and out | ⏳ Roadmap |
 
-Addresses, transaction hashes and ledger numbers in the preview are generated to look like
-Stellar's. They are **not** on any ledger, and no real money moves.
+On testnet the API creates its own **test USDC** (and a faucet for it). On mainnet it uses
+Circle's USDC.
 
 ## Repository layout
 
 ```
 .
-├── contracts/                 Soroban workspace (Rust)
-│   └── contracts/agent-wallet/
-│       ├── src/lib.rs         The wallet: owner calls + __check_auth mandate enforcement
-│       └── src/test.rs        Unit tests for every rule
-├── src/
-│   ├── pages/                 Public pages: Home, Product, Network, Directory, Vision, Contact
-│   ├── sections/              Page sections (home/, vision/)
-│   ├── components/            Shared UI, incl. MandateSimulator ("Try to break it")
-│   ├── lib/network.ts         Mock Stellar data: services, addresses, live payment feed
-│   └── app/                   The dashboard
-│       ├── store.tsx          Preview state (localStorage) + the same rules as the contract
-│       ├── chain.ts           On-chain identifiers derived for agents, wallets, payments
-│       ├── pages/             Owner: Overview, Agents, Approvals, Services, Wallet, Funds, …
-│       └── dev/pages/         Developer: Quickstart, Playground, Accept payments, Contracts, …
-└── index.html
+├── apps/web/                  Website, live dashboard (/app), demo (/demo), developer console (/dev)
+├── services/api/              Oryne API: Hono on Node 22, SQLite, Stellar RPC
+├── packages/
+│   ├── core/                  Contract encoders, payment signing, x402 payload format
+│   ├── agent/                 @oryne/agent: fetch() that pays from the agent wallet
+│   ├── merchant/              @oryne/merchant: paywall middleware (Hono, Express)
+│   └── mcp/                   @oryne/mcp: MCP server for Claude, Cursor, …
+├── examples/demo-merchant/    A small paid API to try it all against
+├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
+├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow, headless)
+└── .github/workflows/         CI: contract build + tests (publishes the wasm), web build
 ```
 
 ## Running it locally
 
-**Website and dashboard** (Node 20+):
+Needs **Node 22.18+**. No Rust needed: CI builds the contract and the API downloads the wasm
+from the [`contracts-latest`](https://github.com/m2moryne/Oryne/releases/tag/contracts-latest)
+release.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # type-check + production build
+
+# 1. The API. First start on testnet creates a sponsor account, a test USDC and
+#    uploads the wallet contract, then remembers them in services/api/data/.
+npm run dev:api                 # http://localhost:8787
+
+# 2. A paid API for agents to buy from (one-time setup creates its testnet address)
+npm run setup
+npm run dev:merchant            # http://localhost:8788
+
+# 3. Check the whole flow without a browser
+npm run e2e
+
+# 4. The website and dashboard
+npm run dev:web                 # http://localhost:5173  →  /app
 ```
 
-Any sign-in button signs you in as a sample user. Dashboard state lives in your browser's
-localStorage; **Settings → Reset sample data** restores it.
+**In the dashboard** (`/app`): install [Freighter](https://www.freighter.app), switch it to
+**Testnet**, fund the account with XLM (Freighter offers friendbot), then *Connect Freighter →
+Create wallet → Add test USDC → Connect agent*. The agent's secret is shown once; give it to
+your agent:
 
-**Contract** (Rust + [Stellar CLI](https://developers.stellar.org/docs/tools/cli)):
+```sh
+ORYNE_AGENT_SECRET=S... node packages/mcp/src/server.ts      # MCP, for Claude/Cursor
+```
+
+or in code:
+
+```ts
+import { OryneAgent } from '@oryne/agent'
+const agent = new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET })
+const res = await agent.fetch('http://localhost:8788/quote') // pays 0.01 USDC
+```
+
+**Checks:** `npm run typecheck`, `npm test`, `npm run build`.
+
+**Contract** (Rust + Stellar CLI, or just push and let CI do it):
 
 ```sh
 cd contracts
-cargo test                 # run the unit tests
-stellar contract build     # → target/wasm32v1-none/release/agent_wallet.wasm
+cargo test
+stellar contract build
 ```
-
-Deploying to testnet is covered in [`contracts/README.md`](contracts/README.md).
 
 ## Roadmap
 

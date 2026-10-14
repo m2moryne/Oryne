@@ -67,7 +67,7 @@ export default function Overview() {
         <Panel
           title="Budgets"
           action={
-            <Link to="/app/agents" className={linkClasses}>
+            <Link to="/demo/agents" className={linkClasses}>
               All agents <Icon icon={ArrowUpRight} size={15} />
             </Link>
           }
@@ -81,7 +81,7 @@ export default function Overview() {
             <ul className="space-y-6">
               {agents.map((agent) => (
                 <li key={agent.id}>
-                  <Link to={`/app/agents/${agent.id}`} className="group block">
+                  <Link to={`/demo/agents/${agent.id}`} className="group block">
                     <span className="mb-3 flex items-center gap-3">
                       <span className="text-sm font-medium group-hover:underline group-hover:underline-offset-4">
                         {agent.name}
@@ -101,7 +101,7 @@ export default function Overview() {
         title="Latest purchases"
         flush
         action={
-          <Link to="/app/activity" className={linkClasses}>
+          <Link to="/demo/activity" className={linkClasses}>
             All activity <Icon icon={ArrowUpRight} size={15} />
           </Link>
         }

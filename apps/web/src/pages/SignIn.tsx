@@ -56,7 +56,7 @@ export default function SignIn() {
   const navigate = useNavigate()
   const location = useLocation()
   const cameFrom = (location.state as { from?: string } | null)?.from
-  const destination = cameFrom ?? '/app'
+  const destination = cameFrom ?? '/demo'
   const [mode, setMode] = useState<'signin' | 'create'>('signin')
 
   // Signing in re-renders this page before navigate() runs, so the redirect

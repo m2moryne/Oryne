@@ -141,7 +141,7 @@ export default function Wallet() {
               {agents.map((agent) => (
                 <tr key={agent.id}>
                   <td className="px-5 py-4 md:px-6">
-                    <Link to={`/app/agents/${agent.id}`} className="font-medium underline-offset-4 hover:underline">
+                    <Link to={`/demo/agents/${agent.id}`} className="font-medium underline-offset-4 hover:underline">
                       {agent.name}
                     </Link>
                   </td>

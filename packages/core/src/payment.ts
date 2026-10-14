@@ -99,12 +99,10 @@ export async function signPayment(options: {
     transferOp(requirements.asset, wallet, requirements.payTo, amount),
   )
   const sim = await simulate(rpcServer, tx)
+  // Newer protocols use AddressV2 credentials; getAddressCredentials reads every variant.
   const entry = sim.result?.auth.find((candidate) => {
-    const credentials = candidate.credentials
-    return (
-      credentials.type === 'sorobanCredentialsAddress' &&
-      Address.fromScAddress(credentials.address.address).toString() === wallet
-    )
+    const credentials = getAddressCredentials(candidate.credentials)
+    return !!credentials && Address.fromScAddress(credentials.address).toString() === wallet
   })
   if (!entry) throw new Error('The transfer did not ask the wallet for authorization')
 
@@ -148,5 +146,16 @@ export function readAuthorization(authorization: string) {
 
 export const isAddress = (value: string) =>
   StrKey.isValidEd25519PublicKey(value) || StrKey.isValidContract(value)
+
+/** The address credentials of an entry, for both the original and the V2 credential variants. */
+export function addressCredentialsOf(entry: xdr.SorobanAuthorizationEntry) {
+  return getAddressCredentials(entry.credentials)
+}
+
+function getAddressCredentials(credentials: xdr.SorobanCredentials) {
+  if (credentials.type === 'sorobanCredentialsAddress') return credentials.address
+  if (credentials.type === 'sorobanCredentialsAddressV2') return credentials.addressV2
+  return null
+}
 
 export { Keypair }

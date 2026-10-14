@@ -7,8 +7,7 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server.ts",
     "start": "node --env-file-if-exists=.env src/server.ts",
-    "typecheck": "tsc --noEmit -p .",
-    "test": "node --test src/"
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

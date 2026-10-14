@@ -23,6 +23,12 @@ import Team from './app/dev/pages/Team'
 import Usage from './app/dev/pages/Usage'
 import Webhooks from './app/dev/pages/Webhooks'
 import { StoreProvider } from './app/store'
+import { LiveLayout } from './live/LiveLayout'
+import LiveActivity from './live/pages/LiveActivity'
+import LiveAgentDetail from './live/pages/LiveAgentDetail'
+import LiveAgents from './live/pages/LiveAgents'
+import LiveApprovals from './live/pages/LiveApprovals'
+import LiveOverview from './live/pages/LiveOverview'
 import { Footer } from './components/Footer'
 import { Navigation } from './components/Navigation'
 import { ScrollManager } from './components/ScrollManager'
@@ -74,8 +80,17 @@ export default function App() {
 
         <Route path="/login" element={<SignIn />} />
 
-        {/* The dashboard has its own chrome and requires sign-in. */}
-        <Route path="/app" element={<DashboardLayout area="agents" />}>
+        {/* The real dashboard: Stellar testnet, signed with Freighter. */}
+        <Route path="/app" element={<LiveLayout />}>
+          <Route index element={<LiveOverview />} />
+          <Route path="agents" element={<LiveAgents />} />
+          <Route path="agents/:key" element={<LiveAgentDetail />} />
+          <Route path="approvals" element={<LiveApprovals />} />
+          <Route path="activity" element={<LiveActivity />} />
+        </Route>
+
+        {/* The clickable demo on simulated data. It has its own chrome and a mock sign-in. */}
+        <Route path="/demo" element={<DashboardLayout area="agents" />}>
           <Route index element={<Overview />} />
           <Route path="agents" element={<Agents />} />
           <Route path="agents/:agentId" element={<AgentDetail />} />

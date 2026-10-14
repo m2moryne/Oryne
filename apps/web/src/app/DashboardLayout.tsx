@@ -51,19 +51,19 @@ type Group = { heading?: string; items: Item[] }
 const areas: Record<Area, { label: string; home: string; action: string; groups: Group[] }> = {
   agents: {
     label: 'Agents',
-    home: '/app',
+    home: '/demo',
     action: 'Connect agent',
     groups: [
       {
         items: [
-          { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
-          { to: '/app/agents', label: 'Agents', icon: Bot },
-          { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
-          { to: '/app/services', label: 'Services', icon: Store },
-          { to: '/app/wallet', label: 'Wallet', icon: ShieldCheck },
-          { to: '/app/funds', label: 'Funds', icon: Wallet },
-          { to: '/app/activity', label: 'Activity', icon: Receipt },
-          { to: '/app/settings', label: 'Settings', icon: Settings },
+          { to: '/demo', label: 'Overview', icon: LayoutDashboard, end: true },
+          { to: '/demo/agents', label: 'Agents', icon: Bot },
+          { to: '/demo/approvals', label: 'Approvals', icon: ClipboardCheck },
+          { to: '/demo/services', label: 'Services', icon: Store },
+          { to: '/demo/wallet', label: 'Wallet', icon: ShieldCheck },
+          { to: '/demo/funds', label: 'Funds', icon: Wallet },
+          { to: '/demo/activity', label: 'Activity', icon: Receipt },
+          { to: '/demo/settings', label: 'Settings', icon: Settings },
         ],
       },
     ],
@@ -186,7 +186,7 @@ function Sidebar({
                   >
                     <Icon icon={item.icon} size={18} />
                     {item.label}
-                    {item.to === '/app/approvals' && state.approvals.length > 0 && (
+                    {item.to === '/demo/approvals' && state.approvals.length > 0 && (
                       <span className="ml-auto min-w-5 rounded-full bg-cream px-1.5 text-center text-xs font-semibold tabular-nums text-charcoal">
                         {state.approvals.length}
                       </span>
@@ -342,7 +342,7 @@ export function DashboardLayout({ area }: { area: Area }) {
         <ConnectAgentDialog
           open={connectOpen}
           onClose={() => setConnectOpen(false)}
-          onConnected={(agent) => navigate(`/app/agents/${agent.id}`)}
+          onConnected={(agent) => navigate(`/demo/agents/${agent.id}`)}
         />
         <AddFundsDialog open={fundsOpen} onClose={() => setFundsOpen(false)} />
         <CreateKeyDialog open={keyOpen} onClose={() => setKeyOpen(false)} />

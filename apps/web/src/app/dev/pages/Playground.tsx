@@ -253,7 +253,7 @@ X-Payment-Response: { "success": true, "transaction": "${shortKey(hash, 6, 6)}" 
                   Ask the owner to approve it
                 </Button>
               )}
-              <Link to={failed ? '/app/approvals' : '/app/activity'} className="text-sm underline underline-offset-4">
+              <Link to={failed ? '/demo/approvals' : '/demo/activity'} className="text-sm underline underline-offset-4">
                 {failed ? 'Open approvals' : 'See it in the agent dashboard'}
               </Link>
             </div>

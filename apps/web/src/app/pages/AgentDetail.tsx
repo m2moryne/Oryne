@@ -77,11 +77,11 @@ function Mandate({ agent }: { agent: Agent }) {
     [
       'payees',
       agent.payees?.length ? (
-        <Link to="/app/services" className="underline underline-offset-4">
+        <Link to="/demo/services" className="underline underline-offset-4">
           {agent.payees.length} {agent.payees.length === 1 ? 'service' : 'services'}
         </Link>
       ) : (
-        <Link to="/app/services" className="underline underline-offset-4">
+        <Link to="/demo/services" className="underline underline-offset-4">
           any
         </Link>
       ),
@@ -146,7 +146,7 @@ export default function AgentDetail() {
   const [confirming, setConfirming] = useState(false)
 
   const agent = state.agents.find((candidate) => candidate.id === agentId)
-  if (!agent) return <Navigate to="/app/agents" replace />
+  if (!agent) return <Navigate to="/demo/agents" replace />
 
   const purchases = state.purchases.filter((purchase) => purchase.agentId === agent.id)
   const spent = spentBy(state.purchases, agent.id)
@@ -156,7 +156,7 @@ export default function AgentDetail() {
   return (
     <div className="space-y-8">
       <Link
-        to="/app/agents"
+        to="/demo/agents"
         className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-charcoal"
       >
         <Icon icon={ArrowLeft} size={16} /> All agents
@@ -259,7 +259,7 @@ export default function AgentDetail() {
             size="sm"
             onClick={() => {
               dispatch({ type: 'removeAgent', id: agent.id })
-              navigate('/app/agents')
+              navigate('/demo/agents')
             }}
           >
             Disconnect

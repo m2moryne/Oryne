@@ -38,7 +38,7 @@ export default function Approvals() {
                       Asked by{' '}
                       {agent ? (
                         <Link
-                          to={`/app/agents/${agent.id}`}
+                          to={`/demo/agents/${agent.id}`}
                           className="text-charcoal underline underline-offset-4"
                         >
                           {agent.name}
@@ -105,7 +105,7 @@ export default function Approvals() {
             Raise the agent&rsquo;s per-purchase limit or budget on its page and it will stop
             asking for purchases of that size.
           </p>
-          <Link to="/app/agents" className="mt-4 inline-block text-sm font-medium underline underline-offset-4">
+          <Link to="/demo/agents" className="mt-4 inline-block text-sm font-medium underline underline-offset-4">
             Review limits
           </Link>
         </Panel>

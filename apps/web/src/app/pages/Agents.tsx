@@ -38,7 +38,7 @@ export default function Agents() {
             return (
               <li key={agent.id}>
                 <Link
-                  to={`/app/agents/${agent.id}`}
+                  to={`/demo/agents/${agent.id}`}
                   className="tone-white flex h-full flex-col border border-taupe/50 p-5 transition-colors duration-200 hover:border-charcoal/50 md:p-6"
                 >
                   <div className="flex items-start justify-between gap-4">

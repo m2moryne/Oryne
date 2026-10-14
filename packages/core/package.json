@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
-    "test": "node --test src/"
+    "test": "node --test src/*.test.ts"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.2.1"

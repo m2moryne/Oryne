@@ -40,7 +40,8 @@
 
 @layer base {
   :root {
-    --nav-h: 4.5rem;
+    /* Space the floating navigation takes at the top: its offset, height and a gap. */
+    --nav-h: 5.5rem;
   }
 
   html {

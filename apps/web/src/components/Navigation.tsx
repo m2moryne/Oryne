@@ -1,22 +1,32 @@
 import { Menu, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { useStore } from '../app/store'
 import { cn } from '../lib/cn'
 import { navLinks } from '../lib/site'
 import { Button } from './Button'
 import { Icon } from './Icon'
-import { Container } from './Section'
 import { Wordmark } from './Wordmark'
 
 /** Opens the dashboard with the connect-agent flow ready; signs the visitor in first if needed. */
 const CONNECT_PATH = '/app/agents?connect=1'
 
+/** Frosted white glass that reads over both light and dark sections. */
+const glass =
+  'border border-charcoal/10 bg-white/70 shadow-[0_8px_32px_-12px_rgba(32,32,32,0.25)] backdrop-blur-xl backdrop-saturate-150'
+
 export function Navigation() {
-  const { state } = useStore()
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const close = () => setOpen(false)
-  const account = state.user ? { to: '/app', label: 'Dashboard' } : { to: '/login', label: 'Sign in' }
+  const account = { to: '/app', label: 'Dashboard' }
+
+  // A touch more solid once the page scrolls under it.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -24,40 +34,33 @@ export function Navigation() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
-    const desktop = window.matchMedia('(min-width: 1280px)')
+    const desktop = window.matchMedia('(min-width: 1024px)')
     const onBreakpoint = () => desktop.matches && setOpen(false)
 
     document.addEventListener('keydown', onKeyDown)
     desktop.addEventListener('change', onBreakpoint)
-    document.body.style.overflow = 'hidden'
-
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       desktop.removeEventListener('change', onBreakpoint)
-      document.body.style.overflow = ''
     }
   }, [open])
 
   return (
-    <>
-      {/* Dark glass bar: the page shows through, softened. Solid while the mobile menu is open. */}
-      <header
+    <header className="pointer-events-none fixed inset-x-0 top-3 z-50 px-3 md:top-4 md:px-6">
+      <div
         className={cn(
-          'fixed inset-x-0 top-0 z-50 border-b border-cream/15 text-cream [--tone-accent:var(--color-cream)]',
-          open ? 'bg-charcoal' : 'bg-charcoal/80 backdrop-blur-xl backdrop-saturate-150',
+          'pointer-events-auto mx-auto max-w-5xl rounded-full text-charcoal transition-colors duration-300 [--tone-accent:var(--color-burgundy)]',
+          glass,
+          scrolled && 'bg-white/85',
+          open && 'rounded-3xl',
         )}
       >
-        <Container className="grid h-(--nav-h) grid-cols-[1fr_auto_1fr] items-center">
-          <Link
-            to="/"
-            onClick={close}
-            aria-label="Oryne, home"
-            className="justify-self-start text-[0.9375rem]"
-          >
+        <div className="flex h-14 items-center gap-4 pl-6 pr-2">
+          <Link to="/" onClick={close} aria-label="Oryne, home" className="shrink-0 text-[0.9375rem]">
             <Wordmark />
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-10 xl:flex">
+          <nav aria-label="Primary" className="mx-auto hidden items-center gap-1 lg:flex">
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
@@ -65,10 +68,8 @@ export function Navigation() {
                 end
                 className={({ isActive }) =>
                   cn(
-                    'type-label border-b py-2 transition-colors duration-300 ease-quiet',
-                    isActive
-                      ? 'border-cream text-cream'
-                      : 'border-transparent text-cream/70 hover:text-cream',
+                    'rounded-full px-4 py-2 text-sm transition-colors duration-200',
+                    isActive ? 'bg-charcoal/[0.07] text-charcoal' : 'text-charcoal/65 hover:text-charcoal',
                   )
                 }
               >
@@ -77,48 +78,43 @@ export function Navigation() {
             ))}
           </nav>
 
-          <div className="col-start-3 flex items-center gap-7 justify-self-end">
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <Link
               to={account.to}
-              className="type-label text-cream/70 transition-colors duration-300 ease-quiet hover:text-cream max-xl:hidden"
+              className="rounded-full px-4 py-2 text-sm text-charcoal/65 transition-colors hover:text-charcoal max-lg:hidden"
             >
               {account.label}
             </Link>
-            <Button to={CONNECT_PATH} variant="light" size="sm" className="max-xl:hidden">
+            <Button to={CONNECT_PATH} variant="accent" size="sm" className="max-lg:hidden">
               Connect agent
             </Button>
             <button
               type="button"
-              className="-mr-2.5 flex size-11 items-center justify-center xl:hidden"
+              className="flex size-10 items-center justify-center rounded-full hover:bg-charcoal/[0.06] lg:hidden"
               aria-label={open ? 'Close menu' : 'Open menu'}
               aria-expanded={open}
               aria-controls="mobile-menu"
               onClick={() => setOpen((value) => !value)}
             >
-              <Icon icon={open ? X : Menu} size={24} />
+              <Icon icon={open ? X : Menu} size={22} />
             </button>
           </div>
-        </Container>
-      </header>
+        </div>
 
-      {open && (
-        <div
-          id="mobile-menu"
-          className="tone-charcoal fixed inset-x-0 bottom-0 top-(--nav-h) z-40 overflow-y-auto xl:hidden"
-        >
-          <Container className="flex min-h-full flex-col pb-10 pt-8">
-            <nav aria-label="Mobile">
+        {open && (
+          <div id="mobile-menu" className="px-3 pb-3 lg:hidden">
+            <nav aria-label="Mobile" className="border-t border-charcoal/10 pt-2">
               <ul>
                 {navLinks.map((link) => (
-                  <li key={link.to} className="border-b border-line">
+                  <li key={link.to}>
                     <NavLink
                       to={link.to}
                       end
                       onClick={close}
                       className={({ isActive }) =>
                         cn(
-                          'block py-5 text-3xl tracking-[-0.03em]',
-                          isActive ? 'text-cream' : 'text-cream/60',
+                          'block rounded-2xl px-4 py-3 text-lg',
+                          isActive ? 'bg-charcoal/[0.07] text-charcoal' : 'text-charcoal/70',
                         )
                       }
                     >
@@ -128,17 +124,17 @@ export function Navigation() {
                 ))}
               </ul>
             </nav>
-            <div className="mt-auto pt-10 text-center" onClick={close}>
-              <Button to={CONNECT_PATH} variant="light" className="w-full">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2" onClick={close}>
+              <Button to={account.to} variant="outline" size="sm" className="w-full">
+                {account.label}
+              </Button>
+              <Button to={CONNECT_PATH} variant="accent" size="sm" className="w-full">
                 Connect agent
               </Button>
-              <Link to={account.to} className="type-label mt-6 inline-block py-2 text-cream/70">
-                {account.label}
-              </Link>
             </div>
-          </Container>
-        </div>
-      )}
-    </>
+          </div>
+        )}
+      </div>
+    </header>
   )
 }
