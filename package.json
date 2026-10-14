@@ -1,28 +1,29 @@
 {
-  "name": "oryne-website",
+  "name": "oryne",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*",
+    "examples/*"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "dev:web": "npm run dev -w @oryne/web",
+    "dev:api": "npm run dev -w @oryne/api",
+    "build": "npm run build -w @oryne/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "dev:merchant": "npm run dev -w @oryne/demo-merchant",
+    "mcp": "npm start -w @oryne/mcp",
+    "setup": "node scripts/setup.ts",
+    "e2e": "node scripts/e2e.ts"
   },
-  "dependencies": {
-    "@fontsource-variable/manrope": "^5.3.0",
-    "@fontsource/dm-serif-display": "^5.3.0",
-    "lucide-react": "^1.49.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+  "overrides": {
+    "rolldown": "1.2.12",
+    "vite": "8.3.2"
   }
 }

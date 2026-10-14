@@ -2,3 +2,7 @@ node_modules
 dist
 *.local
 .DS_Store
+.env
+# Local API database and downloaded contract builds
+services/api/data/
+.oryne/

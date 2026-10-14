@@ -1,0 +1,21 @@
+{
+  "name": "@oryne/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent SDK: a fetch() that pays x402 challenges from the agent's Oryne wallet, inside its mandate.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@oryne/core": "*",
+    "@stellar/stellar-sdk": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  }
+}

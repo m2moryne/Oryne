@@ -1,0 +1,21 @@
+{
+  "name": "@oryne/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Stellar logic for Oryne: the agent-wallet contract client, payment authorization and the x402 payload format.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test src/"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  }
+}
