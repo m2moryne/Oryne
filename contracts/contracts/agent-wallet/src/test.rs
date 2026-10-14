@@ -4,7 +4,6 @@ extern crate std;
 
 use super::*;
 use p256::ecdsa::{signature::hazmat::PrehashSigner, Signature as P256Signature, SigningKey as PasskeyKey};
-use p256::elliptic_curve::sec1::ToEncodedPoint;
 use std::format;
 use ed25519_dalek::{Signer, SigningKey};
 use soroban_sdk::{
@@ -231,7 +230,10 @@ fn passkey_assertion(env: &Env, key: &PasskeyKey, challenge: &BytesN<32>) -> Sig
 
     let signature: P256Signature = key.sign_prehash(&digest).unwrap();
     let signature = signature.normalize_s().unwrap_or(signature);
-    let bytes: [u8; 64] = signature.to_bytes().as_slice().try_into().unwrap();
+    let (r, s) = signature.split_bytes();
+    let mut bytes = [0u8; 64];
+    bytes[..32].copy_from_slice(&r);
+    bytes[32..].copy_from_slice(&s);
 
     Signature::Passkey(PasskeySignature {
         authenticator_data: Bytes::from_slice(env, &authenticator_data),
