@@ -102,17 +102,28 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
   }
   if (!token) throw new Error('TOKEN_ID is required on this network')
 
-  // The agent-wallet code every owner's wallet is deployed from.
-  let wasmHashHex = config.walletWasmHash ?? getKv(db, 'wallet_wasm_hash')
+  // The agent-wallet code every new wallet is deployed from. Unless pinned with
+  // WALLET_WASM_HASH, fetch the latest build and upload it when it has changed.
+  let wasmHashHex = config.walletWasmHash
   if (!wasmHashHex) {
-    const wasm = await loadWasm(config.walletWasm)
-    wasmHashHex = Buffer.from(hash(wasm)).toString('hex')
-    await prepareSignSubmit(
-      rpcServer,
-      await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm })),
-      sponsor,
-    )
-    setKv(db, 'wallet_wasm_hash', wasmHashHex)
+    const known = getKv(db, 'wallet_wasm_hash')
+    try {
+      const wasm = await loadWasm(config.walletWasm)
+      const latest = Buffer.from(hash(wasm)).toString('hex')
+      if (latest !== known) {
+        await prepareSignSubmit(
+          rpcServer,
+          await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm })),
+          sponsor,
+        )
+        setKv(db, 'wallet_wasm_hash', latest)
+      }
+      wasmHashHex = latest
+    } catch (error) {
+      if (!known) throw error
+      console.warn(`Could not refresh the wallet wasm (${(error as Error).message}); using ${known}`)
+      wasmHashHex = known
+    }
   }
 
   return {

@@ -19,7 +19,18 @@ export type Config = {
   walletWasmHash?: string
   /** Path or URL of agent_wallet.wasm to upload when walletWasmHash is unset. */
   walletWasm: string
+  /** The dashboard, where OAuth sign-in returns to. */
+  webUrl: string
+  /** OAuth apps. A provider is offered only when its ID and secret are set. */
+  oauth: {
+    google?: { clientId: string; clientSecret: string }
+    github?: { clientId: string; clientSecret: string }
+  }
+  /** Testnet only: POST /v1/auth/dev signs in without OAuth, for scripts/e2e. */
+  devLogin: boolean
 }
+
+const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : undefined)
 
 const env = (name: string) => process.env[name]?.trim() || undefined
 
@@ -40,5 +51,11 @@ export function loadConfig(): Config {
     walletWasm:
       env('WALLET_WASM') ??
       'https://github.com/m2moryne/Oryne/releases/download/contracts-latest/agent_wallet.wasm',
+    webUrl: (env('WEB_URL') ?? 'http://localhost:5173').replace(/\/$/, ''),
+    oauth: {
+      google: pair(env('GOOGLE_CLIENT_ID'), env('GOOGLE_CLIENT_SECRET')),
+      github: pair(env('GITHUB_CLIENT_ID'), env('GITHUB_CLIENT_SECRET')),
+    },
+    devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
   }
 }

@@ -1,11 +1,13 @@
 import { randomBytes } from 'node:crypto'
 import {
   balanceOp,
+  base64url,
   buildTx,
   deployWalletOp,
   fromBaseUnits,
   i128,
   isAddress,
+  publicKeyFromSpki,
   networkId,
   prepareSignSubmit,
   toBaseUnits,
@@ -20,13 +22,21 @@ import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
 import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow } from './auth.ts'
+import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
 import { settle, verify } from './facilitator.ts'
-import { createIntent, submitIntent } from './intents.ts'
+import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
 
-type WalletRow = { id: string; owner: string; name: string; tx_hash: string | null; created_at: number }
+type WalletRow = {
+  id: string
+  owner: string
+  owner_kind: 'account' | 'passkey'
+  name: string
+  tx_hash: string | null
+  created_at: number
+}
 type AgentDbRow = {
   public_key: string
   wallet_id: string
@@ -185,6 +195,12 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       walletWasmHash: chain.walletWasmHash.toString('hex'),
       facilitator: `${config.publicUrl}/v1/x402`,
       faucet: chain.issuer ? `${config.publicUrl}/v1/faucet` : null,
+      auth: {
+        freighter: true,
+        google: !!config.oauth.google,
+        github: !!config.oauth.github,
+        dev: config.devLogin,
+      },
       /** Classic asset behind the token, so G… accounts can add a trustline. */
       tokenAsset: chain.issuer ? { code: 'USDC', issuer: chain.issuer.publicKey() } : config.network.name === 'mainnet'
         ? { code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' }
@@ -200,6 +216,25 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   app.post('/v1/auth/verify', async (c) => {
     const { nonce, signature } = await body<{ nonce: string; signature: string }>(c)
     return c.json(verifyChallenge(db, nonce, signature))
+  })
+
+  const providerOf = (value: string): Provider => {
+    if (!providers.includes(value as Provider)) throw new HTTPException(404, { message: 'Unknown sign-in provider' })
+    return value as Provider
+  }
+
+  app.get('/v1/auth/oauth/:provider/start', (c) => c.redirect(startUrl(config, db, providerOf(c.req.param('provider')))))
+
+  app.get('/v1/auth/oauth/:provider/callback', async (c) =>
+    c.redirect(await finish(config, db, providerOf(c.req.param('provider')), c.req.query('code'), c.req.query('state'))),
+  )
+
+  /** Testnet scripts only (DEV_LOGIN=1): a session without OAuth. */
+  app.post('/v1/auth/dev', async (c) => {
+    if (!config.devLogin) throw new HTTPException(404, { message: 'Not found' })
+    const { subject } = await body<{ subject: string }>(c)
+    if (!/^dev:[\w-]{1,64}$/.test(subject ?? '')) throw new HTTPException(400, { message: 'subject must look like dev:name' })
+    return c.json(createSession(db, subject, 'dev'))
   })
 
   app.get('/v1/services', (c) => {
@@ -261,11 +296,32 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   owner.get('/me', (c) => {
     const wallets = db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
-    return c.json({ address: c.var.owner, wallets })
+    const user = db.prepare('select provider, email, name, avatar from users where subject = ?').get(c.var.owner)
+    return c.json({ address: c.var.owner, user: user ?? { provider: 'freighter' }, wallets })
   })
 
   owner.post('/wallets', async (c) => {
-    const { name } = await body<{ name?: string }>(c).catch(() => ({ name: undefined }))
+    const input = await body<{ name?: string; passkey?: { publicKey: string; credentialId: string } }>(c).catch(
+      () => ({}) as { name?: string; passkey?: { publicKey: string; credentialId: string } },
+    )
+    const { name } = input
+    // Freighter users own their wallet with their account; everyone else with a passkey.
+    let walletOwner: { address: string } | { passkey: Uint8Array }
+    if (input.passkey) {
+      let key: Uint8Array
+      try {
+        const raw = base64url.decode(input.passkey.publicKey)
+        key = raw.length === 65 ? raw : publicKeyFromSpki(raw)
+      } catch {
+        throw new HTTPException(400, { message: 'passkey.publicKey must be a P-256 key (SPKI or 65-byte raw), base64url' })
+      }
+      if (!input.passkey.credentialId) throw new HTTPException(400, { message: 'passkey.credentialId is required' })
+      walletOwner = { passkey: key }
+    } else if (StrKey.isValidEd25519PublicKey(c.var.owner)) {
+      walletOwner = { address: c.var.owner }
+    } else {
+      throw new HTTPException(400, { message: 'Create a passkey to own your wallet' })
+    }
     const salt = hash(Buffer.concat([Buffer.from(c.var.owner), randomBytes(16)]))
     const result = await chain.serial(async () =>
       prepareSignSubmit(
@@ -274,19 +330,26 @@ export function createApp(config: Config, db: Db, chain: Chain) {
           chain.rpc,
           chain.network,
           chain.sponsor.publicKey(),
-          deployWalletOp(chain.sponsor.publicKey(), chain.walletWasmHash, c.var.owner, salt),
+          deployWalletOp(chain.sponsor.publicKey(), chain.walletWasmHash, walletOwner, salt),
         ),
         chain.sponsor,
       ),
     )
     const id = String(result.returnValue)
-    db.prepare('insert into wallets (id, owner, name, tx_hash, created_at) values (?, ?, ?, ?, ?)').run(
+    const ownerKind = 'passkey' in walletOwner ? 'passkey' : 'account'
+    db.prepare('insert into wallets (id, owner, owner_kind, name, tx_hash, created_at) values (?, ?, ?, ?, ?, ?)').run(
       id,
       c.var.owner,
+      ownerKind,
       name?.trim() || 'My wallet',
       result.hash,
       now(),
     )
+    if ('passkey' in walletOwner) {
+      db.prepare(
+        'insert into passkeys (credential_id, subject, wallet_id, public_key, created_at) values (?, ?, ?, ?, ?)',
+      ).run(input.passkey!.credentialId, c.var.owner, id, Buffer.from(walletOwner.passkey).toString('hex'), now())
+    }
     return c.json({ id, hash: result.hash, ledger: result.ledger }, 201)
   })
 
@@ -322,7 +385,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     }
     const policy = policyFrom(input)
     return c.json(
-      await createIntent(db, chain, c.var.owner, 'add_agent', walletOps.addAgent(wallet.id, agent, policy), {
+      await createIntent(db, chain, c.var.owner, wallet, 'add_agent', walletOps.addAgent(wallet.id, agent, policy), {
         wallet: wallet.id,
         agent,
         name: String(input.name ?? 'Agent').slice(0, 80),
@@ -337,7 +400,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     const current = walletAgent(wallet.id, c.req.param('key'))
     const policy = policyFrom(await body<Record<string, unknown>>(c), current)
     return c.json(
-      await createIntent(db, chain, c.var.owner, 'set_policy', walletOps.setPolicy(wallet.id, current.public_key, policy), {
+      await createIntent(db, chain, c.var.owner, wallet, 'set_policy', walletOps.setPolicy(wallet.id, current.public_key, policy), {
         agent: current.public_key,
         ...policy,
       }),
@@ -349,7 +412,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     const agent = walletAgent(wallet.id, c.req.param('key'))
     const { paused } = await body<{ paused: boolean }>(c)
     return c.json(
-      await createIntent(db, chain, c.var.owner, 'set_paused', walletOps.setPaused(wallet.id, agent.public_key, !!paused), {
+      await createIntent(db, chain, c.var.owner, wallet, 'set_paused', walletOps.setPaused(wallet.id, agent.public_key, !!paused), {
         agent: agent.public_key,
         paused: !!paused,
       }),
@@ -360,7 +423,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     const wallet = ownedWallet(c.var.owner, c.req.param('id'))
     const agent = walletAgent(wallet.id, c.req.param('key'))
     return c.json(
-      await createIntent(db, chain, c.var.owner, 'remove_agent', walletOps.removeAgent(wallet.id, agent.public_key), {
+      await createIntent(db, chain, c.var.owner, wallet, 'remove_agent', walletOps.removeAgent(wallet.id, agent.public_key), {
         agent: agent.public_key,
       }),
     )
@@ -369,10 +432,11 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   owner.post('/wallets/:id/withdraw', async (c) => {
     const wallet = ownedWallet(c.var.owner, c.req.param('id'))
     const input = await body<{ to?: string; amount: string }>(c)
-    const to = addressOf(input.to ?? c.var.owner, 'to')
+    const fallback = StrKey.isValidEd25519PublicKey(c.var.owner) ? c.var.owner : undefined
+    const to = addressOf(input.to ?? fallback, 'to')
     const units = amountOf(input.amount, 'amount', decimals)
     return c.json(
-      await createIntent(db, chain, c.var.owner, 'withdraw', walletOps.withdraw(wallet.id, chain.network.token, to, units), {
+      await createIntent(db, chain, c.var.owner, wallet, 'withdraw', walletOps.withdraw(wallet.id, chain.network.token, to, units), {
         to,
         amount: units,
       }),
@@ -401,12 +465,14 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   owner.post('/approvals/:id/approve', async (c) => {
     const approval = ownedApproval(c.var.owner, c.req.param('id'))
+    const wallet = ownedWallet(c.var.owner, approval.wallet_id)
     const expiresAt = now() + 3600
     return c.json(
       await createIntent(
         db,
         chain,
         c.var.owner,
+        wallet,
         'approve_once',
         walletOps.approveOnce(approval.wallet_id, approval.agent, approval.payee, BigInt(approval.amount), expiresAt),
         { approval: approval.id },
@@ -421,8 +487,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.post('/intents/:id/submit', async (c) => {
-    const { signedXdr } = await body<{ signedXdr: string }>(c)
-    return c.json(await submitIntent(db, chain, c.var.owner, c.req.param('id'), signedXdr))
+    const signed = await body<{ signedXdr?: string; passkey?: PasskeyResponse }>(c)
+    return c.json(await submitIntent(db, chain, c.var.owner, c.req.param('id'), signed))
   })
 
   owner.post('/services', async (c) => {

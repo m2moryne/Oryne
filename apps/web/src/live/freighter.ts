@@ -53,6 +53,7 @@ export async function signIn(networkPassphrase: string): Promise<Session> {
 
 /** Has Freighter sign an intent's transaction, then hands it back to the API to submit. */
 export async function signAndSubmit(intent: Intent, session: Session) {
+  if (intent.mode !== 'envelope') throw new WalletError('This wallet is owned by a passkey')
   const signed = await signTransaction(intent.xdr, {
     networkPassphrase: intent.networkPassphrase,
     address: session.address,

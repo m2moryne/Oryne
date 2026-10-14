@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   Receipt,
+  Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -17,7 +18,7 @@ import { Wordmark } from '../components/Wordmark'
 import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { Field, inputClasses, Panel } from '../app/ui'
-import { API_URL, explorerAccount } from './api'
+import { api, API_URL, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { LiveProvider, useLive } from './LiveContext'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -86,8 +87,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
         <div className="flex items-center gap-3 border-t border-cream/15 px-1 pt-4">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-cream/60">Owner · Freighter</p>
-            <p className="truncate font-mono text-xs">{live.session ? shortKey(live.session.address, 6, 6) : ''}</p>
+            <p className="text-xs text-cream/60">
+              Owner · {live.wallet?.owner_kind === 'passkey' ? 'passkey' : 'Freighter'}
+            </p>
+            <p className="truncate text-xs">
+              {live.user?.email ?? live.user?.name ?? (live.session ? shortKey(live.session.address, 6, 6) : '')}
+            </p>
           </div>
           <button
             type="button"
@@ -104,26 +109,43 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** Shown until the owner signs in with Freighter, or while they have no wallet yet. */
+/** GitHub and Google marks for the sign-in buttons (brand marks, monochrome). */
+function ProviderMark({ provider }: { provider: 'google' | 'github' }) {
+  return provider === 'github' ? (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
+      <path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z" />
+    </svg>
+  ) : (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
+      <path d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.39a4.6 4.6 0 0 1-2 3.02v2.5h3.23c1.9-1.75 2.98-4.32 2.98-7.36ZM12 22c2.7 0 4.96-.9 6.62-2.4l-3.23-2.5c-.9.6-2.04.95-3.39.95-2.6 0-4.81-1.76-5.6-4.12H3.07v2.58A10 10 0 0 0 12 22Zm-5.6-8.07a6 6 0 0 1 0-3.86V7.49H3.07a10 10 0 0 0 0 9.02l3.33-2.58ZM12 5.95c1.47 0 2.79.5 3.83 1.5l2.86-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.93 5.49l3.33 2.58C7.19 7.71 9.4 5.95 12 5.95Z" />
+    </svg>
+  )
+}
+
+const providerButton =
+  'flex h-12 w-full items-center justify-center gap-3 rounded-full border border-taupe/70 bg-white text-sm font-medium transition-colors hover:border-charcoal disabled:pointer-events-none disabled:opacity-45'
+
+/** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('My agent wallet')
 
-  const run = (task: () => Promise<void>) => async () => {
-    setBusy(true)
+  const run = (label: string, task: () => Promise<void>) => async () => {
+    setBusy(label)
     setError(null)
     try {
       await task()
     } catch (reason) {
       setError((reason as Error).message)
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
-  const signedIn = !!live.session
+  const auth = live.info?.auth
+  const passkeyOwner = !!live.session && !isAccount(live.session.address)
 
   return (
     <div className="tone-white flex min-h-svh items-center justify-center px-4 py-16">
@@ -132,22 +154,54 @@ function Gate() {
           <Wordmark />
         </Link>
         <Panel className="mt-8">
-          {!signedIn ? (
+          {!live.session ? (
             <>
-              <h1 className="text-2xl tracking-[-0.02em]">Sign in with Freighter</h1>
+              <h1 className="text-2xl tracking-[-0.02em]">Sign in to Oryne</h1>
               <p className="mt-2 text-sm leading-relaxed text-muted">
-                Your Stellar wallet signs a one-time message to prove it&rsquo;s you. Later it signs
-                every change to your agents&rsquo; limits. Oryne never holds your keys.
+                Your agents spend from a wallet you own on Stellar. Oryne never holds its keys.
               </p>
-              <Button className="mt-6 w-full" onClick={run(live.signIn)} disabled={busy || !live.info}>
-                {busy ? 'Waiting for Freighter…' : 'Connect Freighter'}
-              </Button>
-              <p className="mt-4 text-xs leading-relaxed text-muted">
-                Set Freighter to <strong>Testnet</strong>. No Freighter?{' '}
-                <a href="https://www.freighter.app" target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                  Get it here
-                </a>
-                , or{' '}
+
+              <div className="mt-6 space-y-2.5">
+                {(['google', 'github'] as const).map((provider) => (
+                  <a
+                    key={provider}
+                    href={auth?.[provider] ? oauthStart(provider) : undefined}
+                    aria-disabled={!auth?.[provider]}
+                    title={auth?.[provider] ? undefined : `${provider === 'google' ? 'Google' : 'GitHub'} sign-in is not set up on this server yet`}
+                    className={cn(providerButton, !auth?.[provider] && 'pointer-events-none opacity-45')}
+                  >
+                    <ProviderMark provider={provider} />
+                    Continue with {provider === 'google' ? 'Google' : 'GitHub'}
+                  </a>
+                ))}
+                <button
+                  type="button"
+                  className={providerButton}
+                  onClick={run('freighter', live.signIn)}
+                  disabled={!!busy || !live.info}
+                >
+                  <Icon icon={Wallet} size={18} />
+                  {busy === 'freighter' ? 'Waiting for Freighter…' : 'Continue with Freighter'}
+                </button>
+                {auth?.dev && (
+                  <button
+                    type="button"
+                    className={cn(providerButton, 'border-dashed')}
+                    disabled={!!busy}
+                    onClick={run('dev', async () => {
+                      const subject = `dev:${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`
+                      live.adoptSession(await api<Session>('/v1/auth/dev', { body: { subject } }))
+                    })}
+                  >
+                    Continue as a test user (testnet)
+                  </button>
+                )}
+              </div>
+
+              <p className="mt-5 text-xs leading-relaxed text-muted">
+                With Google or GitHub, a passkey on this device (Face ID, Touch ID, Windows Hello)
+                owns your wallet: no extension, no recovery phrase. Freighter users sign with their
+                Stellar account instead. Or{' '}
                 <Link to="/demo" className="underline underline-offset-4">
                   explore the demo
                 </Link>
@@ -158,23 +212,27 @@ function Gate() {
             <>
               <h1 className="text-2xl tracking-[-0.02em]">Create your agent wallet</h1>
               <p className="mt-2 text-sm leading-relaxed text-muted">
-                Oryne deploys a wallet contract on Stellar that you own. Your agents spend from it,
-                only inside the limits you give them. Oryne pays the network fee.
+                {passkeyOwner
+                  ? 'Your device will create a passkey that owns this wallet. You use it to approve changes; the key never leaves your device.'
+                  : 'Oryne deploys a wallet contract on Stellar owned by your Freighter account.'}{' '}
+                Oryne pays the network fee.
               </p>
               <div className="mt-6">
                 <Field label="Name">
-                  {(id) => <input id={id} value={name} onChange={(event) => setName(event.target.value)} className={inputClasses} />}
+                  {(id) => (
+                    <input id={id} value={name} onChange={(event) => setName(event.target.value)} className={inputClasses} />
+                  )}
                 </Field>
               </div>
-              <Button className="mt-6 w-full" onClick={run(() => live.createWallet(name))} disabled={busy}>
-                {busy ? 'Deploying on Stellar…' : 'Create wallet'}
+              <Button className="mt-6 w-full" onClick={run('create', () => live.createWallet(name))} disabled={!!busy}>
+                {busy ? (passkeyOwner ? 'Creating passkey and wallet…' : 'Deploying on Stellar…') : passkeyOwner ? 'Create passkey and wallet' : 'Create wallet'}
               </Button>
               <button type="button" onClick={live.signOut} className="mt-4 text-xs text-muted underline underline-offset-4">
                 Use a different account
               </button>
             </>
           )}
-          {(error || (!live.info && live.error)) && (
+          {(error || live.error) && (
             <p role="alert" className="mt-5 rounded-lg border border-burgundy/30 px-4 py-3 text-sm text-burgundy">
               {error ?? live.error}
             </p>

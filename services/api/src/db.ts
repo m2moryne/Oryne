@@ -62,6 +62,19 @@ create table if not exists intents (
   tx_hash text, error text, created_at integer not null
 );
 
+-- People who sign in with Google or GitHub. Freighter users are identified by their G… address alone.
+create table if not exists users (
+  subject text primary key,       -- "google:<id>" or "github:<id>"
+  provider text not null, email text, name text, avatar text, created_at integer not null
+);
+
+-- Passkeys that own wallets. The private key never leaves the user's device.
+create table if not exists passkeys (
+  credential_id text primary key, -- base64url
+  subject text not null, wallet_id text, public_key text not null, -- 65-byte uncompressed, hex
+  created_at integer not null
+);
+
 create table if not exists services (
   id text primary key, name text not null, description text not null default '',
   category text not null default 'Other', url text not null, pay_to text not null,
@@ -72,11 +85,28 @@ create table if not exists services (
 
 export type Db = DatabaseSync
 
+/** Columns added after the first release; added to existing databases on start. */
+const additions = [
+  // account | passkey
+  "alter table wallets add column owner_kind text not null default 'account'",
+  // envelope (owner signs the transaction) | passkey (owner signs an auth entry)
+  "alter table intents add column mode text not null default 'envelope'",
+  'alter table intents add column auth_entry text',
+  'alter table intents add column valid_until integer',
+]
+
 export function openDb(dataDir: string): Db {
   mkdirSync(dataDir, { recursive: true })
   const db = new DatabaseSync(join(dataDir, 'oryne.db'))
   db.exec('pragma journal_mode = wal; pragma foreign_keys = on;')
   db.exec(schema)
+  for (const statement of additions) {
+    try {
+      db.exec(statement)
+    } catch {
+      // Column already there.
+    }
+  }
   return db
 }
 

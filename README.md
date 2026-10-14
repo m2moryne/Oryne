@@ -7,8 +7,8 @@ agent a wallet it can spend from, and enforces the limits you set (budget, per-p
 allowed services, expiry) in a Soroban smart contract. The limits hold even if the agent is
 prompt-injected, its key leaks, or Oryne's own servers are breached.
 
-> **Status: working MVP on Stellar testnet.** Owners sign in with Freighter, deploy their own
-> agent-wallet contract, connect agents with on-chain mandates, and approve out-of-policy
+> **Status: working MVP on Stellar testnet.** Owners sign in with Google, GitHub or Freighter,
+> deploy their own agent-wallet contract (owned by a device passkey or their Freighter account), connect agents with on-chain mandates, and approve out-of-policy
 > payments. Agents pay x402-style services in (test) USDC, and the contract refuses anything
 > outside the mandate. The contract is not yet audited; don't use it with real funds. See
 > [What's real today](#whats-real-today).
@@ -252,10 +252,11 @@ runs off-chain makes the product pleasant to use, but cannot spend a cent.
 | Agent SDK ([`packages/agent`](packages/agent)): `fetch()` that pays | ✅ Working on testnet |
 | Merchant middleware ([`packages/merchant`](packages/merchant)) + [demo merchant](examples/demo-merchant) | ✅ Working on testnet |
 | MCP server ([`packages/mcp`](packages/mcp)) | ✅ Built on the agent SDK. ⏳ Not yet tried inside Claude Desktop |
-| Live dashboard at `/app` (Freighter) | ✅ Built and wired to the API. ⏳ Not yet clicked through in a browser with Freighter |
-| End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet: pay → refused over limit → approve once → pay |
+| Passkey owners (Google/GitHub sign-in) | ✅ Contract verifies WebAuthn signatures (6 tests in CI); full flow passes on testnet with a simulated authenticator. ⏳ Not yet tried with a real device passkey |
+| Google and GitHub sign-in | ✅ Built. ⏳ Needs your OAuth apps (see below) |
+| Live dashboard at `/app` | ✅ Built and wired to the API. ⏳ Not yet clicked through in a browser |
+| End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
 | Demo dashboard at `/demo` and the developer console at `/dev` | Simulated data, for showing the full vision |
-| Passkey owners (no browser extension) | ⏳ Next. The contract's owner is any Stellar address, so a passkey smart wallet can own it without contract changes |
 | Mainnet, audit, anchors for fiat in and out | ⏳ Roadmap |
 
 On testnet the API creates its own **test USDC** (and a faucet for it). On mainnet it uses
@@ -296,16 +297,23 @@ npm run setup
 npm run dev:merchant            # http://localhost:8788
 
 # 3. Check the whole flow without a browser
-npm run e2e
+npm run e2e                     # owner = Stellar account (as with Freighter)
+npm run e2e -- passkey          # owner = passkey (needs DEV_LOGIN=1 in services/api/.env)
 
 # 4. The website and dashboard
 npm run dev:web                 # http://localhost:5173  →  /app
 ```
 
-**In the dashboard** (`/app`): install [Freighter](https://www.freighter.app), switch it to
-**Testnet**, fund the account with XLM (Freighter offers friendbot), then *Connect Freighter →
-Create wallet → Add test USDC → Connect agent*. The agent's secret is shown once; give it to
-your agent:
+**In the dashboard** (`/app`) choose how to sign in:
+
+- **Continue with Google / GitHub**: after signing in, *Create passkey and wallet* asks your
+  device (Face ID, Touch ID, Windows Hello, or your phone) for a passkey. That passkey owns the
+  wallet and approves every change. No extension, no recovery phrase, no XLM.
+- **Continue with Freighter**: your Stellar account owns the wallet (setup below).
+- **Continue as a test user**: appears on testnet when `DEV_LOGIN=1`; same passkey flow,
+  without OAuth.
+
+Then *Add test USDC → Connect agent*. The agent's secret is shown once; give it to your agent:
 
 ```sh
 ORYNE_AGENT_SECRET=S... node packages/mcp/src/server.ts      # MCP, for Claude/Cursor
@@ -320,6 +328,38 @@ const res = await agent.fetch('http://localhost:8788/quote') // pays 0.01 USDC
 ```
 
 **Checks:** `npm run typecheck`, `npm test`, `npm run build`.
+
+### Google and GitHub sign-in
+
+Copy `services/api/.env.example` to `services/api/.env`, then create the two OAuth apps.
+
+**Google**: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+1. Create a project (or pick one), then *APIs & Services → OAuth consent screen*: choose
+   *External*, add an app name and your email, add the scopes `openid`, `email`, `profile`, and
+   add yourself as a test user.
+2. *Credentials → Create credentials → OAuth client ID → Web application*.
+3. Authorized redirect URI: `http://localhost:8787/v1/auth/oauth/google/callback`
+4. Put the client ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+**GitHub**: [Developer settings → OAuth Apps → New OAuth App](https://github.com/settings/applications/new)
+1. Homepage URL: `http://localhost:5173`
+2. Authorization callback URL: `http://localhost:8787/v1/auth/oauth/github/callback`
+3. Register, then *Generate a new client secret*. Put them in `GITHUB_CLIENT_ID` and
+   `GITHUB_CLIENT_SECRET`.
+
+Restart the API; the buttons switch on by themselves. For a deployed site, add the production
+callback URLs (`https://<your api>/v1/auth/oauth/<provider>/callback`) and set `PUBLIC_URL` and
+`WEB_URL`.
+
+Google and GitHub only prove who someone is. They have no power over the wallet: the passkey
+does, and it never leaves the user's device.
+
+### Freighter
+
+1. Install the extension from [freighter.app](https://www.freighter.app) and create a wallet
+   (password + 12-word recovery phrase; keep the phrase offline).
+2. *Settings → Network → Testnet*, then *Fund with Friendbot* for test XLM.
+3. In the dashboard choose *Continue with Freighter*.
 
 **Contract** (Rust + Stellar CLI, or just push and let CI do it):
 

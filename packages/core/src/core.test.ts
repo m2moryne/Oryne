@@ -30,3 +30,22 @@ test('structs encode as maps with sorted symbol keys, as #[contracttype] expects
   assert.deepEqual(Object.keys(policy), ['budget', 'expires_at', 'payees', 'per_tx', 'token', 'window_secs'])
   assert.equal(policy.token, token)
 })
+
+test('passkey signatures convert from DER to low-S r||s', async () => {
+  const { generateKeyPairSync, sign, verify } = await import('node:crypto')
+  const { compactSignature, publicKeyFromSpki } = await import('./passkey.ts')
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+  const message = Buffer.from('oryne')
+  for (let i = 0; i < 20; i++) {
+    const der = sign('sha256', message, privateKey)
+    const compact = compactSignature(der)
+    assert.equal(compact.length, 64)
+    // S is in the lower half of the order.
+    assert.ok(compact[32] < 0x80)
+    assert.ok(verify('sha256', message, { key: publicKey, dsaEncoding: 'ieee-p1363' }, compact))
+  }
+  const spki = publicKey.export({ format: 'der', type: 'spki' })
+  const raw = publicKeyFromSpki(new Uint8Array(spki))
+  assert.equal(raw.length, 65)
+  assert.equal(raw[0], 0x04)
+})

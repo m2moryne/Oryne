@@ -63,7 +63,7 @@ export default function LiveApprovals() {
                     Decline
                   </Button>
                   <Button size="sm" leadingIcon={Check} disabled={!!busy} onClick={() => act(approval.id, true)}>
-                    {busy === approval.id ? 'Waiting for Freighter…' : 'Approve once'}
+                    {busy === approval.id ? 'Waiting for your signature…' : 'Approve once'}
                   </Button>
                 </div>
               </li>

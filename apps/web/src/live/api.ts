@@ -61,9 +61,24 @@ export type Info = {
   sponsor: string
   facilitator: string
   faucet: string | null
+  auth: { freighter: boolean; google: boolean; github: boolean; dev: boolean }
 }
 
-export type WalletSummary = { id: string; owner: string; name: string; tx_hash: string | null; created_at: number }
+export type User = { provider: string; email?: string | null; name?: string | null; avatar?: string | null }
+
+/** Freighter users are their G… address; others are "google:…" / "github:…". */
+export const isAccount = (subject: string) => /^G[A-Z2-7]{55}$/.test(subject)
+
+export const oauthStart = (provider: 'google' | 'github') => `${API_URL}/v1/auth/oauth/${provider}/start`
+
+export type WalletSummary = {
+  id: string
+  owner: string
+  owner_kind: 'account' | 'passkey'
+  name: string
+  tx_hash: string | null
+  created_at: number
+}
 
 export type LiveAgent = {
   publicKey: string
@@ -111,7 +126,9 @@ export type LiveApproval = {
   createdAt: number
 }
 
-export type Intent = { id: string; kind: string; xdr: string; networkPassphrase: string }
+export type Intent =
+  | { id: string; kind: string; mode: 'envelope'; xdr: string; networkPassphrase: string }
+  | { id: string; kind: string; mode: 'passkey'; challenge: string; credentialIds: string[] }
 
 export const explorerTx = (network: string, hash: string) =>
   `https://stellar.expert/explorer/${network === 'stellar-mainnet' ? 'public' : 'testnet'}/tx/${hash}`

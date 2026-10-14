@@ -53,7 +53,7 @@ function PolicyForm({ agent }: { agent: LiveAgent }) {
         )}
       </Field>
       <Button type="submit" size="sm" disabled={action.busy}>
-        {action.busy ? 'Waiting for Freighter…' : 'Save mandate'}
+        {action.busy ? 'Waiting for your signature…' : 'Save mandate'}
       </Button>
       {action.done && (
         <p className="text-sm text-muted">
@@ -112,7 +112,7 @@ export default function LiveAgentDetail() {
             )
           }
         >
-          {pause.busy ? 'Waiting for Freighter…' : paused ? 'Resume agent' : 'Pause agent'}
+          {pause.busy ? 'Waiting for your signature…' : paused ? 'Resume agent' : 'Pause agent'}
         </Button>
       </div>
       <ErrorNote error={pause.error} />
@@ -170,7 +170,7 @@ export default function LiveAgentDetail() {
                 if (ok) navigate('/app/agents')
               }}
             >
-              {remove.busy ? 'Waiting for Freighter…' : 'Disconnect agent'}
+              {remove.busy ? 'Waiting for your signature…' : 'Disconnect agent'}
             </Button>
             <ErrorNote error={remove.error} />
           </Panel>

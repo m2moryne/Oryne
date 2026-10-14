@@ -55,7 +55,7 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
       onClose={close}
       title={result ? 'Agent connected' : 'Connect an agent'}
       description={
-        result ? undefined : 'Give it a mandate. Freighter signs it onto your wallet; the contract enforces it.'
+        result ? undefined : 'Give it a mandate. You sign it onto your wallet; the contract enforces it.'
       }
     >
       {!result ? (
@@ -92,7 +92,7 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
               Cancel
             </Button>
             <Button type="submit" size="sm" disabled={action.busy}>
-              {action.busy ? 'Waiting for Freighter…' : 'Sign with Freighter'}
+              {action.busy ? 'Waiting for your signature…' : 'Sign and connect'}
             </Button>
           </div>
         </form>

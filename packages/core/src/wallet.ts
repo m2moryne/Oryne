@@ -32,6 +32,8 @@ export const contractErrors: Record<number, string> = {
   9: 'InvalidAmount',
   10: 'AgentExists',
   11: 'InvalidPolicy',
+  12: 'NoPasskey',
+  13: 'InvalidPasskeySignature',
 }
 
 /** Finds "Error(Contract, #8)" in a simulation or submission error and names it. */
@@ -70,10 +72,36 @@ export function policyScVal(policy: Policy): xdr.ScVal {
   })
 }
 
-/** The signature the agent attaches to an authorization entry; see AgentSignature in the contract. */
+/** A #[contracttype] enum variant with one value: vec[symbol, value]. */
+const variant = (name: string, value: xdr.ScVal) => xdr.ScVal.scvVec([sym(name), value])
+
+/** Signature::Agent: what an agent attaches to an authorization entry. */
 export function agentSignatureScVal(publicKey: Uint8Array, signature: Uint8Array): xdr.ScVal {
-  return struct({ public_key: bytes(publicKey), signature: bytes(signature) })
+  return variant('Agent', struct({ public_key: bytes(publicKey), signature: bytes(signature) }))
 }
+
+/** A WebAuthn assertion, with the signature as 64-byte r||s (low S). */
+export type PasskeyAssertion = {
+  authenticatorData: Uint8Array
+  clientDataJson: Uint8Array
+  signature: Uint8Array
+}
+
+/** Signature::Passkey: the owner's passkey signing for the wallet. */
+export function passkeySignatureScVal(assertion: PasskeyAssertion): xdr.ScVal {
+  if (assertion.signature.length !== 64) throw new Error('Passkey signature must be 64 bytes (r||s)')
+  return variant(
+    'Passkey',
+    struct({
+      authenticator_data: bytes(assertion.authenticatorData),
+      client_data_json: bytes(assertion.clientDataJson),
+      signature: bytes(assertion.signature),
+    }),
+  )
+}
+
+/** Who owns a new wallet: an address (e.g. Freighter), or a passkey public key (65 bytes, uncompressed). */
+export type WalletOwner = { address: string } | { passkey: Uint8Array }
 
 const call = (wallet: string, fn: string, args: xdr.ScVal[]) =>
   Operation.invokeContractFunction({ contract: wallet, function: fn, args })
@@ -92,23 +120,33 @@ export const walletOps = {
   withdraw: (wallet: string, token: string, to: string, amount: bigint) =>
     call(wallet, 'withdraw', [address(token), address(to), i128(amount)]),
   setOwner: (wallet: string, owner: string) => call(wallet, 'set_owner', [address(owner)]),
+  setPasskey: (wallet: string, passkey: Uint8Array) => call(wallet, 'set_passkey', [bytes(validPasskey(passkey))]),
 }
 
 /** Read-only calls, run through simulation. */
 export const walletReads = {
   owner: (wallet: string) => call(wallet, 'owner', []),
+  passkey: (wallet: string) => call(wallet, 'passkey', []),
   agent: (wallet: string, agent: string) => call(wallet, 'agent', [bytes(agentKeyBytes(agent))]),
   remaining: (wallet: string, agent: string) => call(wallet, 'remaining', [bytes(agentKeyBytes(agent))]),
 }
 
 /** Deploys a new wallet for `owner` from the uploaded agent-wallet wasm. */
-export function deployWalletOp(deployer: string, wasmHash: Uint8Array, owner: string, salt: Uint8Array) {
+export function deployWalletOp(deployer: string, wasmHash: Uint8Array, owner: WalletOwner, salt: Uint8Array) {
+  const none = xdr.ScVal.scvVoid()
+  const constructorArgs =
+    'address' in owner ? [address(owner.address), none] : [none, bytes(validPasskey(owner.passkey))]
   return Operation.createCustomContract({
     address: new Address(deployer),
     wasmHash: Buffer.from(wasmHash),
-    constructorArgs: [address(owner)],
+    constructorArgs,
     salt: Buffer.from(salt),
   })
+}
+
+function validPasskey(key: Uint8Array) {
+  if (key.length !== 65 || key[0] !== 0x04) throw new Error('Passkey public key must be 65 bytes, uncompressed (0x04…)')
+  return key
 }
 
 /** token.transfer(from, to, amount) */

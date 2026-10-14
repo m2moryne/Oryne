@@ -13,6 +13,8 @@ export default function LiveOverview() {
   const withdraw = useAction()
   const [amount, setAmount] = useState('100')
   const [out, setOut] = useState('')
+  const [to, setTo] = useState('')
+  const passkey = wallet.owner_kind === 'passkey'
 
   const active = wallet.agents.filter((agent) => agent.status === 'active').length
   const settled = live.payments.filter((payment) => payment.status === 'settled')
@@ -43,7 +45,7 @@ export default function LiveOverview() {
             </div>
             <div className="flex flex-wrap justify-between gap-2">
               <dt className="text-muted">Owner (you)</dt>
-              <dd><AddressLink address={wallet.owner} /></dd>
+              <dd>{wallet.owner_kind === 'passkey' ? 'Passkey on your device' : <AddressLink address={wallet.owner} />}</dd>
             </div>
             <div className="flex flex-wrap justify-between gap-2">
               <dt className="text-muted">Token</dt>
@@ -61,8 +63,9 @@ export default function LiveOverview() {
             </div>
           </dl>
           <p className="mt-5 border-t border-taupe/40 pt-4 text-sm leading-relaxed text-muted">
-            Only your Freighter account can change agents&rsquo; limits or move money out. Agents can
-            only send USDC inside their mandates; the contract refuses anything else.
+            Only you can change agents&rsquo; limits or move money out
+            {wallet.owner_kind === 'passkey' ? ', with your passkey' : ', with your Freighter account'}.
+            Agents can only send USDC inside their mandates; the contract refuses anything else.
           </p>
         </Panel>
 
@@ -96,25 +99,37 @@ export default function LiveOverview() {
           )}
 
           <Panel title="Withdraw">
-            <Field label="Amount, USDC" hint="Sent to your Freighter account. It needs a USDC trustline.">
+            <Field
+              label="Amount, USDC"
+              hint={passkey ? undefined : 'Sent to your Freighter account. It needs a USDC trustline.'}
+            >
               {(id) => (
                 <input id={id} value={out} inputMode="decimal" onChange={(event) => setOut(event.target.value)} className={`${inputClasses} py-2`} />
               )}
             </Field>
+            {passkey && (
+              <div className="mt-3">
+                <Field label="To" hint="A Stellar address with a USDC trustline, or a contract.">
+                  {(id) => (
+                    <input id={id} value={to} onChange={(event) => setTo(event.target.value.trim())} placeholder="G… or C…" className={`${inputClasses} py-2 font-mono text-xs`} />
+                  )}
+                </Field>
+              </div>
+            )}
             <Button
               size="sm"
               variant="outline"
               className="mt-4"
-              disabled={withdraw.busy || !out}
+              disabled={withdraw.busy || !out || (passkey && !to)}
               onClick={() =>
                 withdraw.run(() =>
                   live.sign((token) =>
-                    api<Intent>(`/v1/wallets/${wallet.id}/withdraw`, { body: { amount: out }, token }),
+                    api<Intent>(`/v1/wallets/${wallet.id}/withdraw`, { body: { amount: out, to: to || undefined }, token }),
                   ),
                 )
               }
             >
-              {withdraw.busy ? 'Waiting for Freighter…' : 'Withdraw'}
+              {withdraw.busy ? 'Waiting for your signature…' : 'Withdraw'}
             </Button>
             {withdraw.done && (
               <p className="mt-3 text-sm text-muted">
