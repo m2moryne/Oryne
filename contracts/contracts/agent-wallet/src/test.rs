@@ -1,6 +1,11 @@
 #![cfg(test)]
 
+extern crate std;
+
 use super::*;
+use p256::ecdsa::{signature::hazmat::PrehashSigner, Signature as P256Signature, SigningKey as PasskeyKey};
+use p256::elliptic_curve::sec1::ToEncodedPoint;
+use std::format;
 use ed25519_dalek::{Signer, SigningKey};
 use soroban_sdk::{
     auth::ContractContext,
@@ -26,7 +31,7 @@ fn setup() -> Setup {
     env.ledger().set_timestamp(1_000_000);
 
     let owner = Address::generate(&env);
-    let wallet = env.register(AgentWallet, (owner.clone(),));
+    let wallet = env.register(AgentWallet, (Some(owner.clone()), None::<BytesN<65>>));
     let client = AgentWalletClient::new(&env, &wallet);
 
     let issuer = Address::generate(&env);
@@ -66,10 +71,10 @@ fn transfer(env: &Env, token: &Address, from: &Address, to: &Address, amount: i1
 /// Runs the wallet's `__check_auth` the way the network would.
 fn check(s: &Setup, key: &SigningKey, contexts: Vec<Context>) -> Result<(), Error> {
     let payload = BytesN::<32>::random(&s.env);
-    let signature = AgentSignature {
+    let signature = Signature::Agent(AgentSignature {
         public_key: public_key(&s.env, key),
         signature: BytesN::from_array(&s.env, &key.sign(&payload.to_array()).to_bytes()),
-    };
+    });
     match s.env.try_invoke_contract_check_auth::<Error>(
         &s.wallet,
         &payload,
@@ -197,4 +202,133 @@ fn rejects_invalid_policy() {
         payees: vec![&s.env],
     };
     assert_eq!(s.client.try_add_agent(&other, &policy), Err(Ok(Error::InvalidPolicy)));
+}
+
+// ---------------------------------------------------------------- passkey owners
+
+fn passkey_public_key(env: &Env, key: &PasskeyKey) -> BytesN<65> {
+    let point = key.verifying_key().to_encoded_point(false);
+    BytesN::from_array(env, point.as_bytes().try_into().unwrap())
+}
+
+/// Builds the assertion a browser returns from navigator.credentials.get()
+/// with `challenge` as the challenge, signed by `key`.
+fn passkey_assertion(env: &Env, key: &PasskeyKey, challenge: &BytesN<32>) -> Signature {
+    let mut authenticator_data = [0u8; 37];
+    authenticator_data[32] = 0x05; // user present + user verified
+
+    let mut encoded = [0u8; 43];
+    base64url(&challenge.to_array(), &mut encoded);
+    let client_data = format!(
+        r#"{{"type":"webauthn.get","challenge":"{}","origin":"http://localhost:5173","crossOrigin":false}}"#,
+        core::str::from_utf8(&encoded).unwrap()
+    );
+
+    let client_data = Bytes::from_slice(env, client_data.as_bytes());
+    let mut message = Bytes::from_slice(env, &authenticator_data);
+    message.append(&Bytes::from(env.crypto().sha256(&client_data)));
+    let digest = env.crypto().sha256(&message).to_array();
+
+    let signature: P256Signature = key.sign_prehash(&digest).unwrap();
+    let signature = signature.normalize_s().unwrap_or(signature);
+    let bytes: [u8; 64] = signature.to_bytes().as_slice().try_into().unwrap();
+
+    Signature::Passkey(PasskeySignature {
+        authenticator_data: Bytes::from_slice(env, &authenticator_data),
+        client_data_json: client_data,
+        signature: BytesN::from_array(env, &bytes),
+    })
+}
+
+fn check_passkey(env: &Env, wallet: &Address, signature: Signature, payload: &BytesN<32>) -> Result<(), Error> {
+    let contexts: Vec<Context> = vec![env];
+    match env.try_invoke_contract_check_auth::<Error>(wallet, payload, signature.into_val(env), &contexts) {
+        Ok(()) => Ok(()),
+        Err(Ok(error)) => Err(error),
+        Err(Err(other)) => panic!("host error: {other:?}"),
+    }
+}
+
+fn passkey_wallet() -> (Env, Address, PasskeyKey) {
+    let env = Env::default();
+    let key = PasskeyKey::from_slice(&[3u8; 32]).unwrap();
+    let wallet = env.register(AgentWallet, (None::<Address>, Some(passkey_public_key(&env, &key))));
+    (env, wallet, key)
+}
+
+#[test]
+fn passkey_wallet_owns_itself() {
+    let (env, wallet, key) = passkey_wallet();
+    let client = AgentWalletClient::new(&env, &wallet);
+    assert_eq!(client.owner(), wallet);
+    assert_eq!(client.passkey(), Some(passkey_public_key(&env, &key)));
+}
+
+#[test]
+fn passkey_signature_for_this_payload_authorizes() {
+    let (env, wallet, key) = passkey_wallet();
+    let payload = BytesN::<32>::random(&env);
+    assert_eq!(check_passkey(&env, &wallet, passkey_assertion(&env, &key, &payload), &payload), Ok(()));
+}
+
+#[test]
+fn passkey_signature_for_another_payload_is_refused() {
+    let (env, wallet, key) = passkey_wallet();
+    let payload = BytesN::<32>::random(&env);
+    let other = BytesN::<32>::random(&env);
+    assert_eq!(
+        check_passkey(&env, &wallet, passkey_assertion(&env, &key, &other), &payload),
+        Err(Error::InvalidPasskeySignature)
+    );
+}
+
+#[test]
+fn another_passkey_cannot_sign() {
+    let (env, wallet, _) = passkey_wallet();
+    let stranger = PasskeyKey::from_slice(&[4u8; 32]).unwrap();
+    let payload = BytesN::<32>::random(&env);
+    let contexts: Vec<Context> = vec![&env];
+    let result = env.try_invoke_contract_check_auth::<Error>(
+        &wallet,
+        &payload,
+        passkey_assertion(&env, &stranger, &payload).into_val(&env),
+        &contexts,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
+fn address_owned_wallet_rejects_passkey_signatures() {
+    let s = setup();
+    let key = PasskeyKey::from_slice(&[3u8; 32]).unwrap();
+    let payload = BytesN::<32>::random(&s.env);
+    assert_eq!(
+        check_passkey(&s.env, &s.wallet, passkey_assertion(&s.env, &key, &payload), &payload),
+        Err(Error::NoPasskey)
+    );
+}
+
+#[test]
+fn agents_still_pay_from_a_passkey_wallet() {
+    let (env, wallet, _) = passkey_wallet();
+    env.mock_all_auths();
+    let client = AgentWalletClient::new(&env, &wallet);
+    let token = env.register_stellar_asset_contract_v2(Address::generate(&env)).address();
+    let agent = SigningKey::from_bytes(&[7; 32]);
+    client.add_agent(
+        &public_key(&env, &agent),
+        &Policy { token: token.clone(), per_tx: USDC, budget: 10 * USDC, window_secs: DAY, expires_at: 0, payees: vec![&env] },
+    );
+
+    let payload = BytesN::<32>::random(&env);
+    let signature = Signature::Agent(AgentSignature {
+        public_key: public_key(&env, &agent),
+        signature: BytesN::from_array(&env, &agent.sign(&payload.to_array()).to_bytes()),
+    });
+    let merchant = Address::generate(&env);
+    let contexts = vec![&env, transfer(&env, &token, &wallet, &merchant, USDC)];
+    assert_eq!(
+        env.try_invoke_contract_check_auth::<Error>(&wallet, &payload, signature.into_val(&env), &contexts),
+        Ok(())
+    );
 }
