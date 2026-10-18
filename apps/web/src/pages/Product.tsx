@@ -167,8 +167,8 @@ export default function Product() {
           <Button to="/app" icon={ArrowRight}>
             Open the dashboard
           </Button>
-          <TextLink to="/dev" className="type-label">
-            Developer console
+          <TextLink to="/app/developers" className="type-label">
+            For developers
           </TextLink>
         </div>
       </PageHero>

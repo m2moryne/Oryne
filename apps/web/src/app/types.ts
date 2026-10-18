@@ -56,7 +56,7 @@ export type Funding = {
 export type User = {
   name: string
   email: string
-  /** How they signed in: "email", "Google", "GitHub" or "Hugging Face". */
+  /** Always "Preview": this store only backs the preview account. */
   provider?: string
 }
 

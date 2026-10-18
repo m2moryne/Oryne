@@ -1,17 +1,19 @@
 import {
   Bot,
   ClipboardCheck,
+  Code,
   ExternalLink,
   LayoutDashboard,
   LogOut,
   Menu,
   Receipt,
+  Sparkles,
   Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import githubLogo from '../assets/github.svg'
 import googleLogo from '../assets/google.svg'
 import { Button } from '../components/Button'
@@ -21,6 +23,7 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
+import { useStore } from '../app/store'
 import { Field, inputClasses, Panel } from '../app/ui'
 import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { LiveProvider, useLive } from './LiveContext'
@@ -30,6 +33,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
   { to: '/app/agents', label: 'Agents', icon: Bot },
   { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/app/activity', label: 'Activity', icon: Receipt },
+  { to: '/app/developers', label: 'Developers', icon: Code },
 ]
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -121,6 +125,10 @@ const providerButton =
 /** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
+  const { dispatch } = useStore()
+  const navigate = useNavigate()
+  // The preview (/demo, /dev) sends visitors here; "Explore a preview account" takes them back.
+  const from = (useLocation().state as { from?: string } | null)?.from
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('My agent wallet')
@@ -188,9 +196,26 @@ function Gate() {
                 )}
               </div>
 
+              <p className="mt-6 flex items-center gap-4 text-xs text-muted">
+                <span className="h-px flex-1 bg-taupe/60" />
+                or
+                <span className="h-px flex-1 bg-taupe/60" />
+              </p>
+              <button
+                type="button"
+                className={cn(providerButton, 'mt-6')}
+                onClick={() => {
+                  dispatch({ type: 'signIn', user: { name: 'Preview account', email: 'Sample data', provider: 'Preview' } })
+                  navigate(from && /^\/(demo|dev)(\/|$)/.test(from) ? from : '/demo')
+                }}
+              >
+                <Icon icon={Sparkles} size={18} />
+                Explore a preview account
+              </button>
+
               <Link
                 to="/"
-                className="mt-4 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
+                className="mt-2 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
               >
                 Cancel
               </Link>

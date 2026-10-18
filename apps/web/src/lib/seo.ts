@@ -48,12 +48,6 @@ export const publicPages = {
 
 /** Pages that exist but should not be indexed. */
 export const privatePages = {
-  signIn: {
-    path: '/login',
-    title: 'Sign in — Oryne',
-    description: 'Sign in to connect your agents, set their budgets and see what they buy.',
-    noindex: true,
-  },
   dashboard: {
     title: 'Dashboard — Oryne',
     description: 'Your agents, their mandates, approvals and every payment they make.',
@@ -66,13 +60,13 @@ export const privatePages = {
   },
   developers: {
     title: 'Developer console — Oryne',
-    description: 'API keys, SDKs, the playground, webhooks and logs for building with Oryne.',
+    description: 'A preview of the Oryne developer console on sample data.',
     noindex: true,
   },
 } satisfies Record<string, PageMeta>
 
 /** Areas robots.txt asks crawlers to skip. */
-export const disallowedPaths = ['/app', '/demo', '/dev', '/login']
+export const disallowedPaths = ['/app', '/demo', '/dev']
 
 /** Placeholder pages (lib/site.ts soonPages) render this. */
 export const comingSoonMeta = (name: string): PageMeta => ({

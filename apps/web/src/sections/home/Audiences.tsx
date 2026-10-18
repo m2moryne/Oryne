@@ -11,7 +11,7 @@ const audiences = [
     title: 'Agent builders',
     body: 'Give any agent a pay tool in one line. Works with Claude, Cursor and anything that speaks MCP, or call the SDK directly.',
     points: ['MCP server and SDKs for TypeScript and Python', 'x402 and MPP handled for you', 'Sandbox on Stellar testnet'],
-    link: { to: '/dev', label: 'Open the developer console' },
+    link: { to: '/app/developers', label: 'Start building' },
   },
   {
     index: '02',

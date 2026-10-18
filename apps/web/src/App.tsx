@@ -24,6 +24,7 @@ import Usage from './app/dev/pages/Usage'
 import Webhooks from './app/dev/pages/Webhooks'
 import { StoreProvider } from './app/store'
 import { LiveLayout } from './live/LiveLayout'
+import LiveDevelopers from './live/pages/LiveDevelopers'
 import LiveActivity from './live/pages/LiveActivity'
 import LiveAgentDetail from './live/pages/LiveAgentDetail'
 import LiveAgents from './live/pages/LiveAgents'
@@ -37,7 +38,6 @@ import ComingSoon from './pages/ComingSoon'
 import Contact from './pages/Contact'
 import Home from './pages/Home'
 import Product from './pages/Product'
-import SignIn from './pages/SignIn'
 import Vision from './pages/Vision'
 
 /** The public website: navigation bar, page, footer. */
@@ -74,7 +74,8 @@ export default function App() {
           ))}
         </Route>
 
-        <Route path="/login" element={<SignIn />} />
+        {/* One real sign-in, at /app. It also offers the preview account. */}
+        <Route path="/login" element={<Navigate to="/app" replace />} />
 
         {/* The real dashboard: Stellar testnet, signed with Freighter. */}
         <Route path="/app" element={<LiveLayout />}>
@@ -83,9 +84,10 @@ export default function App() {
           <Route path="agents/:key" element={<LiveAgentDetail />} />
           <Route path="approvals" element={<LiveApprovals />} />
           <Route path="activity" element={<LiveActivity />} />
+          <Route path="developers" element={<LiveDevelopers />} />
         </Route>
 
-        {/* The clickable demo on simulated data. It has its own chrome and a mock sign-in. */}
+        {/* The preview account: the clickable demo on sample data, opened from the sign-in card. */}
         <Route path="/demo" element={<DashboardLayout area="agents" />}>
           <Route index element={<Overview />} />
           <Route path="agents" element={<Agents />} />
@@ -114,7 +116,7 @@ export default function App() {
           <Route path="billing" element={<Billing />} />
           <Route path="settings" element={<DevSettings />} />
         </Route>
-        <Route path="/developers" element={<Navigate to="/dev" replace />} />
+        <Route path="/developers" element={<Navigate to="/app/developers" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

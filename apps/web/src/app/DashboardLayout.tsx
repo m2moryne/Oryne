@@ -265,7 +265,7 @@ function Sidebar({
 }
 
 export function DashboardLayout({ area }: { area: Area }) {
-  const { state } = useStore()
+  const { state, dispatch } = useStore()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -287,7 +287,7 @@ export function DashboardLayout({ area }: { area: Area }) {
   usePageMeta(area === 'developers' ? privatePages.developers : privatePages.demo)
 
   if (!state.user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+    return <Navigate to="/app" replace state={{ from: location.pathname + location.search }} />
   }
 
   // The developer console is dark throughout.
@@ -328,12 +328,24 @@ export function DashboardLayout({ area }: { area: Area }) {
 
       {/* Cards run edge to edge, with only a narrow margin around them. */}
       <main className={cn('min-h-svh p-3 md:p-4', dark && 'theme-dark tone-cream')}>
-        <p className="mb-3 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
-          <span className="font-medium text-charcoal">Preview.</span>{' '}
-          {area === 'developers'
-            ? 'The developer console runs on mock data. The API, SDKs, keys and contracts shown here are not live yet.'
-            : 'Simulated data. Wallet addresses and transactions are shaped like Stellar’s but are not on any ledger, and no real money moves.'}
-        </p>
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
+          <p className="min-w-0 flex-1">
+            <span className="font-medium text-charcoal">Preview account · sample data.</span>{' '}
+            {area === 'developers'
+              ? 'Keys, webhooks, logs and usage here are examples of what’s coming, not live.'
+              : 'Nothing here is on a ledger and no real money moves.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: 'signOut' })
+              navigate('/app')
+            }}
+            className="font-medium text-charcoal underline underline-offset-4"
+          >
+            Exit preview
+          </button>
+        </div>
         <Outlet context={dialogs} />
       </main>
 
