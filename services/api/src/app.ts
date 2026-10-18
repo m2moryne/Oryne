@@ -25,6 +25,7 @@ import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow }
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
+import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
@@ -95,6 +96,7 @@ function addressOf(value: unknown, field: string) {
 export function createApp(config: Config, db: Db, chain: Chain) {
   const app = new Hono()
   const decimals = chain.network.decimals
+  const aiDebugger = createDebugger(config.anthropicApiKey)
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
 
   const agentView = (row: AgentDbRow, remaining?: bigint) => ({
@@ -201,6 +203,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
         github: !!config.oauth.github,
         dev: config.devLogin,
       },
+      features: { aiDebugger: aiDebugger.enabled },
       /** Classic asset behind the token, so G… accounts can add a trustline. */
       tokenAsset: chain.issuer ? { code: 'USDC', issuer: chain.issuer.publicKey() } : config.network.name === 'mainnet'
         ? { code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' }
@@ -373,6 +376,42 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       .prepare('select * from payments where wallet_id = ? order by created_at desc limit 200')
       .all(wallet.id) as Array<Record<string, any>>
     return c.json({ payments: rows.map((row) => ({ ...row, amount: money(row.amount) })) })
+  })
+
+  // The AI debugger, over a snapshot of this wallet: agents and mandates, recent payments, approvals.
+  owner.post('/wallets/:id/debug', async (c) => {
+    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
+    const { messages } = await body<{ messages: unknown }>(c)
+    const agents = db
+      .prepare('select * from agents where wallet_id = ? order by created_at')
+      .all(wallet.id) as AgentDbRow[]
+    const [balance, remaining] = await Promise.all([balanceOf(wallet.id), Promise.all(agents.map(remainingOf))])
+    const payments = db
+      .prepare('select * from payments where wallet_id = ? order by created_at desc limit 60')
+      .all(wallet.id) as Array<Record<string, any>>
+    const approvals = db
+      .prepare('select * from approvals where wallet_id = ? order by created_at desc limit 30')
+      .all(wallet.id) as ApprovalRow[]
+    const named = (key: string | null) => agents.find((agent) => agent.public_key === key)?.name ?? null
+    return aiDebugger.answer(c, c.var.owner, messages, {
+      network: networkId(chain.network),
+      wallet: { id: wallet.id, name: wallet.name, ownerKind: wallet.owner_kind, balance: money(balance), token: chain.network.token },
+      agents: agents.map((agent, i) => agentView(agent, remaining[i])),
+      payments: payments.map((row) => ({
+        id: row.id,
+        agent: row.agent,
+        agentName: named(row.agent),
+        payee: row.payee,
+        amount: money(row.amount),
+        resource: row.resource,
+        status: row.status,
+        reason: row.reason,
+        approvedByOwner: !!row.approved_by_owner,
+        txHash: row.tx_hash,
+        at: new Date(row.created_at * 1000).toISOString(),
+      })),
+      approvals: approvals.map((row) => ({ ...approvalView(row), agentName: named(row.agent) })),
+    })
   })
 
   owner.post('/wallets/:id/agents', async (c) => {

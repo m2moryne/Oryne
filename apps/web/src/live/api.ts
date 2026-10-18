@@ -38,6 +38,62 @@ export class ApiError extends Error {
   }
 }
 
+export type DebugTurn = { role: 'user' | 'assistant'; content: string }
+
+/**
+ * Asks the AI debugger about a wallet and streams its answer: `onText` gets
+ * each chunk as it arrives. Resolves when the answer is complete; rejects with
+ * an ApiError if it can't answer.
+ */
+export async function askDebugger(
+  walletId: string,
+  token: string,
+  messages: DebugTurn[],
+  onText: (chunk: string) => void,
+  signal?: AbortSignal,
+) {
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}/v1/wallets/${walletId}/debug`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages }),
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted) throw error
+    throw new ApiError(`Can't reach the Oryne API right now. Try again in a minute.`, 0)
+  }
+  if (!response.ok || !response.body) {
+    const data = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new ApiError(data.error ?? `API error ${response.status}`, response.status)
+  }
+
+  // Server-sent events: blocks of "event: …" and "data: …" lines, separated by a blank line.
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value.replace(/\r\n/g, '\n')
+    let end: number
+    while ((end = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, end)
+      buffer = buffer.slice(end + 2)
+      const event = /^event: (.*)$/m.exec(block)?.[1]
+      const data = block
+        .split('\n')
+        .filter((line) => line.startsWith('data: '))
+        .map((line) => line.slice(6))
+        .join('\n')
+      if (event === 'text') onText(JSON.parse(data) as string)
+      else if (event === 'error') throw new ApiError(JSON.parse(data) as string, 200)
+      else if (event === 'done') return
+    }
+  }
+  throw new ApiError('The answer was cut off. Try again.', 0)
+}
+
 export async function api<T>(path: string, init: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
   let response: Response
   try {
@@ -72,6 +128,8 @@ export type Info = {
   facilitator: string
   faucet: string | null
   auth: { freighter: boolean; google: boolean; github: boolean; dev: boolean }
+  /** Missing on older API builds. */
+  features?: { aiDebugger: boolean }
 }
 
 export type User = { provider: string; email?: string | null; name?: string | null; avatar?: string | null }

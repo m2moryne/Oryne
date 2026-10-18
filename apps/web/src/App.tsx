@@ -26,6 +26,7 @@ import Usage from './app/dev/pages/Usage'
 import Webhooks from './app/dev/pages/Webhooks'
 import { StoreProvider } from './app/store'
 import { LiveLayout } from './live/LiveLayout'
+import RealDebugger from './live/dev/Debugger'
 import DevOverview from './live/dev/Overview'
 import { Contracts as RealContracts, Merchant as RealMerchant, Sdks as RealSdks } from './live/dev/pages'
 import { realPages } from './live/dev/shared'
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="sdks" element={<RealSdks />} />
             <Route path="merchant" element={<RealMerchant />} />
             <Route path="contracts" element={<RealContracts />} />
+            <Route path="debugger" element={<RealDebugger />} />
             {allDevPages
               .filter((page) => page.slug && !realPages.includes(page.slug))
               .map((page) => (

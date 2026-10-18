@@ -36,6 +36,9 @@ services:
         sync: false
       - key: TOKEN_ISSUER_SECRET
         sync: false
+      # Claude API key for the AI debugger in the developer console.
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

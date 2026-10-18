@@ -31,6 +31,8 @@ export type Config = {
   }
   /** Testnet only: POST /v1/auth/dev signs in without OAuth, for scripts/e2e. */
   devLogin: boolean
+  /** Claude API key for the AI debugger. The debugger is off without it. */
+  anthropicApiKey?: string
 }
 
 const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : undefined)
@@ -95,5 +97,6 @@ export function loadConfig(): Config {
       github: pair(env('GITHUB_CLIENT_ID'), env('GITHUB_CLIENT_SECRET')),
     },
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
+    anthropicApiKey: env('ANTHROPIC_API_KEY'),
   }
 }

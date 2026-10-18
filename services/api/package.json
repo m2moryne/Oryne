@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@hono/node-server": "^2.1.5",
     "@oryne/core": "*",
     "@stellar/stellar-sdk": "^17.2.1",

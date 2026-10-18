@@ -1,13 +1,11 @@
-import { ArrowUp, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Icon } from '../../../components/Icon'
-import { cn } from '../../../lib/cn'
+import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../../store'
 import { Panel } from '../../ui'
 import { mockLogs, type LogEntry } from '../devData'
-import { CodeBlock, ModeTag, Mono } from '../devUi'
+import { DebugChat, type ChatMessage } from '../DebugChat'
+import { ModeTag, Mono } from '../devUi'
 
-type Message = { from: 'you' | 'ai'; text: string; code?: string; log?: LogEntry }
+type Message = ChatMessage & { log?: LogEntry }
 
 type ApiError = { error?: { type?: string; code?: string; message?: string; param?: string; retry_after?: number } }
 
@@ -72,16 +70,11 @@ export default function Debugger() {
   const logs = useMemo(() => mockLogs().filter((log) => log.mode === mode), [mode])
   const failures = useMemo(() => logs.filter((log) => log.status >= 400).slice(0, 8), [logs])
   const [messages, setMessages] = useState<Message[]>([intro])
-  const [draft, setDraft] = useState('')
-  const end = useRef<HTMLDivElement>(null)
 
   // A new mode means different logs: start the conversation over.
   useEffect(() => {
     setMessages([intro])
   }, [mode])
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: 'nearest' })
-  }, [messages])
 
   const ask = (question: string, log?: LogEntry) => {
     const id = /req_[A-Za-z0-9]+/.exec(question)?.[0]
@@ -107,13 +100,6 @@ export default function Debugger() {
         : { from: 'ai', text: `No failed requests in ${mode} mode. Paste a request ID to look at a specific one.` }
     }
     setMessages((current) => [...current, { from: 'you', text: question }, answer])
-  }
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!draft.trim()) return
-    ask(draft.trim())
-    setDraft('')
   }
 
   return (
@@ -154,57 +140,19 @@ export default function Debugger() {
           )}
         </Panel>
 
-        <Panel flush className="flex min-h-[32rem] flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto p-5 md:p-6">
-            {messages.map((message, index) => (
-              <div key={index} className={cn('flex gap-3', message.from === 'you' && 'justify-end')}>
-                {message.from === 'ai' && (
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-charcoal text-cream">
-                    <Icon icon={Sparkles} size={15} />
-                  </span>
-                )}
-                <div
-                  className={cn(
-                    'max-w-[42rem] space-y-3 text-sm leading-relaxed',
-                    message.from === 'you' && 'bg-charcoal px-4 py-2.5 text-cream',
-                  )}
-                >
-                  {message.text.split('\n\n').map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                  {message.log && (
-                    <p className="text-xs text-muted">
-                      From <Mono>{message.log.id}</Mono> · {message.log.keyName} · {message.log.client}
-                    </p>
-                  )}
-                  {message.code && <CodeBlock label="Suggested change" code={message.code} />}
-                </div>
-              </div>
-            ))}
-            <div ref={end} />
-          </div>
-          {/* Floats over the conversation and stays in view while the page scrolls. */}
-          <form
-            onSubmit={submit}
-            className="sticky bottom-4 mx-3 mb-3 flex items-center gap-2 rounded-full border border-taupe/60 bg-white py-1.5 pl-5 pr-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.45)] md:mx-5 md:mb-5"
-          >
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Why did req_… fail?"
-              aria-label="Ask the debugger"
-              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            />
-            <button
-              type="submit"
-              aria-label="Send"
-              disabled={!draft.trim()}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-charcoal text-cream transition-opacity disabled:opacity-40"
-            >
-              <Icon icon={ArrowUp} size={18} />
-            </button>
-          </form>
-        </Panel>
+        <DebugChat
+          messages={messages.map((message) => ({
+            ...message,
+            note: message.log && (
+              <>
+                From <Mono>{message.log.id}</Mono> · {message.log.keyName} · {message.log.client}
+              </>
+            ),
+          }))}
+          onSend={ask}
+          placeholder="Why did req_… fail?"
+          footnote="Preview: answers come from sample logs."
+        />
       </div>
     </div>
   )
