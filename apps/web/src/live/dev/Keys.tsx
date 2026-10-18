@@ -1,11 +1,11 @@
 import { KeyRound, Plus, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { CodeBlock, CopyButton } from '../../app/dev/devUi'
+import { CopyButton } from '../../app/dev/devUi'
 import { Dialog, EmptyState, Field, inputClasses, Panel, Toggle } from '../../app/ui'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
-import { api, API_URL } from '../api'
+import { api } from '../api'
 import { useLive } from '../LiveContext'
 import { when } from '../shared'
 import { useDevMode } from './LiveDevShell'
@@ -22,15 +22,11 @@ type ApiKey = {
   revokedAt: number | null
 }
 
-const scopeInfo: Record<Scope, { label: string; note: string; endpoints: string[] }> = {
-  'wallets:read': {
-    label: 'Wallets and agents',
-    note: 'Balances, agents and their mandates, budget left',
-    endpoints: ['GET /v1/me', 'GET /v1/wallets/:id'],
-  },
-  'payments:read': { label: 'Payments', note: 'Every payment, settled or refused, with reasons', endpoints: ['GET /v1/wallets/:id/payments'] },
-  'approvals:read': { label: 'Approvals', note: 'Requests from agents waiting for you', endpoints: ['GET /v1/approvals'] },
-  'logs:read': { label: 'Logs', note: 'API requests and their results', endpoints: ['GET /v1/logs'] },
+const scopeInfo: Record<Scope, { label: string; note: string }> = {
+  'wallets:read': { label: 'Wallets and agents', note: 'Balances, agents and their mandates' },
+  'payments:read': { label: 'Payments', note: 'Settled and refused payments' },
+  'approvals:read': { label: 'Approvals', note: 'Requests waiting for you' },
+  'logs:read': { label: 'Logs', note: 'API requests and their results' },
 }
 const allScopes = Object.keys(scopeInfo) as Scope[]
 
@@ -78,12 +74,7 @@ export default function Keys() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl tracking-[-0.02em]">API keys</h1>
-          <p className="mt-1 text-sm text-muted">
-            Read-only keys for your servers. Changes to wallets and agents are always signed by you in the dashboard.
-          </p>
-        </div>
+        <h1 className="text-2xl tracking-[-0.02em]">API keys</h1>
         {mode === 'test' && (
           <Button size="sm" leadingIcon={Plus} onClick={() => setCreating(true)}>
             Create key
@@ -93,15 +84,11 @@ export default function Keys() {
 
       {error && <p className="border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy">{error}</p>}
 
-      <Panel title={mode === 'live' ? 'Live keys' : 'Test keys'} flush>
+      <Panel flush>
         {mode === 'live' ? (
-          <EmptyState icon={KeyRound} title="Live keys arrive with mainnet">
-            This server runs on Stellar testnet, so it issues test keys. Switch to test mode to create one.
-          </EmptyState>
+          <EmptyState icon={KeyRound} title="Live keys arrive with mainnet" />
         ) : shown.length === 0 && !loading ? (
-          <EmptyState icon={KeyRound} title="No keys yet">
-            Create a key to read your wallets, payments, approvals or logs from your own code.
-          </EmptyState>
+          <EmptyState icon={KeyRound} title="No keys yet" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[46rem] text-left text-sm">
@@ -153,31 +140,6 @@ export default function Keys() {
         )}
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Use a key">
-          <p className="text-sm leading-relaxed text-muted">
-            Send it as a bearer token. Every response carries an <span className="font-mono">X-Request-Id</span> you can
-            look up in Logs or ask the AI debugger about.
-          </p>
-          <div className="mt-4">
-            <CodeBlock code={`curl ${API_URL}/v1/me \\\n  -H "Authorization: Bearer oryne_test_sk_…"`} />
-          </div>
-        </Panel>
-        <Panel title="What each permission reads" flush>
-          <ul className="divide-y divide-taupe/30">
-            {allScopes.map((scope) => (
-              <li key={scope} className="px-5 py-3 md:px-6">
-                <p className="flex items-baseline justify-between gap-3 text-sm">
-                  {scopeInfo[scope].label}
-                  <span className="font-mono text-xs text-muted">{scope}</span>
-                </p>
-                <p className="mt-1 font-mono text-xs text-muted">{scopeInfo[scope].endpoints.join(' · ')}</p>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      </div>
-
       <CreateKey open={creating} onClose={() => setCreating(false)} onCreated={load} />
     </div>
   )
@@ -220,7 +182,7 @@ function CreateKey({ open, onClose, onCreated }: { open: boolean; onClose: () =>
       open={open}
       onClose={close}
       title={secret ? 'Your new key' : 'Create an API key'}
-      description={secret ? undefined : 'A test key, read-only. Give each server its own key with only what it needs.'}
+      description={secret ? undefined : 'Read-only.'}
     >
       {secret ? (
         <div className="space-y-4">

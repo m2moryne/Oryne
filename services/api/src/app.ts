@@ -30,6 +30,7 @@ import { adminApi } from './admin.ts'
 import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { listRequests, logRequests } from './requests.ts'
+import type { Webhooks } from './webhooks.ts'
 import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
 
@@ -96,7 +97,7 @@ function addressOf(value: unknown, field: string) {
   return value
 }
 
-export function createApp(config: Config, db: Db, chain: Chain) {
+export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhooks) {
   const app = new Hono()
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.anthropicApiKey)
@@ -275,7 +276,24 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       paymentPayload: PaymentPayload
       paymentRequirements: PaymentRequirements
     }>(c)
-    return c.json(await settle(db, chain, paymentPayload, paymentRequirements))
+    return c.json(
+      await settle(db, chain, paymentPayload, paymentRequirements, async (payment) => {
+        if (payment.status !== 'settled' && payment.status !== 'refused') return
+        await webhooks.emit(payment.owner, payment.status === 'settled' ? 'payment.settled' : 'payment.refused', {
+          id: payment.id,
+          wallet: payment.wallet,
+          agent: payment.agent,
+          payee: payment.payee,
+          amount: money(payment.amount),
+          asset: payment.asset,
+          resource: payment.resource,
+          status: payment.status,
+          reason: payment.reason,
+          txHash: payment.txHash,
+          approvedByOwner: payment.approvedByOwner,
+        })
+      }),
+    )
   })
 
   /** Testnet only: test USDC into a wallet, and XLM into an owner account. */
@@ -314,9 +332,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   owner.use('*', ownerAuth(db, keyMode))
 
   // ---------------------------------------------------------------- API keys
-  // Managed only when signed in: an API key can't list, create or revoke keys.
+  // Keys and webhooks are managed only when signed in, never with an API key.
   const sessionOnly = (c: Context<{ Variables: OwnerVariables }>) => {
-    if (c.var.apiKey) throw new HTTPException(403, { message: 'Manage API keys from the dashboard' })
+    if (c.var.apiKey) throw new HTTPException(403, { message: 'Sign in to the dashboard to manage this; API keys can only read' })
   }
   owner.get('/keys', async (c) => {
     sessionOnly(c)
@@ -329,6 +347,31 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   owner.post('/keys/:id/revoke', async (c) => {
     sessionOnly(c)
     return c.json(await revokeKey(db, c.var.owner, c.req.param('id')))
+  })
+
+  // ---------------------------------------------------------------- webhooks
+  owner.get('/webhooks', async (c) => {
+    sessionOnly(c)
+    return c.json(await webhooks.list(c.var.owner))
+  })
+  owner.post('/webhooks', async (c) => {
+    sessionOnly(c)
+    return c.json(await webhooks.add(c.var.owner, await body<{ url?: unknown; events?: unknown }>(c)), 201)
+  })
+  owner.post('/webhooks/:id/remove', async (c) => {
+    sessionOnly(c)
+    await webhooks.remove(c.var.owner, c.req.param('id'))
+    return c.json({ ok: true })
+  })
+  owner.post('/webhooks/:id/test', async (c) => {
+    sessionOnly(c)
+    await webhooks.test(c.var.owner, c.req.param('id'))
+    return c.json({ ok: true })
+  })
+  owner.post('/webhooks/deliveries/:id/retry', async (c) => {
+    sessionOnly(c)
+    await webhooks.retry(c.var.owner, c.req.param('id'))
+    return c.json({ ok: true })
   })
 
   owner.get('/me', async (c) => {
@@ -598,12 +641,20 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   owner.post('/approvals/:id/decline', async (c) => {
     const approval = await ownedApproval(c.var.owner, c.req.param('id'))
     await db.prepare("update approvals set status = 'declined', resolved_at = ? where id = ?").run(now(), approval.id)
+    const declined = await db.prepare('select * from approvals where id = ?').get<ApprovalRow>(approval.id)
+    await webhooks.emit(c.var.owner, 'approval.declined', approvalView(declined!))
     return c.json({ ok: true })
   })
 
   owner.post('/intents/:id/submit', async (c) => {
     const signed = await body<{ signedXdr?: string; passkey?: PasskeyResponse }>(c)
-    return c.json(await submitIntent(db, chain, c.var.owner, c.req.param('id'), signed))
+    return c.json(
+      await submitIntent(db, chain, c.var.owner, c.req.param('id'), signed, async (kind, data) => {
+        if (kind !== 'approve_once') return
+        const approved = await db.prepare('select * from approvals where id = ?').get<ApprovalRow>(data.approval)
+        if (approved) await webhooks.emit(c.var.owner, 'approval.approved', approvalView(approved))
+      }),
+    )
   })
 
   owner.post('/services', async (c) => {
@@ -663,7 +714,10 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       input.reason ? String(input.reason).slice(0, 100) : null,
       now(),
     )
-    return c.json(approvalView(await db.prepare('select * from approvals where id = ?').get(id) as ApprovalRow), 201)
+    const requested = approvalView((await db.prepare('select * from approvals where id = ?').get(id)) as ApprovalRow)
+    const walletOwner = await db.prepare('select owner from wallets where id = ?').get<{ owner: string }>(c.var.agent.wallet_id)
+    if (walletOwner) await webhooks.emit(walletOwner.owner, 'approval.requested', requested)
+    return c.json(requested, 201)
   })
 
   agentApi.get('/approvals/:id', async (c) => {

@@ -95,6 +95,25 @@ create table if not exists api_keys (
 );
 create index if not exists api_keys_owner on api_keys(owner);
 
+-- Owners' webhook endpoints (see webhooks.ts). The secret signs deliveries, so it's kept.
+create table if not exists webhooks (
+  id text primary key, owner text not null, url text not null,
+  events text not null,           -- JSON list of event types
+  secret text not null, created_at ${int} not null, disabled_at ${int}
+);
+create index if not exists webhooks_owner on webhooks(owner);
+
+-- One row per event per endpoint, with its delivery attempts.
+create table if not exists webhook_deliveries (
+  id text primary key, webhook_id text not null, owner text not null,
+  event text not null, payload text not null,
+  status text not null,           -- pending | delivered | failed
+  attempts ${int} not null default 0, response_status ${int}, error text,
+  next_attempt_at ${int}, created_at ${int} not null, delivered_at ${int}
+);
+create index if not exists webhook_deliveries_due on webhook_deliveries(status, next_attempt_at);
+create index if not exists webhook_deliveries_owner on webhook_deliveries(owner, created_at desc);
+
 -- One row per authenticated API call (see requests.ts). No bodies: they can carry secrets.
 create table if not exists requests (
   id text primary key, owner text not null, wallet_id text,

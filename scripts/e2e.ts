@@ -14,6 +14,8 @@
  *                           what navigator.credentials.get() would
  *
  * Needs the API (npm run dev:api) and the demo merchant (npm run dev:merchant).
+ * With WEBHOOK_URL set (e.g. a local receiver), it also registers that endpoint
+ * and checks every payment and approval event was delivered to it.
  */
 import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto'
 import { OryneAgent, PaymentRefusedError } from '@oryne/agent'
@@ -22,6 +24,7 @@ import { hash, Keypair, TransactionBuilder } from '@stellar/stellar-sdk'
 const api = process.env.ORYNE_API_URL ?? 'http://localhost:8787'
 const merchant = process.env.MERCHANT_URL ?? 'http://localhost:8788'
 const mode = process.argv[2] === 'passkey' ? 'passkey' : 'account'
+const webhookUrl = process.env.WEBHOOK_URL
 
 const step = (text: string) => console.log(`\n▸ ${text}`)
 const ok = (text: string) => console.log(`  ✓ ${text}`)
@@ -119,6 +122,15 @@ step(`Sign in: ${owner.label}`)
 const token = await owner.signIn()
 ok('session issued')
 
+if (webhookUrl) {
+  step('Register a webhook endpoint')
+  const endpoint = await call<{ id: string }>('/v1/webhooks', {
+    token,
+    body: { url: webhookUrl, events: ['payment.settled', 'payment.refused', 'approval.requested', 'approval.approved'] },
+  })
+  ok(`endpoint ${endpoint.id} → ${webhookUrl}`)
+}
+
 step('Deploy an agent wallet')
 const wallet = await call<{ id: string; hash: string }>('/v1/wallets', { body: owner.walletBody(), token })
 ok(`wallet ${wallet.id} (tx ${wallet.hash})`)
@@ -188,5 +200,22 @@ const payments = await call<{ payments: Array<{ status: string; amount: string; 
   { token },
 )
 for (const payment of payments.payments) ok(`${payment.status} ${payment.amount}${payment.reason ? ` (${payment.reason})` : ''}`)
+
+if (webhookUrl) {
+  step('Webhooks delivered')
+  // Deliveries go out within a few seconds of each event.
+  const expected = ['payment.settled', 'payment.refused', 'approval.requested', 'approval.approved']
+  let delivered: Array<{ event: string; status: string }> = []
+  for (let attempt = 0; attempt < 15; attempt++) {
+    delivered = (await call<{ deliveries: Array<{ event: string; status: string }> }>('/v1/webhooks', { token })).deliveries
+    if (expected.every((type) => delivered.some((d) => d.event === type && d.status === 'delivered'))) break
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+  }
+  for (const type of expected) {
+    const found = delivered.filter((d) => d.event === type)
+    if (!found.some((d) => d.status === 'delivered')) throw new Error(`webhook ${type} not delivered: ${JSON.stringify(found)}`)
+    ok(`${type} × ${found.length}`)
+  }
+}
 
 console.log(`\nEnd to end (${mode} owner): OK`)

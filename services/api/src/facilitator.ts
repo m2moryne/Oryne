@@ -74,11 +74,29 @@ export async function verify(chain: Chain, payload: PaymentPayload, requirements
   }
 }
 
+export type RecordedPayment = {
+  id: string
+  owner: string
+  wallet: string
+  agent: string | null
+  payee: string
+  /** In the token's base units. */
+  amount: bigint
+  asset: string
+  resource: string
+  status: string
+  reason: string | null
+  txHash: string | null
+  approvedByOwner: boolean
+}
+
 export async function settle(
   db: Db,
   chain: Chain,
   payload: PaymentPayload,
   requirements: PaymentRequirements,
+  /** Called with each recorded payment, e.g. to send webhooks. */
+  onRecorded?: (payment: RecordedPayment) => Promise<void>,
 ): Promise<SettleResponse> {
   let auth: Checked
   try {
@@ -88,8 +106,9 @@ export async function settle(
   }
 
   const record = async (status: string, extra: { reason?: string; hash?: string; ledger?: number }) => {
-    const wallet = await db.prepare('select id from wallets where id = ?').get(auth.from)
+    const wallet = await db.prepare('select id, owner from wallets where id = ?').get<{ id: string; owner: string }>(auth.from)
     if (!wallet) return
+    const paymentId = newId('pay')
     const allowance = await db
       .prepare("select id from approvals where wallet_id = ? and agent = ? and payee = ? and status = 'approved' and amount = ? order by resolved_at desc limit 1")
       .get(auth.from, auth.agent ?? '', auth.to, auth.amount.toString()) as { id: string } | undefined
@@ -97,7 +116,7 @@ export async function settle(
       `insert into payments (id, wallet_id, agent, payee, amount, asset, resource, status, reason, tx_hash, ledger, approved_by_owner, created_at)
        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
-      newId('pay'),
+      paymentId,
       auth.from,
       auth.agent ?? null,
       auth.to,
@@ -114,6 +133,20 @@ export async function settle(
     if (status === 'settled' && allowance) {
       await db.prepare("update approvals set status = 'used' where id = ?").run(allowance.id)
     }
+    await onRecorded?.({
+      id: paymentId,
+      owner: wallet.owner,
+      wallet: auth.from,
+      agent: auth.agent ?? null,
+      payee: auth.to,
+      amount: auth.amount,
+      asset: auth.asset,
+      resource: requirements.resource,
+      status,
+      reason: extra.reason ?? null,
+      txHash: extra.hash ?? null,
+      approvedByOwner: status === 'settled' && !!allowance,
+    })
   }
 
   return chain.serial(async () => {

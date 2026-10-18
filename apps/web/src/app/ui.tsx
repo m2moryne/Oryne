@@ -112,7 +112,7 @@ export function EmptyState({
 }: {
   icon: LucideIcon
   title: string
-  children: ReactNode
+  children?: ReactNode
   action?: ReactNode
 }) {
   return (
@@ -121,7 +121,7 @@ export function EmptyState({
         <Icon icon={icon} size={20} />
       </span>
       <h3 className="mt-5 text-lg">{title}</h3>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">{children}</p>
+      {children && <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">{children}</p>}
       {action && <div className="mt-6">{action}</div>}
     </div>
   )

@@ -162,6 +162,8 @@ export async function submitIntent(
   owner: string,
   id: string,
   signed: { signedXdr?: string; passkey?: PasskeyResponse },
+  /** Called once the change has landed on chain and been applied here. */
+  onApplied?: (kind: IntentKind, data: Record<string, any>) => Promise<void>,
 ) {
   const row = await db.prepare('select * from intents where id = ? and owner = ?').get(id, owner) as IntentRow | undefined
   if (!row) throw new HTTPException(404, { message: 'No such intent' })
@@ -169,7 +171,9 @@ export async function submitIntent(
 
   const finish = async (result: { hash: string; ledger: number }) => {
     await db.prepare("update intents set status = 'submitted', tx_hash = ? where id = ?").run(result.hash, id)
-    await applyEffect(db, row.kind, JSON.parse(row.data), result.hash)
+    const data = JSON.parse(row.data)
+    await applyEffect(db, row.kind, data, result.hash)
+    await onApplied?.(row.kind, data)
     return result
   }
   const fail = async (error: unknown): Promise<never> => {
