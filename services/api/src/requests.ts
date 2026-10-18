@@ -16,8 +16,10 @@ export type RequestRow = {
   id: string
   owner: string
   wallet_id: string | null
-  actor_kind: 'owner' | 'agent'
+  actor_kind: 'owner' | 'agent' | 'key'
   actor: string | null
+  /** The API key's name, for key requests. */
+  key_name?: string | null
   method: string
   path: string
   status: number
@@ -28,8 +30,9 @@ export type RequestRow = {
 }
 
 /**
- * Logs each request after it's handled. Mount after the auth middleware, so
- * the owner or agent is known. Gives every response an X-Request-Id.
+ * Logs each request after it's handled; the auth middleware runs inside it, so
+ * the owner, agent or API key is known by then (and refused requests are
+ * still logged once the caller is known). Gives every response an X-Request-Id.
  */
 export function logRequests(db: Db, kind: 'owner' | 'agent'): MiddlewareHandler<any> {
   const ownerOfWallet = new Map<string, string>()
@@ -44,8 +47,14 @@ export function logRequests(db: Db, kind: 'owner' | 'agent'): MiddlewareHandler<
       let owner: string | undefined
       let walletId: string | null = null
       let actor: string | null = null
+      let actorKind: RequestRow['actor_kind'] = kind
       if (kind === 'owner') {
         owner = c.get('owner') as string | undefined
+        const key = c.get('apiKey') as { id: string } | undefined
+        if (key) {
+          actorKind = 'key'
+          actor = key.id
+        }
         walletId = WALLET_IN_PATH.exec(c.req.path)?.[1] ?? null
       } else {
         const agent = c.get('agent') as AgentRow | undefined
@@ -74,7 +83,7 @@ export function logRequests(db: Db, kind: 'owner' | 'agent'): MiddlewareHandler<
           id,
           owner,
           walletId,
-          kind,
+          actorKind,
           actor,
           c.req.method,
           c.req.path,
@@ -99,19 +108,22 @@ export async function listRequests(
   owner: string,
   options: { errorsOnly?: boolean; walletId?: string; before?: { createdAt: number; id: string }; limit?: number },
 ) {
-  const where = ['owner = ?']
+  const where = ['r.owner = ?']
   const params: Array<string | number> = [owner]
-  if (options.errorsOnly) where.push('status >= 400')
+  if (options.errorsOnly) where.push('r.status >= 400')
   if (options.walletId) {
-    where.push('wallet_id = ?')
+    where.push('r.wallet_id = ?')
     params.push(options.walletId)
   }
   if (options.before) {
-    where.push('(created_at < ? or (created_at = ? and id < ?))')
+    where.push('(r.created_at < ? or (r.created_at = ? and r.id < ?))')
     params.push(options.before.createdAt, options.before.createdAt, options.before.id)
   }
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 200)
   return db
-    .prepare(`select * from requests where ${where.join(' and ')} order by created_at desc, id desc limit ${limit}`)
+    .prepare(
+      `select r.*, k.name as key_name from requests r left join api_keys k on r.actor_kind = 'key' and k.id = r.actor
+       where ${where.join(' and ')} order by r.created_at desc, r.id desc limit ${limit}`,
+    )
     .all<RequestRow>(...params)
 }

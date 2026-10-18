@@ -21,7 +21,8 @@ import { hash, Operation, StrKey, Address } from '@stellar/stellar-sdk'
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
-import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow } from './auth.ts'
+import { createKey, listKeys, revokeKey, scopes as keyScopes } from './api-keys.ts'
+import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, type OwnerVariables } from './auth.ts'
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
@@ -98,6 +99,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   const app = new Hono()
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.anthropicApiKey)
+  /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
+  const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
 
   const agentView = (row: AgentDbRow, remaining?: bigint) => ({
@@ -304,9 +307,28 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   // ---------------------------------------------------------------- owners
 
-  const owner = new Hono<{ Variables: { owner: string } }>()
-  owner.use('*', ownerAuth(db))
+  const owner = new Hono<{ Variables: OwnerVariables }>()
+  // Requests are logged even when a key is refused for lack of a permission.
   owner.use('*', logRequests(db, 'owner'))
+  owner.use('*', ownerAuth(db, keyMode))
+
+  // ---------------------------------------------------------------- API keys
+  // Managed only when signed in: an API key can't list, create or revoke keys.
+  const sessionOnly = (c: Context<{ Variables: OwnerVariables }>) => {
+    if (c.var.apiKey) throw new HTTPException(403, { message: 'Manage API keys from the dashboard' })
+  }
+  owner.get('/keys', async (c) => {
+    sessionOnly(c)
+    return c.json({ mode: keyMode, scopes: keyScopes, keys: await listKeys(db, c.var.owner) })
+  })
+  owner.post('/keys', async (c) => {
+    sessionOnly(c)
+    return c.json(await createKey(db, c.var.owner, keyMode, await body<{ name?: unknown; scopes?: unknown }>(c)), 201)
+  })
+  owner.post('/keys/:id/revoke', async (c) => {
+    sessionOnly(c)
+    return c.json(await revokeKey(db, c.var.owner, c.req.param('id')))
+  })
 
   owner.get('/me', async (c) => {
     const wallets = await db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
@@ -405,6 +427,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
         wallet: row.wallet_id,
         actorKind: row.actor_kind,
         actor: row.actor,
+        actorName: row.key_name ?? null,
         method: row.method,
         path: row.path,
         status: row.status,
@@ -452,7 +475,12 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       approvals: approvals.map((row) => ({ ...approvalView(row), agentName: named(row.agent) })),
       failedRequests: failedRequests.map((row) => ({
         id: row.id,
-        by: row.actor_kind === 'agent' ? (named(row.actor) ?? row.actor) : 'owner (dashboard or API)',
+        by:
+          row.actor_kind === 'agent'
+            ? (named(row.actor) ?? row.actor)
+            : row.actor_kind === 'key'
+              ? `API key "${row.key_name ?? row.actor}"`
+              : 'owner (dashboard)',
         request: `${row.method} ${row.path}`,
         status: row.status,
         error: row.error,

@@ -85,11 +85,21 @@ create table if not exists passkeys (
   created_at ${int} not null
 );
 
+-- Secret keys for an owner's servers (see api-keys.ts). Only a hash of each key is stored.
+create table if not exists api_keys (
+  id text primary key, owner text not null, name text not null,
+  mode text not null,             -- test | live
+  last4 text not null, key_hash text not null unique,
+  scopes text not null,           -- JSON list
+  created_at ${int} not null, last_used_at ${int}, revoked_at ${int}
+);
+create index if not exists api_keys_owner on api_keys(owner);
+
 -- One row per authenticated API call (see requests.ts). No bodies: they can carry secrets.
 create table if not exists requests (
   id text primary key, owner text not null, wallet_id text,
-  actor_kind text not null,       -- owner | agent
-  actor text,                     -- the agent's key for agent calls
+  actor_kind text not null,       -- owner | agent | key
+  actor text,                     -- the agent's public key, or the API key's id
   method text not null, path text not null, status ${int} not null, latency_ms ${int} not null,
   error text, user_agent text, created_at ${int} not null
 );

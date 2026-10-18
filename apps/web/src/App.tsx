@@ -28,6 +28,7 @@ import { StoreProvider } from './app/store'
 import { LiveLayout } from './live/LiveLayout'
 import RealDebugger from './live/dev/Debugger'
 import RealLogs from './live/dev/Logs'
+import RealKeys from './live/dev/Keys'
 import DevOverview from './live/dev/Overview'
 import { Contracts as RealContracts, Merchant as RealMerchant, Sdks as RealSdks } from './live/dev/pages'
 import { realPages } from './live/dev/shared'
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="contracts" element={<RealContracts />} />
             <Route path="debugger" element={<RealDebugger />} />
             <Route path="logs" element={<RealLogs />} />
+            <Route path="keys" element={<RealKeys />} />
             {allDevPages
               .filter((page) => page.slug && !realPages.includes(page.slug))
               .map((page) => (

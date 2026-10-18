@@ -14,8 +14,9 @@ import { DEV_BASE } from './LiveDevShell'
 type LoggedRequest = {
   id: string
   wallet: string | null
-  actorKind: 'owner' | 'agent'
+  actorKind: 'owner' | 'agent' | 'key'
   actor: string | null
+  actorName: string | null
   method: string
   path: string
   status: number
@@ -66,7 +67,9 @@ export default function Logs() {
   const who = (row: LoggedRequest) =>
     row.actorKind === 'owner'
       ? 'You'
-      : (live.wallet?.agents.find((agent) => agent.publicKey === row.actor)?.name ?? shortKey(row.actor ?? '', 4, 4))
+      : row.actorKind === 'key'
+        ? `Key: ${row.actorName ?? row.actor}`
+        : (live.wallet?.agents.find((agent) => agent.publicKey === row.actor)?.name ?? shortKey(row.actor ?? '', 4, 4))
 
   const ask = (row: LoggedRequest) =>
     navigate(`${DEV_BASE}/debugger`, {

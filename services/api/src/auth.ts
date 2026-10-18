@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { hash, Keypair, StrKey } from '@stellar/stellar-sdk'
 import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
+import { authenticateKey, checkKeyAccess, isApiKey, type KeyAccess, type KeyMode } from './api-keys.ts'
 import { now, type Db } from './db.ts'
 
 /**
@@ -53,11 +54,23 @@ export async function verifyChallenge(db: Db, nonce: string, signature: string) 
   return { token, address: row.address, expiresAt: now() + SESSION_TTL }
 }
 
-/** Requires an owner session. Sets c.var.owner. */
+export type OwnerVariables = { owner: string; apiKey?: KeyAccess }
+
+/**
+ * Requires an owner session or one of the owner's API keys. Sets c.var.owner,
+ * and c.var.apiKey for key requests, which may only read what their scopes allow.
+ */
 export const ownerAuth =
-  (db: Db): MiddlewareHandler<{ Variables: { owner: string } }> =>
+  (db: Db, keyMode: KeyMode): MiddlewareHandler<{ Variables: OwnerVariables }> =>
   async (c, next) => {
     const token = c.req.header('authorization')?.replace(/^Bearer\s+/i, '')
+    if (token && isApiKey(token)) {
+      const { owner, access } = await authenticateKey(db, token, keyMode)
+      c.set('owner', owner)
+      c.set('apiKey', access)
+      checkKeyAccess(access, c.req.method, c.req.path)
+      return next()
+    }
     const row = token
       ? (await db.prepare('select address, expires_at from sessions where token = ?').get(token) as
           | { address: string; expires_at: number }
