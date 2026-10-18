@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { StrKey } from '@stellar/stellar-sdk'
 import { networks, type NetworkConfig } from '@oryne/core'
 
 /** Everything the API reads from the environment. See .env.example. */
@@ -36,6 +37,19 @@ const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, c
 
 const env = (name: string) => process.env[name]?.trim() || undefined
 
+/** A Stellar secret key from the environment; catches the common mix-up with a public G… address. */
+function secret(name: string) {
+  const value = env(name)
+  if (value && !StrKey.isValidEd25519SecretSeed(value)) {
+    throw new Error(
+      value.startsWith('G')
+        ? `${name} is a public address (G…). It needs the secret key, which starts with S: run \`npm run keys -w @oryne/api\` where the API ran before.`
+        : `${name} is not a Stellar secret key (S…, 56 characters).`,
+    )
+  }
+  return value
+}
+
 /**
  * Browser origins as the browser sends them: scheme and host, no path or
  * trailing slash. Accepts commas, spaces or new lines between entries, quotes,
@@ -68,9 +82,9 @@ export function loadConfig(): Config {
     corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL')),
     // Render sets RENDER_EXTERNAL_URL to the service's https URL.
     publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
-    sponsorSecret: env('SPONSOR_SECRET'),
+    sponsorSecret: secret('SPONSOR_SECRET'),
     tokenId: env('TOKEN_ID'),
-    tokenIssuerSecret: env('TOKEN_ISSUER_SECRET'),
+    tokenIssuerSecret: secret('TOKEN_ISSUER_SECRET'),
     walletWasmHash: env('WALLET_WASM_HASH'),
     walletWasm:
       env('WALLET_WASM') ??
