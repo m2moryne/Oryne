@@ -67,6 +67,8 @@ export type Info = {
   networkPassphrase: string
   token: string
   sponsor: string
+  /** Hash of the agent-wallet code new wallets are deployed from. */
+  walletWasmHash: string
   facilitator: string
   faucet: string | null
   auth: { freighter: boolean; google: boolean; github: boolean; dev: boolean }

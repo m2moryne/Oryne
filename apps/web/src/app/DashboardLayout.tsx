@@ -1,25 +1,15 @@
 import {
-  Activity,
   Bot,
   ClipboardCheck,
-  CreditCard,
-  FileCode2,
-  FlaskConical,
-  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
-  Package,
   Plus,
   Receipt,
-  Rocket,
-  ScrollText,
   Settings,
   ShieldCheck,
   Store,
-  Users,
   Wallet,
-  Webhook,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -42,6 +32,8 @@ import { privatePages } from '../lib/seo'
 import { AddFundsDialog } from './AddFundsDialog'
 import { ConnectAgentDialog } from './ConnectAgentDialog'
 import { CreateKeyDialog } from './dev/CreateKeyDialog'
+import { AreaSwitch, DevTopBar } from './dev/DevChrome'
+import { devGroups, devPath } from './dev/devNav'
 import { initials, money } from './format'
 import { useSimulatedActivity, useStore } from './store'
 
@@ -74,36 +66,15 @@ const areas: Record<Area, { label: string; home: string; action: string; groups:
     label: 'Developers',
     home: '/dev',
     action: 'Create API key',
-    groups: [
-      {
-        heading: 'Build',
-        items: [
-          { to: '/dev', label: 'Quickstart', icon: Rocket, end: true },
-          { to: '/dev/playground', label: 'Playground', icon: FlaskConical },
-          { to: '/dev/keys', label: 'API keys', icon: KeyRound },
-          { to: '/dev/webhooks', label: 'Webhooks', icon: Webhook },
-          { to: '/dev/sdks', label: 'SDKs & tools', icon: Package },
-          { to: '/dev/merchant', label: 'Accept payments', icon: Store },
-        ],
-      },
-      {
-        heading: 'Monitor',
-        items: [
-          { to: '/dev/agents', label: 'Agents', icon: Bot },
-          { to: '/dev/contracts', label: 'Contracts', icon: FileCode2 },
-          { to: '/dev/logs', label: 'Logs', icon: ScrollText },
-          { to: '/dev/usage', label: 'Usage', icon: Activity },
-        ],
-      },
-      {
-        heading: 'Organization',
-        items: [
-          { to: '/dev/team', label: 'Team', icon: Users },
-          { to: '/dev/billing', label: 'Billing', icon: CreditCard },
-          { to: '/dev/settings', label: 'Settings', icon: Settings },
-        ],
-      },
-    ],
+    groups: devGroups.map((group) => ({
+      heading: group.heading,
+      items: group.pages.map((page) => ({
+        to: devPath('/dev', page.slug),
+        label: page.label,
+        icon: page.icon,
+        end: !page.slug,
+      })),
+    })),
   },
 }
 
@@ -115,10 +86,6 @@ type DashboardContext = {
 
 /** Lets any dashboard page open the shared dialogs. */
 export const useDashboard = () => useOutletContext<DashboardContext>()
-
-const segment = 'flex-1 py-1.5 text-center text-xs font-medium transition-colors duration-200'
-const segmentOn = 'bg-cream text-charcoal'
-const segmentOff = 'text-cream/65 hover:text-cream'
 
 function Sidebar({
   area,
@@ -145,19 +112,9 @@ function Sidebar({
         <Wordmark />
       </Link>
 
-      <nav aria-label="Dashboard area" className="mt-7 flex border border-cream/20 p-1">
-        {(Object.keys(areas) as Area[]).map((key) => (
-          <Link
-            key={key}
-            to={areas[key].home}
-            onClick={onNavigate}
-            aria-current={key === area ? 'page' : undefined}
-            className={cn(segment, key === area ? segmentOn : segmentOff)}
-          >
-            {areas[key].label}
-          </Link>
-        ))}
-      </nav>
+      <div className="mt-7">
+        <AreaSwitch current={area} agents={areas.agents.home} developers={areas.developers.home} onNavigate={onNavigate} />
+      </div>
 
       <button
         type="button"
@@ -201,8 +158,9 @@ function Sidebar({
         ))}
       </nav>
 
-      <div className="mt-auto space-y-3 pt-6">
-        {area === 'agents' ? (
+      {/* The developer console keeps mode and account in its top bar instead. */}
+      {area === 'agents' && (
+        <div className="mt-auto space-y-3 pt-6">
           <div className="border border-cream/15 p-4">
             <p className="type-label text-cream/60">Wallet · USDC</p>
             <p className="mt-3 text-2xl tracking-[-0.02em] tabular-nums">{money(state.balance)}</p>
@@ -214,52 +172,30 @@ function Sidebar({
               Add funds
             </button>
           </div>
-        ) : (
-          <div className="border border-cream/15 p-4">
-            <p className="type-label text-cream/60">Environment</p>
-            <div role="group" aria-label="Environment" className="mt-3 flex border border-cream/20 p-1">
-              {(['test', 'live'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={state.dev.mode === mode}
-                  onClick={() => dispatch({ type: 'setMode', mode })}
-                  className={cn(segment, 'capitalize', state.dev.mode === mode ? segmentOn : segmentOff)}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-cream/60">
-              {state.dev.mode === 'test'
-                ? 'Sandbox data. No real money moves.'
-                : 'Live data. Keys here spend real balance.'}
-            </p>
-          </div>
-        )}
 
-        <div className="flex items-center gap-3 border-t border-cream/15 px-1 pt-4">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cream text-xs font-semibold text-charcoal">
-            {initials(user.name)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm">{user.name}</p>
-            <p className="truncate text-xs text-cream/60">{user.email}</p>
+          <div className="flex items-center gap-3 border-t border-cream/15 px-1 pt-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cream text-xs font-semibold text-charcoal">
+              {initials(user.name)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm">{user.name}</p>
+              <p className="truncate text-xs text-cream/60">{user.email}</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Exit preview"
+              title="Exit preview"
+              onClick={() => {
+                dispatch({ type: 'signOut' })
+                navigate('/app')
+              }}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-cream/65 transition-colors hover:bg-cream/10 hover:text-cream"
+            >
+              <Icon icon={LogOut} size={17} />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => {
-              dispatch({ type: 'signOut' })
-              navigate('/')
-            }}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-cream/65 transition-colors hover:bg-cream/10 hover:text-cream"
-          >
-            <Icon icon={LogOut} size={17} />
-          </button>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -292,6 +228,11 @@ export function DashboardLayout({ area }: { area: Area }) {
 
   // The developer console is dark throughout.
   const dark = area === 'developers'
+
+  const exitPreview = () => {
+    dispatch({ type: 'signOut' })
+    navigate('/app')
+  }
 
   const dialogs: DashboardContext = {
     openConnect: () => setConnectOpen(true),
@@ -328,6 +269,20 @@ export function DashboardLayout({ area }: { area: Area }) {
 
       {/* Cards run edge to edge, with only a narrow margin around them. */}
       <main className={cn('min-h-svh p-3 md:p-4', dark && 'theme-dark tone-cream')}>
+        {dark && (
+          <DevTopBar
+            mode={state.dev.mode}
+            onMode={(mode) => dispatch({ type: 'setMode', mode })}
+            account={{
+              name: state.user.name,
+              email: state.user.email,
+              base: '/dev',
+              ownerDashboard: '/demo',
+              signOutLabel: 'Exit preview',
+              onSignOut: exitPreview,
+            }}
+          />
+        )}
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border border-taupe/60 px-4 py-2.5 text-sm text-muted md:mb-4">
           <p className="min-w-0 flex-1">
             <span className="font-medium text-charcoal">Preview account · sample data.</span>{' '}
@@ -335,14 +290,7 @@ export function DashboardLayout({ area }: { area: Area }) {
               ? 'Keys, webhooks, logs and usage here are examples of what’s coming, not live.'
               : 'Nothing here is on a ledger and no real money moves.'}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              dispatch({ type: 'signOut' })
-              navigate('/app')
-            }}
-            className="font-medium text-charcoal underline underline-offset-4"
-          >
+          <button type="button" onClick={exitPreview} className="font-medium text-charcoal underline underline-offset-4">
             Exit preview
           </button>
         </div>

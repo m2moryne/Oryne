@@ -1,7 +1,6 @@
 import {
   Bot,
   ClipboardCheck,
-  Code,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -13,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import githubLogo from '../assets/github.svg'
 import googleLogo from '../assets/google.svg'
 import { Button } from '../components/Button'
@@ -23,9 +22,11 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
-import { useStore } from '../app/store'
+import { AreaSwitch } from '../app/dev/DevChrome'
+import { useEnterPreview } from '../app/preview'
 import { Field, inputClasses, Panel } from '../app/ui'
 import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
+import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -33,7 +34,6 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
   { to: '/app/agents', label: 'Agents', icon: Bot },
   { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/app/activity', label: 'Activity', icon: Receipt },
-  { to: '/app/developers', label: 'Developers', icon: Code },
 ]
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -50,7 +50,11 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {live.info?.network ?? 'stellar'}
       </p>
 
-      <nav aria-label="Dashboard" className="mt-7">
+      <div className="mt-6">
+        <AreaSwitch current="agents" agents="/app" developers={DEV_BASE} onNavigate={onNavigate} />
+      </div>
+
+      <nav aria-label="Dashboard" className="mt-6">
         <ul className="space-y-0.5">
           {items.map((item) => (
             <li key={item.to}>
@@ -125,8 +129,7 @@ const providerButton =
 /** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
-  const { dispatch } = useStore()
-  const navigate = useNavigate()
+  const enterPreview = useEnterPreview()
   // The preview (/demo, /dev) sends visitors here; "Explore a preview account" takes them back.
   const from = (useLocation().state as { from?: string } | null)?.from
   const [busy, setBusy] = useState<string | null>(null)
@@ -204,10 +207,7 @@ function Gate() {
               <button
                 type="button"
                 className={cn(providerButton, 'mt-6')}
-                onClick={() => {
-                  dispatch({ type: 'signIn', user: { name: 'Preview account', email: 'Sample data', provider: 'Preview' } })
-                  navigate(from && /^\/(demo|dev)(\/|$)/.test(from) ? from : '/demo')
-                }}
+                onClick={() => enterPreview(from && /^\/(demo|dev)(\/|$)/.test(from) ? from : '/demo')}
               >
                 <Icon icon={Sparkles} size={18} />
                 Explore a preview account
@@ -257,6 +257,7 @@ function Gate() {
 
 function Shell() {
   const live = useLive()
+  const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
   usePageMeta(privatePages.dashboard)
@@ -265,6 +266,7 @@ function Shell() {
     return <div className="tone-white flex min-h-svh items-center justify-center text-sm text-muted">Loading…</div>
   }
   if (!live.session || !live.wallet) return <Gate />
+  if (pathname.startsWith(DEV_BASE)) return <LiveDevShell />
 
   return (
     <div className="tone-white min-h-svh lg:pl-64">

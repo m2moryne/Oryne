@@ -13,6 +13,8 @@ import Billing from './app/dev/pages/Billing'
 import Contracts from './app/dev/pages/Contracts'
 import Merchant from './app/dev/pages/Merchant'
 import Playground from './app/dev/pages/Playground'
+import Debugger from './app/dev/pages/Debugger'
+import { allDevPages } from './app/dev/devNav'
 import DevAgents from './app/dev/pages/DevAgents'
 import DevSettings from './app/dev/pages/DevSettings'
 import Keys from './app/dev/pages/Keys'
@@ -24,7 +26,10 @@ import Usage from './app/dev/pages/Usage'
 import Webhooks from './app/dev/pages/Webhooks'
 import { StoreProvider } from './app/store'
 import { LiveLayout } from './live/LiveLayout'
-import LiveDevelopers from './live/pages/LiveDevelopers'
+import DevOverview from './live/dev/Overview'
+import { Contracts as RealContracts, Merchant as RealMerchant, Sdks as RealSdks } from './live/dev/pages'
+import { realPages } from './live/dev/shared'
+import { UnderDevelopment } from './live/dev/UnderDevelopment'
 import LiveActivity from './live/pages/LiveActivity'
 import LiveAgentDetail from './live/pages/LiveAgentDetail'
 import LiveAgents from './live/pages/LiveAgents'
@@ -84,7 +89,19 @@ export default function App() {
           <Route path="agents/:key" element={<LiveAgentDetail />} />
           <Route path="approvals" element={<LiveApprovals />} />
           <Route path="activity" element={<LiveActivity />} />
-          <Route path="developers" element={<LiveDevelopers />} />
+          {/* The developer console for real accounts: real pages where they exist, the rest in development. */}
+          <Route path="developers">
+            <Route index element={<DevOverview />} />
+            <Route path="agents" element={<LiveAgents />} />
+            <Route path="sdks" element={<RealSdks />} />
+            <Route path="merchant" element={<RealMerchant />} />
+            <Route path="contracts" element={<RealContracts />} />
+            {allDevPages
+              .filter((page) => page.slug && !realPages.includes(page.slug))
+              .map((page) => (
+                <Route key={page.slug} path={page.slug} element={<UnderDevelopment slug={page.slug} />} />
+              ))}
+          </Route>
         </Route>
 
         {/* The preview account: the clickable demo on sample data, opened from the sign-in card. */}
@@ -104,6 +121,7 @@ export default function App() {
         <Route path="/dev" element={<DashboardLayout area="developers" />}>
           <Route index element={<Quickstart />} />
           <Route path="playground" element={<Playground />} />
+          <Route path="debugger" element={<Debugger />} />
           <Route path="merchant" element={<Merchant />} />
           <Route path="contracts" element={<Contracts />} />
           <Route path="keys" element={<Keys />} />
