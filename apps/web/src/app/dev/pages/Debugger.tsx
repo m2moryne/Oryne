@@ -183,13 +183,17 @@ export default function Debugger() {
             ))}
             <div ref={end} />
           </div>
-          <form onSubmit={submit} className="flex items-center gap-2 border-t border-taupe/40 p-3">
+          {/* Floats over the conversation and stays in view while the page scrolls. */}
+          <form
+            onSubmit={submit}
+            className="sticky bottom-4 mx-3 mb-3 flex items-center gap-2 rounded-full border border-taupe/60 bg-white py-1.5 pl-5 pr-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.45)] md:mx-5 md:mb-5"
+          >
             <input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Why did req_… fail?"
               aria-label="Ask the debugger"
-              className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted"
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
             />
             <button
               type="submit"

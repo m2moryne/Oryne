@@ -220,7 +220,8 @@ export function DevTopBar({
   account: Parameters<typeof AccountMenu>[0]
 }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 md:mb-4">
+    // Sticks under the mobile header (h-16) or to the top on desktop; bleeds over main's padding.
+    <div className="sticky top-16 z-20 -mx-3 -mt-3 mb-3 flex items-center justify-between gap-3 border-b border-taupe/40 bg-cream/90 px-3 py-3 backdrop-blur-md md:-mx-4 md:-mt-4 md:mb-4 md:px-4 lg:top-0">
       <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
         <span
           aria-hidden="true"
