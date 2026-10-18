@@ -27,6 +27,7 @@ import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
 import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
+import { listRequests, logRequests } from './requests.ts'
 import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
 
@@ -176,7 +177,14 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     }
   }
 
-  app.use('*', cors({ origin: config.corsOrigins, allowHeaders: ['content-type', 'authorization', 'x-oryne-agent'] }))
+  app.use(
+    '*',
+    cors({
+      origin: config.corsOrigins,
+      allowHeaders: ['content-type', 'authorization', 'x-oryne-agent'],
+      exposeHeaders: ['x-request-id'],
+    }),
+  )
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return c.json({ error: error.message }, error.status)
@@ -298,6 +306,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   const owner = new Hono<{ Variables: { owner: string } }>()
   owner.use('*', ownerAuth(db))
+  owner.use('*', logRequests(db, 'owner'))
 
   owner.get('/me', async (c) => {
     const wallets = await db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
@@ -380,6 +389,33 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     return c.json({ payments: rows.map((row) => ({ ...row, amount: money(row.amount) })) })
   })
 
+  // Request logs for the developer console, newest first.
+  owner.get('/logs', async (c) => {
+    // ?before=<created_at>.<id> of the last row the client has.
+    const [beforeAt, beforeId] = (c.req.query('before') ?? '').split('.')
+    const rows = await listRequests(db, c.var.owner, {
+      errorsOnly: c.req.query('status') === 'error',
+      walletId: c.req.query('wallet') || undefined,
+      before: Number(beforeAt) > 0 && beforeId ? { createdAt: Number(beforeAt), id: beforeId } : undefined,
+      limit: Number(c.req.query('limit')) || undefined,
+    })
+    return c.json({
+      requests: rows.map((row) => ({
+        id: row.id,
+        wallet: row.wallet_id,
+        actorKind: row.actor_kind,
+        actor: row.actor,
+        method: row.method,
+        path: row.path,
+        status: row.status,
+        latencyMs: row.latency_ms,
+        error: row.error,
+        userAgent: row.user_agent,
+        createdAt: row.created_at,
+      })),
+    })
+  })
+
   // The AI debugger, over a snapshot of this wallet: agents and mandates, recent payments, approvals.
   owner.post('/wallets/:id/debug', async (c) => {
     const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
@@ -395,6 +431,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       .prepare('select * from approvals where wallet_id = ? order by created_at desc limit 30')
       .all(wallet.id) as ApprovalRow[]
     const named = (key: string | null) => agents.find((agent) => agent.public_key === key)?.name ?? null
+    const failedRequests = await listRequests(db, c.var.owner, { errorsOnly: true, walletId: wallet.id, limit: 30 })
     return aiDebugger.answer(c, c.var.owner, messages, {
       network: networkId(chain.network),
       wallet: { id: wallet.id, name: wallet.name, ownerKind: wallet.owner_kind, balance: money(balance), token: chain.network.token },
@@ -413,6 +450,14 @@ export function createApp(config: Config, db: Db, chain: Chain) {
         at: new Date(row.created_at * 1000).toISOString(),
       })),
       approvals: approvals.map((row) => ({ ...approvalView(row), agentName: named(row.agent) })),
+      failedRequests: failedRequests.map((row) => ({
+        id: row.id,
+        by: row.actor_kind === 'agent' ? (named(row.actor) ?? row.actor) : 'owner (dashboard or API)',
+        request: `${row.method} ${row.path}`,
+        status: row.status,
+        error: row.error,
+        at: new Date(row.created_at * 1000).toISOString(),
+      })),
     })
   })
 
@@ -558,6 +603,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   const agentApi = new Hono<{ Variables: { agent: AgentRow } }>()
   agentApi.use('*', agentAuth(db))
+  agentApi.use('*', logRequests(db, 'agent'))
 
   agentApi.get('/', async (c) => {
     const row = await db.prepare('select * from agents where public_key = ?').get(c.var.agent.public_key) as AgentDbRow

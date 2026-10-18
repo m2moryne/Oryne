@@ -85,6 +85,16 @@ create table if not exists passkeys (
   created_at ${int} not null
 );
 
+-- One row per authenticated API call (see requests.ts). No bodies: they can carry secrets.
+create table if not exists requests (
+  id text primary key, owner text not null, wallet_id text,
+  actor_kind text not null,       -- owner | agent
+  actor text,                     -- the agent's key for agent calls
+  method text not null, path text not null, status ${int} not null, latency_ms ${int} not null,
+  error text, user_agent text, created_at ${int} not null
+);
+create index if not exists requests_owner on requests(owner, created_at desc);
+
 create table if not exists services (
   id text primary key, name text not null, description text not null default '',
   category text not null default 'Other', url text not null, pay_to text not null,

@@ -25,6 +25,8 @@ export type DebugSnapshot = {
   agents: unknown[]
   payments: unknown[]
   approvals: unknown[]
+  /** Recent API calls that failed, with their request IDs (req_…). */
+  failedRequests: unknown[]
 }
 
 // Stable instructions first, so they can be cached; the account snapshot follows.
@@ -41,6 +43,8 @@ Refusal reasons you may see on payments, and what they mean:
 - PayeeNotAllowed: the recipient isn't on the agent's payee list.
 - OverPerTxLimit: the payment is larger than perTx.
 - OverBudget: it would take the agent past its budget for the current window.
+
+The snapshot also lists recent failed API calls (failedRequests) with their request IDs (req_…, also sent back in each response's X-Request-Id header); when the owner mentions a request ID, find it there. Agent API calls are signed with the agent's key: a 401 means the signature, clock or key registration is wrong.
 
 What owners can do in the dashboard: raise or change an agent's limits (Agents → the agent → limits), add payees, pause or resume, remove an agent, and approve one payment beyond the mandate when the agent asks (Approvals; this signs approve_once). Agents built with @oryne/agent pay 402 Payment Required responses through agent.fetch() and can call requestApproval; the MCP server exposes fetch_paid, wallet_status, request_approval and find_service. Merchants use @oryne/merchant (paywall for Hono, expressPaywall for Express) with Oryne's x402 facilitator.
 

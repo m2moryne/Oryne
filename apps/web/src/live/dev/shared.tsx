@@ -3,7 +3,7 @@ import { CopyButton } from '../../app/dev/devUi'
 export const REPO = 'https://github.com/m2moryne/Oryne'
 
 /** Developer pages that are built for real accounts. The rest show as in development. */
-export const realPages = ['sdks', 'agents', 'merchant', 'contracts', 'debugger']
+export const realPages = ['sdks', 'agents', 'merchant', 'contracts', 'debugger', 'logs']
 
 /** A labelled value with a copy button, for IDs people paste into code. */
 export function Value({ label, value }: { label: string; value: string }) {

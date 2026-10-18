@@ -1,5 +1,6 @@
 import { Eye } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DebugChat, type ChatMessage } from '../../app/dev/DebugChat'
 import { useEnterPreview } from '../../app/preview'
 import { Panel } from '../../app/ui'
@@ -24,6 +25,11 @@ export default function Debugger() {
   const abort = useRef<AbortController | null>(null)
 
   useEffect(() => () => abort.current?.abort(), [])
+
+  // The Logs page sends a failed request here with its question ready.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const handedOver = (location.state as { ask?: string } | null)?.ask
 
   const enabled = live.info?.features?.aiDebugger ?? false
   const refused = live.payments.filter((payment) => payment.status !== 'settled').slice(0, 8)
@@ -64,6 +70,13 @@ export default function Debugger() {
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (!handedOver || !enabled || !live.wallet) return
+    navigate(location.pathname, { replace: true, state: null })
+    void ask(handedOver)
+    // Runs once per hand-over; ask() reads current state when it is called.
+  }, [handedOver, enabled, live.wallet])
 
   return (
     <div className="space-y-4">
