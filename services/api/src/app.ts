@@ -204,6 +204,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
         dev: config.devLogin,
       },
       features: { aiDebugger: aiDebugger.enabled },
+      /** Where records live: postgres (survives restarts) or sqlite (a local file). */
+      storage: config.databaseUrl ? 'postgres' : 'sqlite',
       /** Classic asset behind the token, so G… accounts can add a trustline. */
       tokenAsset: chain.issuer ? { code: 'USDC', issuer: chain.issuer.publicKey() } : config.network.name === 'mainnet'
         ? { code: 'USDC', issuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN' }
