@@ -43,6 +43,9 @@ services:
       # Turns on the admin API for the admin site (apps/admin): 32+ random characters.
       - key: ADMIN_TOKEN
         sync: false
+      # The admin site's address, e.g. https://adminweb.oryne.org; always allowed by CORS.
+      - key: ADMIN_URL
+        sync: false
       # Claude API key for the AI debugger in the developer console.
       - key: ANTHROPIC_API_KEY
         sync: false

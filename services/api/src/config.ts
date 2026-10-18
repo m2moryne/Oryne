@@ -59,11 +59,11 @@ function secret(name: string) {
 /**
  * Browser origins as the browser sends them: scheme and host, no path or
  * trailing slash. Accepts commas, spaces or new lines between entries, quotes,
- * and hosts without a scheme (https is assumed). The dashboard (WEB_URL) is
- * always allowed.
+ * and hosts without a scheme (https is assumed). The dashboard (WEB_URL) and
+ * the admin site (ADMIN_URL) are always allowed.
  */
-function corsOrigins(list: string, webUrl?: string) {
-  const origins = [...list.split(/[\s,]+/), webUrl ?? '']
+function corsOrigins(list: string, ...alwaysAllowed: Array<string | undefined>) {
+  const origins = [...list.split(/[\s,]+/), ...alwaysAllowed.map((url) => url ?? '')]
     .map((entry) => entry.replace(/^['"]|['"]$/g, '').trim())
     .filter(Boolean)
     .map((entry) => {
@@ -86,7 +86,7 @@ export function loadConfig(): Config {
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
     databaseUrl: env('DATABASE_URL'),
-    corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL')),
+    corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL'), env('ADMIN_URL')),
     // Render sets RENDER_EXTERNAL_URL to the service's https URL.
     publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
     sponsorSecret: secret('SPONSOR_SECRET'),
