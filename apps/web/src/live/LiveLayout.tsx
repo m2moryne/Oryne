@@ -22,7 +22,7 @@ import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
 import { Field, inputClasses, Panel } from '../app/ui'
-import { api, API_URL, explorerAccount, isAccount, oauthStart, type Session } from './api'
+import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { LiveProvider, useLive } from './LiveContext'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -146,12 +146,12 @@ function Gate() {
         <Panel>
           {!live.session ? (
             <>
-              <h1 className="text-2xl tracking-[-0.02em]">Sign in</h1>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                Your agents spend from a wallet you own on Stellar. Oryne never holds its keys.
-              </p>
+              <div className="text-center">
+                <h1 className="text-3xl tracking-[-0.02em]">Good to see you</h1>
+                <p className="mt-2 text-sm text-muted">Sign in to check on your agents.</p>
+              </div>
 
-              <div className="mt-6 space-y-2.5">
+              <div className="mt-8 space-y-2.5">
                 {(['google', 'github'] as const).map((provider) => (
                   <a
                     key={provider}
@@ -188,19 +188,9 @@ function Gate() {
                 )}
               </div>
 
-              <p className="mt-5 text-xs leading-relaxed text-muted">
-                With Google or GitHub, a passkey on this device (Face ID, Touch ID, Windows Hello)
-                owns your wallet: no extension, no recovery phrase. Freighter users sign with their
-                Stellar account instead. Or{' '}
-                <Link to="/demo" className="underline underline-offset-4">
-                  explore the demo
-                </Link>
-                .
-              </p>
-
               <Link
                 to="/"
-                className="mt-6 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
+                className="mt-4 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
               >
                 Cancel
               </Link>
@@ -235,7 +225,6 @@ function Gate() {
             </p>
           )}
         </Panel>
-        <p className="mt-4 text-center text-xs text-muted">API: {API_URL}</p>
       </div>
     </div>
   )
