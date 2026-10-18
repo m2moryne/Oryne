@@ -39,83 +39,89 @@ export function Navigation() {
 
     document.addEventListener('keydown', onKeyDown)
     desktop.addEventListener('change', onBreakpoint)
+    document.body.style.overflow = 'hidden'
+
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       desktop.removeEventListener('change', onBreakpoint)
+      document.body.style.overflow = ''
     }
   }, [open])
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-3 z-50 px-3 md:top-4 md:px-6">
-      <div
-        className={cn(
-          'pointer-events-auto mx-auto max-w-5xl rounded-full text-charcoal transition-colors duration-300 [--tone-accent:var(--color-burgundy)]',
-          glass,
-          scrolled && 'bg-white/85',
-          open && 'rounded-3xl',
-        )}
-      >
-        <div className="flex h-14 items-center gap-4 pl-6 pr-2">
-          <Link to="/" onClick={close} aria-label="Oryne, home" className="shrink-0 text-[0.9375rem]">
-            <Wordmark />
-          </Link>
-
-          <nav aria-label="Primary" className="mx-auto hidden items-center gap-1 lg:flex">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end
-                className={({ isActive }) =>
-                  cn(
-                    'rounded-full px-4 py-2 text-sm transition-colors duration-200',
-                    isActive ? 'bg-charcoal/[0.07] text-charcoal' : 'text-charcoal/65 hover:text-charcoal',
-                  )
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2 lg:ml-0">
-            <Link
-              to={account.to}
-              className="rounded-full px-4 py-2 text-sm text-charcoal/65 transition-colors hover:text-charcoal max-lg:hidden"
-            >
-              {account.label}
+    <>
+      <header className="pointer-events-none fixed inset-x-0 top-3 z-50 px-3 md:top-4 md:px-6">
+        {/* Solid while the mobile menu is open, so the bar reads over it. */}
+        <div
+          className={cn(
+            'pointer-events-auto mx-auto max-w-5xl rounded-full text-charcoal transition-colors duration-300 [--tone-accent:var(--color-burgundy)]',
+            glass,
+            scrolled && 'bg-white/85',
+            open && 'bg-white',
+          )}
+        >
+          <div className="flex h-14 items-center gap-4 pl-6 pr-2">
+            <Link to="/" onClick={close} aria-label="Oryne, home" className="shrink-0 text-[0.9375rem]">
+              <Wordmark />
             </Link>
-            <Button to={CONNECT_PATH} variant="accent" size="sm" className="max-lg:hidden">
-              Connect agent
-            </Button>
-            <button
-              type="button"
-              className="flex size-10 items-center justify-center rounded-full hover:bg-charcoal/[0.06] lg:hidden"
-              aria-label={open ? 'Close menu' : 'Open menu'}
-              aria-expanded={open}
-              aria-controls="mobile-menu"
-              onClick={() => setOpen((value) => !value)}
-            >
-              <Icon icon={open ? X : Menu} size={22} />
-            </button>
+
+            <nav aria-label="Primary" className="mx-auto hidden items-center gap-1 lg:flex">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end
+                  className={({ isActive }) =>
+                    cn(
+                      'rounded-full px-4 py-2 text-sm transition-colors duration-200',
+                      isActive ? 'bg-charcoal/[0.07] text-charcoal' : 'text-charcoal/65 hover:text-charcoal',
+                    )
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            <div className="ml-auto flex items-center gap-2 lg:ml-0">
+              <Link
+                to={account.to}
+                className="rounded-full px-4 py-2 text-sm text-charcoal/65 transition-colors hover:text-charcoal max-lg:hidden"
+              >
+                {account.label}
+              </Link>
+              <Button to={CONNECT_PATH} variant="accent" size="sm" className="max-lg:hidden">
+                Connect agent
+              </Button>
+              <button
+                type="button"
+                className="flex size-10 items-center justify-center rounded-full hover:bg-charcoal/[0.06] lg:hidden"
+                aria-label={open ? 'Close menu' : 'Open menu'}
+                aria-expanded={open}
+                aria-controls="mobile-menu"
+                onClick={() => setOpen((value) => !value)}
+              >
+                <Icon icon={open ? X : Menu} size={22} />
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {open && (
-          <div id="mobile-menu" className="px-3 pb-3 lg:hidden">
-            <nav aria-label="Mobile" className="border-t border-charcoal/10 pt-2">
+      {/* Full-screen menu below the floating bar; the page behind it doesn't scroll. */}
+      {open && (
+        <div id="mobile-menu" className="tone-charcoal fixed inset-0 z-40 overflow-y-auto pt-20 md:pt-24 lg:hidden">
+          <div className="flex min-h-full flex-col px-6 pb-10 pt-4 md:px-10">
+            <nav aria-label="Mobile">
               <ul>
                 {navLinks.map((link) => (
-                  <li key={link.to}>
+                  <li key={link.to} className="border-b border-line">
                     <NavLink
                       to={link.to}
                       end
                       onClick={close}
                       className={({ isActive }) =>
-                        cn(
-                          'block rounded-2xl px-4 py-3 text-lg',
-                          isActive ? 'bg-charcoal/[0.07] text-charcoal' : 'text-charcoal/70',
-                        )
+                        cn('block py-5 text-3xl tracking-[-0.03em]', isActive ? 'text-cream' : 'text-cream/60')
                       }
                     >
                       {link.label}
@@ -124,17 +130,17 @@ export function Navigation() {
                 ))}
               </ul>
             </nav>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2" onClick={close}>
-              <Button to={account.to} variant="outline" size="sm" className="w-full">
-                {account.label}
-              </Button>
-              <Button to={CONNECT_PATH} variant="accent" size="sm" className="w-full">
+            <div className="mt-auto pt-10 text-center" onClick={close}>
+              <Button to={CONNECT_PATH} variant="light" className="w-full">
                 Connect agent
               </Button>
+              <Link to={account.to} className="type-label mt-6 inline-block py-2 text-cream/70">
+                {account.label}
+              </Link>
             </div>
           </div>
-        )}
-      </div>
-    </header>
+        </div>
+      )}
+    </>
   )
 }
