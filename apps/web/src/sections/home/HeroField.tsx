@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react'
 const INK = '32, 32, 32'
 const BURGUNDY = '110, 31, 42'
 const PURPLE = '67, 48, 90'
-const RAIL = '184, 174, 161'
 
 /** Perspective distance, in multiples of the sphere's radius. */
 const CAMERA = 5
@@ -48,8 +47,8 @@ function makeParticles(count: number): Particle[] {
 
 /**
  * Decorative hero background. A sphere of particles drifts on a slow flow
- * field and turns; the cursor scatters the particles near it, but a faint ring,
- * the mandate, holds every one of them in. Now and then a payment crosses.
+ * field and turns; the cursor scatters the particles near it, but an unseen
+ * boundary, the mandate, holds every one of them in. Now and then a payment crosses.
  */
 export function HeroField() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -85,16 +84,12 @@ export function HeroField() {
       const tilt = 0.38
       const [sinT, cosT] = [Math.sin(turn), Math.cos(turn)]
       const [sinX, cosX] = [Math.sin(tilt), Math.cos(tilt)]
+      // Unseen limit the cursor can't push particles past.
       const boundary = radius * 1.3
 
       ctx.clearRect(0, 0, width, height)
 
-      // The mandate: a hairline the particles never cross.
-      ctx.strokeStyle = `rgba(${RAIL}, 0.45)`
       ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.arc(cx, cy, boundary, 0, Math.PI * 2)
-      ctx.stroke()
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i]
@@ -128,7 +123,7 @@ export function HeroField() {
         sx += p.ox
         sy += p.oy
 
-        // However hard it's pushed, nothing leaves the ring.
+        // However hard it's pushed, nothing leaves the boundary: the mandate.
         const fromCentre = Math.hypot(sx - cx, sy - cy)
         const limit = boundary - 3
         if (fromCentre > limit) {
