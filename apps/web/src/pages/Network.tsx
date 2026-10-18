@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon'
 import { PageHero } from '../components/PageHero'
 import { Container } from '../components/Section'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { privatePages } from '../lib/seo'
 import {
   compact,
   ledgerAt,
@@ -21,10 +22,7 @@ const seconds = (at: number, now: number) => {
 }
 
 export default function Network() {
-  usePageMeta(
-    'Network — Oryne',
-    'Agent payments on Stellar through Oryne wallets, live: volume, agents, services and every settlement.',
-  )
+  usePageMeta(privatePages.network)
   const now = useNow(1000)
   const totals = networkTotals(now)
   const feed = useLiveFeed(16)

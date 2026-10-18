@@ -7,6 +7,7 @@ import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
 import { SocialIcon } from '../components/SocialIcon'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { privatePages } from '../lib/seo'
 import { cn } from '../lib/cn'
 
 const points = [
@@ -49,7 +50,7 @@ function nameFromEmail(email: string) {
  * never stored or sent anywhere.
  */
 export default function SignIn() {
-  usePageMeta('Sign in — Oryne', 'Sign in to connect your agents, set their budgets and see what they buy.')
+  usePageMeta(privatePages.signIn)
 
   const { state, dispatch } = useStore()
   const navigate = useNavigate()

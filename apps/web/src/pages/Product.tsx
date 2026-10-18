@@ -19,6 +19,7 @@ import { Reveal } from '../components/Reveal'
 import { Container, type Tone } from '../components/Section'
 import { TextLink } from '../components/TextLink'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { publicPages } from '../lib/seo'
 import { cn } from '../lib/cn'
 
 type Module = { icon: LucideIcon; title: string; body: string; stage: 'MVP' | 'Next' }
@@ -153,10 +154,7 @@ const Arrow = ({ label }: { label: string }) => (
 )
 
 export default function Product() {
-  usePageMeta(
-    'Product — Oryne',
-    'Agent wallets on Stellar with on-chain mandates, approvals, receipts, an MCP server, SDKs and a merchant kit.',
-  )
+  usePageMeta(publicPages.product)
 
   return (
     <>

@@ -1,13 +1,11 @@
 import { Reveal } from '../components/Reveal'
 import { Container, Section } from '../components/Section'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { publicPages } from '../lib/seo'
 import { ContactForm } from '../sections/contact/ContactForm'
 
 export default function Contact() {
-  usePageMeta(
-    'Contact — Oryne',
-    'Oryne is interested in conversations with builders, researchers, companies and people thinking seriously about autonomous systems.',
-  )
+  usePageMeta(publicPages.contact)
 
   return (
     <>

@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon'
 import { PageHero } from '../components/PageHero'
 import { Container } from '../components/Section'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { privatePages } from '../lib/seo'
 import { cn } from '../lib/cn'
 import { compact, serviceCategories, services, shortKey, usdc, type Service } from '../lib/network'
 
@@ -25,10 +26,7 @@ Content-Type: application/json
 }`
 
 export default function Directory() {
-  usePageMeta(
-    'Directory — Oryne',
-    'Services and APIs that accept payment from AI agents on Stellar, with prices, protocols and uptime.',
-  )
+  usePageMeta(privatePages.directory)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
 

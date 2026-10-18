@@ -10,15 +10,17 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import githubLogo from '../assets/github.svg'
 import googleLogo from '../assets/google.svg'
 import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
 import { Wordmark } from '../components/Wordmark'
+import { usePageMeta } from '../hooks/usePageMeta'
 import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
+import { privatePages } from '../lib/seo'
 import { Field, inputClasses, Panel } from '../app/ui'
 import { api, API_URL, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { LiveProvider, useLive } from './LiveContext'
@@ -243,9 +245,7 @@ function Shell() {
   const live = useLive()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  useEffect(() => {
-    document.title = 'Dashboard — Oryne'
-  }, [])
+  usePageMeta(privatePages.dashboard)
 
   if (live.loading) {
     return <div className="tone-white flex min-h-svh items-center justify-center text-sm text-muted">Loading…</div>

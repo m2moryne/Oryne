@@ -36,7 +36,9 @@ import {
 } from 'react-router-dom'
 import { Icon } from '../components/Icon'
 import { Wordmark } from '../components/Wordmark'
+import { usePageMeta } from '../hooks/usePageMeta'
 import { cn } from '../lib/cn'
+import { privatePages } from '../lib/seo'
 import { AddFundsDialog } from './AddFundsDialog'
 import { ConnectAgentDialog } from './ConnectAgentDialog'
 import { CreateKeyDialog } from './dev/CreateKeyDialog'
@@ -282,9 +284,7 @@ export function DashboardLayout({ area }: { area: Area }) {
     setParams({}, { replace: true })
   }, [wantsConnect, state.user, setParams])
 
-  useEffect(() => {
-    document.title = area === 'developers' ? 'Developers — Oryne' : 'Dashboard — Oryne'
-  }, [area])
+  usePageMeta(area === 'developers' ? privatePages.developers : privatePages.demo)
 
   if (!state.user) {
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />

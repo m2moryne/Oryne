@@ -3,10 +3,11 @@ import { Button } from '../components/Button'
 import { Container } from '../components/Section'
 import { TextLink } from '../components/TextLink'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { comingSoonMeta } from '../lib/seo'
 
 /** Placeholder for pages that are linked but not built yet (see soonPages in lib/site.ts). */
 export default function ComingSoon({ name }: { name: string }) {
-  usePageMeta(`Coming soon — Oryne`, `${name} is under construction. More to come from Oryne.`)
+  usePageMeta(comingSoonMeta(name))
 
   return (
     <section

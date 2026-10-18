@@ -4,23 +4,67 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Oryne — Wallets for AI agents, with limits they can’t break</title>
+    <!-- The home page's tags. scripts/seo.ts writes a copy per public page with its own
+         title, description and URL (from src/lib/seo.ts); usePageMeta updates them in the app. -->
+    <title>Oryne — AI agent wallets with limits they can’t break</title>
     <meta
       name="description"
-      content="Oryne is the mandate layer for agent payments on Stellar: give an AI agent a wallet it can spend from, with budgets and permissions enforced on-chain."
+      content="Give your AI agent a wallet it can spend from, with a budget, a cap per payment and approved services enforced by a smart contract on Stellar. Not a promise: code."
     />
+    <link rel="canonical" href="https://oryne.org/" />
+    <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#202020" />
 
     <!-- Open Graph. Add an og:image (1200×630 PNG) once brand artwork exists. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Oryne" />
-    <meta property="og:title" content="Oryne — Wallets for AI agents, with limits they can’t break" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Oryne — AI agent wallets with limits they can’t break" />
     <meta
       property="og:description"
-      content="Oryne is the mandate layer for agent payments on Stellar: give an AI agent a wallet it can spend from, with budgets and permissions enforced on-chain."
+      content="Give your AI agent a wallet it can spend from, with a budget, a cap per payment and approved services enforced by a smart contract on Stellar. Not a promise: code."
     />
     <meta property="og:url" content="https://oryne.org/" />
     <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Oryne — AI agent wallets with limits they can’t break" />
+    <meta
+      name="twitter:description"
+      content="Give your AI agent a wallet it can spend from, with a budget, a cap per payment and approved services enforced by a smart contract on Stellar. Not a promise: code."
+    />
+
+    <!-- Who Oryne is, for search engines. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://oryne.org/#organization",
+            "name": "Oryne",
+            "url": "https://oryne.org/",
+            "logo": "https://oryne.org/favicon.svg",
+            "email": "hello@oryne.org",
+            "description": "The mandate layer for AI agent payments on Stellar."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://oryne.org/#website",
+            "name": "Oryne",
+            "url": "https://oryne.org/",
+            "publisher": { "@id": "https://oryne.org/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Oryne",
+            "url": "https://oryne.org/",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web",
+            "description": "Wallets for AI agents with spending limits enforced by a Soroban smart contract on Stellar: budgets, per-payment caps, allowed services, expiry and ask-first approvals.",
+            "publisher": { "@id": "https://oryne.org/#organization" }
+          }
+        ]
+      }
+    </script>
 
     <!-- Placeholder favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

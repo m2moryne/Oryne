@@ -1,4 +1,5 @@
 import { usePageMeta } from '../hooks/usePageMeta'
+import { publicPages } from '../lib/seo'
 import { Audiences } from '../sections/home/Audiences'
 import { Closing } from '../sections/home/Closing'
 import { Faq } from '../sections/home/Faq'
@@ -9,10 +10,7 @@ import { OnStellar } from '../sections/home/OnStellar'
 import { Shift } from '../sections/home/Shift'
 
 export default function Home() {
-  usePageMeta(
-    'Oryne — Wallets for AI agents, with limits they can’t break',
-    'Oryne is the mandate layer for agent payments on Stellar: give an AI agent a wallet it can spend from, with budgets and permissions enforced on-chain.',
-  )
+  usePageMeta(publicPages.home)
 
   return (
     <>
