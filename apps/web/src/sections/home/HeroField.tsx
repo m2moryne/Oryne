@@ -1,16 +1,55 @@
 import { useEffect, useRef } from 'react'
 
-const LINES = 72
 const INK = '32, 32, 32'
-const RAIL = '184, 174, 161'
 const BURGUNDY = '110, 31, 42'
 const PURPLE = '67, 48, 90'
+const RAIL = '184, 174, 161'
 
-type Pulse = { line: number; start: number; duration: number; reverse: boolean; color: string }
+/** Perspective distance, in multiples of the sphere's radius. */
+const CAMERA = 5
+/** How far the cursor reaches, and how hard it pushes, in px. */
+const REACH = 150
+const PUSH = 46
+
+type Particle = {
+  /** Home on the sphere, as a unit vector scaled by `depth` (0–1 from the centre). */
+  x: number
+  y: number
+  z: number
+  seed: number
+  color: string
+  /** Current push from the cursor, eased toward its target each frame. */
+  ox: number
+  oy: number
+}
+
+type Pulse = { from: number; to: number; start: number; duration: number }
+
+/** Fibonacci sphere: evenly spread points, most on the shell and some inside. */
+function makeParticles(count: number): Particle[] {
+  const golden = Math.PI * (3 - Math.sqrt(5))
+  return Array.from({ length: count }, (_, i) => {
+    const y = 1 - (i / (count - 1)) * 2
+    const ring = Math.sqrt(1 - y * y)
+    const angle = i * golden
+    const depth = Math.random() < 0.78 ? 0.86 + Math.random() * 0.14 : 0.25 + Math.random() * 0.6
+    const roll = Math.random()
+    return {
+      x: Math.cos(angle) * ring * depth,
+      y: y * depth,
+      z: Math.sin(angle) * ring * depth,
+      seed: Math.random() * Math.PI * 2,
+      color: roll < 0.1 ? BURGUNDY : roll < 0.14 ? PURPLE : INK,
+      ox: 0,
+      oy: 0,
+    }
+  })
+}
 
 /**
- * Decorative hero drawing. Hairlines are strung between two interlocked squares
- * and slowly shift as one surface; every so often a payment crosses along one.
+ * Decorative hero background. A sphere of particles drifts on a slow flow
+ * field and turns; the cursor scatters the particles near it, but a faint ring,
+ * the mandate, holds every one of them in. Now and then a payment crosses.
  */
 export function HeroField() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -24,118 +63,138 @@ export function HeroField() {
     let width = 0
     let height = 0
     let frame = 0
+    let running = false
     let visible = true
-    let nextPulse = 600
+    let particles: Particle[] = []
     let pulses: Pulse[] = []
+    let nextPulse = 1200
+    const pointer = { x: -1e4, y: -1e4 }
+    // Screen positions from the last frame, for pulses to travel between.
+    let screen = new Float32Array(0)
 
-    /** Point `u` (0–1) along the perimeter of a square turned by `rotation`. */
-    const onSquare = (u: number, rotation: number) => {
-      const radius = Math.min(width, height) / 2 - 14
-      const position = (((u % 1) + 1) % 1) * 4
-      const side = Math.floor(position)
-      const along = position - side
-      const from = rotation + (side * Math.PI) / 2
-      const to = from + Math.PI / 2
-      return {
-        x: width / 2 + radius * (Math.cos(from) + (Math.cos(to) - Math.cos(from)) * along),
-        y: height / 2 + radius * (Math.sin(from) + (Math.sin(to) - Math.sin(from)) * along),
-      }
-    }
-
-    /**
-     * Two interlocked squares, an eighth of a turn apart, turning slowly as one
-     * figure. Line `i` runs from the first square to the second; the point it
-     * lands on drifts, which is what makes the surface between them move.
-     */
-    const turn = (time: number) => time * 0.00004
-    const ends = (i: number, time: number) => {
-      const u = i / LINES
-      const drift = 0.31 + 0.14 * Math.sin(time * 0.00018)
-      const a = onSquare(u, turn(time))
-      const b = onSquare(u + drift, turn(time) + Math.PI / 4)
-      return { x0: a.x, y0: a.y, x1: b.x, y1: b.y }
-    }
+    /** Sphere centre and radius: to the right of the headline, clear of the copy. */
+    const layout = () => ({
+      cx: width * 0.72,
+      cy: height * 0.52,
+      radius: Math.min(height * 0.3, width * 0.2),
+    })
 
     const draw = (time: number) => {
+      const { cx, cy, radius } = layout()
+      const turn = time * 0.00009
+      const tilt = 0.38
+      const [sinT, cosT] = [Math.sin(turn), Math.cos(turn)]
+      const [sinX, cosX] = [Math.sin(tilt), Math.cos(tilt)]
+      const boundary = radius * 1.3
+
       ctx.clearRect(0, 0, width, height)
+
+      // The mandate: a hairline the particles never cross.
+      ctx.strokeStyle = `rgba(${RAIL}, 0.45)`
       ctx.lineWidth = 1
-
-      ctx.strokeStyle = `rgb(${RAIL})`
-      for (const rotation of [turn(time), turn(time) + Math.PI / 4]) {
-        ctx.beginPath()
-        for (let corner = 0; corner < 4; corner++) {
-          const { x, y } = onSquare(corner / 4, rotation)
-          if (corner === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        }
-        ctx.closePath()
-        ctx.stroke()
-      }
-
-      ctx.strokeStyle = `rgba(${INK}, 0.45)`
-      ctx.fillStyle = `rgb(${INK})`
       ctx.beginPath()
-      for (let i = 0; i < LINES; i++) {
-        const { x0, y0, x1, y1 } = ends(i, time)
-        ctx.moveTo(x0, y0)
-        ctx.lineTo(x1, y1)
-        ctx.fillRect(x0 - 1.5, y0 - 1.5, 3, 3)
-      }
+      ctx.arc(cx, cy, boundary, 0, Math.PI * 2)
       ctx.stroke()
 
-      pulses = pulses.filter((pulse) => time - pulse.start < pulse.duration * 1.4)
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i]
+        // Flow field: each point wanders around its home, never far.
+        const wander = 0.045
+        let x = p.x + Math.sin(p.y * 3.1 + time * 0.00041 + p.seed) * wander
+        let y = p.y + Math.cos(p.z * 2.7 - time * 0.00035 + p.seed) * wander
+        let z = p.z + Math.sin(p.x * 2.3 + time * 0.0003) * wander
+
+        // Turn about the vertical axis, then tilt toward the viewer.
+        ;[x, z] = [x * cosT - z * sinT, x * sinT + z * cosT]
+        ;[y, z] = [y * cosX - z * sinX, y * sinX + z * cosX]
+
+        const scale = CAMERA / (CAMERA - z)
+        let sx = cx + x * radius * scale
+        let sy = cy + y * radius * scale
+
+        // The cursor pushes nearby particles away; they ease back when it leaves.
+        const dx = sx - pointer.x
+        const dy = sy - pointer.y
+        const distance = Math.hypot(dx, dy)
+        let tx = 0
+        let ty = 0
+        if (distance < REACH && distance > 0.01) {
+          const force = (1 - distance / REACH) ** 2 * PUSH
+          tx = (dx / distance) * force
+          ty = (dy / distance) * force
+        }
+        p.ox += (tx - p.ox) * 0.08
+        p.oy += (ty - p.oy) * 0.08
+        sx += p.ox
+        sy += p.oy
+
+        // However hard it's pushed, nothing leaves the ring.
+        const fromCentre = Math.hypot(sx - cx, sy - cy)
+        const limit = boundary - 3
+        if (fromCentre > limit) {
+          sx = cx + ((sx - cx) / fromCentre) * limit
+          sy = cy + ((sy - cy) / fromCentre) * limit
+        }
+
+        screen[i * 2] = sx
+        screen[i * 2 + 1] = sy
+
+        const near = (z + 1) / 2
+        const stirred = Math.min(Math.hypot(p.ox, p.oy) / PUSH, 1)
+        const size = (1 + near * 1.8) * (1 + stirred * 0.6)
+        ctx.globalAlpha = Math.min(0.18 + near * 0.72 + stirred * 0.3, 0.95)
+        ctx.fillStyle = `rgb(${p.color})`
+        ctx.fillRect(sx - size / 2, sy - size / 2, size, size)
+      }
+      ctx.globalAlpha = 1
+
+      // Payments: a bright square travels from one particle to another.
+      pulses = pulses.filter((pulse) => time - pulse.start < pulse.duration + 500)
       for (const pulse of pulses) {
         const progress = (time - pulse.start) / pulse.duration
-        const travel = Math.min(progress, 1)
-        const eased = travel * travel * (3 - 2 * travel)
-        const { x0, y0, x1, y1 } = ends(pulse.line, time)
-        const [fromX, fromY, toX, toY] = pulse.reverse ? [x1, y1, x0, y0] : [x0, y0, x1, y1]
-
-        // The line being paid along, fading out after arrival.
-        const fade = progress <= 1 ? Math.min(progress * 4, 1) : 1 - (progress - 1) / 0.4
-        ctx.strokeStyle = `rgba(${pulse.color}, ${fade})`
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.moveTo(x0, y0)
-        ctx.lineTo(x1, y1)
-        ctx.stroke()
-
+        const [fx, fy] = [screen[pulse.from * 2], screen[pulse.from * 2 + 1]]
+        const [tx, ty] = [screen[pulse.to * 2], screen[pulse.to * 2 + 1]]
         if (progress <= 1) {
-          const x = fromX + (toX - fromX) * eased
-          const y = fromY + (toY - fromY) * eased
-          ctx.fillStyle = `rgb(${pulse.color})`
-          ctx.fillRect(x - 3.5, y - 3.5, 7, 7)
+          const eased = 1 - (1 - progress) ** 3
+          const x = fx + (tx - fx) * eased
+          const y = fy + (ty - fy) * eased
+          ctx.strokeStyle = `rgba(${BURGUNDY}, 0.35)`
+          ctx.beginPath()
+          ctx.moveTo(fx, fy)
+          ctx.lineTo(x, y)
+          ctx.stroke()
+          ctx.fillStyle = `rgb(${BURGUNDY})`
+          ctx.fillRect(x - 3, y - 3, 6, 6)
         } else {
-          // Arrival: a square ring opens at the receiving end.
-          const ring = (progress - 1) / 0.4
-          const size = 7 + ring * 20
-          ctx.strokeStyle = `rgba(${pulse.color}, ${1 - ring})`
-          ctx.lineWidth = 1
-          ctx.strokeRect(toX - size / 2, toY - size / 2, size, size)
-          ctx.fillStyle = `rgba(${pulse.color}, ${1 - ring})`
-          ctx.fillRect(toX - 3.5, toY - 3.5, 7, 7)
+          // Settled: a square ring opens where it lands.
+          const ring = (time - pulse.start - pulse.duration) / 500
+          const size = 6 + ring * 18
+          ctx.strokeStyle = `rgba(${BURGUNDY}, ${1 - ring})`
+          ctx.strokeRect(tx - size / 2, ty - size / 2, size, size)
         }
       }
     }
 
     const tick = (time: number) => {
-      if (time > nextPulse && pulses.length < 3) {
-        pulses.push({
-          line: Math.floor(Math.random() * LINES),
-          start: time,
-          duration: 1500 + Math.random() * 900,
-          reverse: Math.random() < 0.5,
-          color: Math.random() < 0.25 ? PURPLE : BURGUNDY,
-        })
-        nextPulse = time + 700 + Math.random() * 1500
+      if (time > nextPulse && pulses.length < 2 && particles.length > 1) {
+        const from = Math.floor(Math.random() * particles.length)
+        let to = Math.floor(Math.random() * particles.length)
+        if (to === from) to = (to + 1) % particles.length
+        pulses.push({ from, to, start: time, duration: 1300 + Math.random() * 700 })
+        nextPulse = time + 1800 + Math.random() * 2200
       }
       draw(time)
-      if (visible) frame = requestAnimationFrame(tick)
+      frame = requestAnimationFrame(tick)
     }
 
-    const drawStill = () => {
-      pulses = [{ line: 15, start: 0, duration: 2000, reverse: false, color: BURGUNDY }]
-      draw(1200)
+    const start = () => {
+      if (running || reducedMotion || !visible || document.hidden || width === 0) return
+      running = true
+      frame = requestAnimationFrame(tick)
+    }
+    const stop = () => {
+      running = false
+      cancelAnimationFrame(frame)
     }
 
     const resize = () => {
@@ -146,8 +205,28 @@ export function HeroField() {
       canvas.width = Math.round(width * ratio)
       canvas.height = Math.round(height * ratio)
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-      if (reducedMotion) drawStill()
+      // Denser on bigger screens, within what a 2D canvas draws smoothly.
+      const count = Math.round(Math.min(Math.max((width * height) / 450, 1400), 3200))
+      if (count !== particles.length) {
+        particles = makeParticles(count)
+        screen = new Float32Array(count * 2)
+        pulses = []
+      }
+      if (width === 0) stop()
+      else if (reducedMotion) draw(4000)
+      else start()
     }
+
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      pointer.x = event.clientX - rect.left
+      pointer.y = event.clientY - rect.top
+    }
+    const onPointerLeave = () => {
+      pointer.x = -1e4
+      pointer.y = -1e4
+    }
+    const onVisibility = () => (document.hidden ? stop() : start())
 
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(canvas)
@@ -155,18 +234,24 @@ export function HeroField() {
 
     // Only animate while the hero is on screen.
     const viewObserver = new IntersectionObserver(([entry]) => {
-      const wasVisible = visible
       visible = entry.isIntersecting
-      if (visible && !wasVisible && !reducedMotion) frame = requestAnimationFrame(tick)
+      if (visible) start()
+      else stop()
     })
     viewObserver.observe(canvas)
 
-    if (!reducedMotion) frame = requestAnimationFrame(tick)
+    // The canvas sits behind the copy, so listen on the page.
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    document.documentElement.addEventListener('pointerleave', onPointerLeave)
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
-      cancelAnimationFrame(frame)
+      stop()
       resizeObserver.disconnect()
       viewObserver.disconnect()
+      window.removeEventListener('pointermove', onPointerMove)
+      document.documentElement.removeEventListener('pointerleave', onPointerLeave)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 

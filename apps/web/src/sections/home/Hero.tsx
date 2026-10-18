@@ -30,9 +30,14 @@ export function Hero() {
   return (
     <section
       aria-labelledby="hero-title"
-      className="tone-white flex min-h-svh flex-col pt-(--nav-h)"
+      className="tone-white relative isolate flex min-h-svh flex-col overflow-hidden pt-(--nav-h)"
     >
-      <Container className="grid flex-1 items-center gap-y-14 py-12 md:py-16 lg:grid-cols-12 lg:gap-x-8">
+      {/* Decorative background, desktop only; hidden, the canvas stops animating. */}
+      <div className="absolute inset-0 -z-10 hidden lg:block">
+        <HeroField />
+      </div>
+
+      <Container className="grid flex-1 items-center py-12 md:py-16 lg:grid-cols-12 lg:gap-x-8">
         <div className="lg:col-span-7">
           {/* Screen readers get one stable sentence; the rotation is visual only. */}
           <h1 id="hero-title" aria-label="Machines can now pay. Within your limits." className="type-display">
@@ -62,11 +67,6 @@ export function Hero() {
               Watch demo
             </Button>
           </div>
-        </div>
-
-        {/* Decorative only, so phones and tablets skip it; hidden, the canvas stops animating. */}
-        <div className="mx-auto hidden aspect-square w-full lg:col-span-5 lg:block lg:max-w-[min(100%,66svh)]">
-          <HeroField />
         </div>
       </Container>
     </section>
