@@ -130,13 +130,13 @@ export function Navigation() {
                 ))}
               </ul>
             </nav>
-            <div className="mt-auto pt-10 text-center" onClick={close}>
+            <div className="mt-auto grid gap-3 pt-10" onClick={close}>
               <Button to={CONNECT_PATH} variant="light" className="w-full">
                 Connect agent
               </Button>
-              <Link to={account.to} className="type-label mt-6 inline-block py-2 text-cream/70">
+              <Button to={account.to} variant="outlineLight" className="w-full">
                 {account.label}
-              </Link>
+              </Button>
             </div>
           </div>
         </div>

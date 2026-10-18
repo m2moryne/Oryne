@@ -6,7 +6,7 @@ import { Icon } from './Icon'
 
 type ButtonProps = {
   children: ReactNode
-  variant?: 'primary' | 'accent' | 'light' | 'outline'
+  variant?: 'primary' | 'accent' | 'light' | 'outline' | 'outlineLight'
   size?: 'sm' | 'md'
   /** Trailing icon; nudges forward on hover. */
   icon?: LucideIcon
@@ -26,6 +26,8 @@ const variants = {
   /** For dark surfaces such as the navigation bar. */
   light: 'border-cream bg-cream text-charcoal hover:border-burgundy hover:bg-burgundy hover:text-cream',
   outline: 'border-taupe bg-transparent text-charcoal hover:border-charcoal',
+  /** Outline for dark surfaces, beside a light button. */
+  outlineLight: 'border-cream/40 bg-transparent text-cream hover:border-cream',
 }
 
 const sizes = {
