@@ -6,7 +6,6 @@ import { Field, inputClasses } from '../app/ui'
 import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
 import { SocialIcon } from '../components/SocialIcon'
-import { Wordmark } from '../components/Wordmark'
 import { usePageMeta } from '../hooks/usePageMeta'
 import { cn } from '../lib/cn'
 
@@ -86,9 +85,7 @@ export default function SignIn() {
   return (
     <main className="grid min-h-svh lg:grid-cols-2">
       <div className="tone-charcoal hidden flex-col justify-between p-12 lg:flex xl:p-16">
-        <Link to="/" aria-label="Oryne, back to the website" className="text-[0.9375rem]">
-          <Wordmark />
-        </Link>
+        <span />
 
         <div>
           <p className="type-statement max-w-[12ch]">Give your agent a budget.</p>
@@ -104,13 +101,10 @@ export default function SignIn() {
           </ul>
         </div>
 
-        <p className="text-sm text-muted">© {new Date().getFullYear()} Oryne</p>
+        <p className="text-sm text-muted">© {new Date().getFullYear()}</p>
       </div>
 
       <div className="tone-cream flex flex-col px-6 py-8 md:px-12">
-        <Link to="/" aria-label="Oryne, back to the website" className="text-[0.9375rem] lg:hidden">
-          <Wordmark />
-        </Link>
 
         <div className="mx-auto my-auto w-full max-w-sm py-12">
           <h1 className="text-4xl tracking-[-0.03em]">
@@ -202,6 +196,13 @@ export default function SignIn() {
               {creating ? 'Create account' : 'Sign in'}
             </Button>
           </form>
+
+          <Link
+            to="/"
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
+          >
+            Cancel
+          </Link>
 
           <p className="mt-6 rounded-lg border border-taupe/50 px-4 py-3 text-sm leading-relaxed text-muted">
             This is a preview. The provider buttons sign you in as a sample developer without

@@ -141,13 +141,10 @@ function Gate() {
   return (
     <div className="tone-white flex min-h-svh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
-        <Link to="/" aria-label="Oryne, back to the website" className="text-[0.9375rem]">
-          <Wordmark />
-        </Link>
-        <Panel className="mt-8">
+        <Panel>
           {!live.session ? (
             <>
-              <h1 className="text-2xl tracking-[-0.02em]">Sign in to Oryne</h1>
+              <h1 className="text-2xl tracking-[-0.02em]">Sign in</h1>
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 Your agents spend from a wallet you own on Stellar. Oryne never holds its keys.
               </p>
@@ -198,6 +195,13 @@ function Gate() {
                 </Link>
                 .
               </p>
+
+              <Link
+                to="/"
+                className="mt-6 flex h-11 w-full items-center justify-center rounded-full text-sm text-muted transition-colors duration-200 hover:text-charcoal"
+              >
+                Cancel
+              </Link>
             </>
           ) : (
             <>

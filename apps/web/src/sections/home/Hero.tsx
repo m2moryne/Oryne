@@ -32,7 +32,7 @@ export function Hero() {
       aria-labelledby="hero-title"
       className="tone-white flex min-h-svh flex-col pt-(--nav-h)"
     >
-      <Container className="grid flex-1 items-center gap-y-14 py-16 lg:grid-cols-12 lg:gap-x-8">
+      <Container className="grid flex-1 items-center gap-y-14 py-12 md:py-16 lg:grid-cols-12 lg:gap-x-8">
         <div className="lg:col-span-7">
           {/* Screen readers get one stable sentence; the rotation is visual only. */}
           <h1 id="hero-title" aria-label="Machines can now pay. Within your limits." className="type-display">
@@ -53,7 +53,8 @@ export function Hero() {
             Oryne is the mandate layer for agent payments on Stellar. Give an AI agent a wallet it
             can spend from, and limits it cannot break: enforced by a smart contract, not a promise.
           </p>
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          {/* Equal columns keep both calls to action the same size; on phones they stack full width. */}
+          <div className="mt-10 grid gap-4 sm:inline-grid sm:grid-cols-2">
             <Button to="/app/agents?connect=1" icon={ArrowRight}>
               Connect an agent
             </Button>
@@ -63,7 +64,8 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="mx-auto aspect-square w-full max-w-sm lg:col-span-5 lg:max-w-[min(100%,66svh)]">
+        {/* Decorative only, so phones and tablets skip it; hidden, the canvas stops animating. */}
+        <div className="mx-auto hidden aspect-square w-full lg:col-span-5 lg:block lg:max-w-[min(100%,66svh)]">
           <HeroField />
         </div>
       </Container>
