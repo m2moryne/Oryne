@@ -86,7 +86,12 @@ export function loadConfig(): Config {
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
     databaseUrl: env('DATABASE_URL'),
-    corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL'), env('ADMIN_URL')),
+    // CORS_ORIGIN (singular) is accepted too: it's an easy slip, and silently ignoring it is worse.
+    corsOrigins: corsOrigins(
+      [env('CORS_ORIGINS'), env('CORS_ORIGIN')].filter(Boolean).join(',') || 'http://localhost:5173',
+      env('WEB_URL'),
+      env('ADMIN_URL'),
+    ),
     // Render sets RENDER_EXTERNAL_URL to the service's https URL.
     publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
     sponsorSecret: secret('SPONSOR_SECRET'),
