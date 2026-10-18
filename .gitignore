@@ -6,3 +6,6 @@ dist
 # Local API database and downloaded contract builds
 services/api/data/
 .oryne/
+
+# The admin site lives in its own repository (git init inside apps/admin).
+apps/admin/

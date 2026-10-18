@@ -267,7 +267,7 @@ Circle's USDC.
 ```
 .
 ├── apps/web/                  Website, live dashboard (/app), demo (/demo), developer console (/dev)
-├── apps/admin/                Admin site (standalone; its own repo and Vercel project later)
+├── apps/admin/                Admin site: its own repository, not tracked here (see .gitignore)
 ├── services/api/              Oryne API: Hono on Node 22, Postgres (SQLite locally), Stellar RPC
 ├── packages/
 │   ├── core/                  Contract encoders, payment signing, x402 payload format
