@@ -26,6 +26,7 @@ import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, 
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
+import { adminApi } from './admin.ts'
 import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { listRequests, logRequests } from './requests.ts'
@@ -675,6 +676,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   // Agent routes first: the owner sign-in middleware is mounted on all of /v1.
   app.route('/v1/agent', agentApi)
+  // Before the owner routes, whose sign-in check would otherwise run on /v1/admin too.
+  const admin = adminApi(config, db, chain)
+  if (admin) app.route('/v1/admin', admin)
   app.route('/v1', owner)
 
   return app

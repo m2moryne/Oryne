@@ -2,9 +2,11 @@ import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Outlet, useOutletContext } from 'react-router-dom'
 import { AreaSwitch, DevSidebarNav, DevTopBar } from '../../app/dev/DevChrome'
+import { ThemeToggle, useTheme } from '../../app/theme'
 import type { Mode } from '../../app/dev/devData'
 import { Icon } from '../../components/Icon'
 import { Wordmark } from '../../components/Wordmark'
+import { cn } from '../../lib/cn'
 import { shortKey } from '../../lib/network'
 import { useLive } from '../LiveContext'
 
@@ -60,6 +62,7 @@ export function LiveDevShell() {
   const live = useLive()
   const [menuOpen, setMenuOpen] = useState(false)
   const [mode, setMode] = useStoredMode()
+  const [theme, setTheme] = useTheme('dark')
 
   const name = live.user?.name ?? live.user?.email ?? 'Your account'
   const email = live.user?.email ?? (live.session ? shortKey(live.session.address, 6, 6) : '')
@@ -89,10 +92,11 @@ export function LiveDevShell() {
         </div>
       )}
 
-      <main className="theme-dark tone-cream min-h-svh p-3 md:p-4">
+      <main className={cn('tone-cream min-h-svh p-3 md:p-4', theme === 'dark' && 'theme-dark')}>
         <DevTopBar
           mode={mode}
           onMode={setMode}
+          extra={<ThemeToggle theme={theme} onChange={setTheme} />}
           account={{ name, email, base: DEV_BASE, ownerDashboard: '/app', signOutLabel: 'Sign out', onSignOut: live.signOut }}
         />
         {mode === 'live' && (

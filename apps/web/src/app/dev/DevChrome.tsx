@@ -1,5 +1,5 @@
 import { BookOpen, ChevronDown, LayoutDashboard, LogOut } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
@@ -214,10 +214,13 @@ export function DevTopBar({
   mode,
   onMode,
   account,
+  extra,
 }: {
   mode: Mode
   onMode: (mode: Mode) => void
   account: Parameters<typeof AccountMenu>[0]
+  /** Shown before the mode switch, e.g. the light / dark toggle. */
+  extra?: ReactNode
 }) {
   return (
     // Sticks under the mobile header (h-16) or to the top on desktop; bleeds over main's padding.
@@ -230,6 +233,7 @@ export function DevTopBar({
         <span className="truncate">{mode === 'live' ? 'Viewing live data' : 'Viewing test data'}</span>
       </p>
       <div className="flex items-center gap-2">
+        {extra}
         <ModeSwitch mode={mode} onChange={onMode} />
         <AccountMenu {...account} />
       </div>

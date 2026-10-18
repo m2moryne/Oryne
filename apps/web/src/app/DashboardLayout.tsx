@@ -33,6 +33,7 @@ import { AddFundsDialog } from './AddFundsDialog'
 import { ConnectAgentDialog } from './ConnectAgentDialog'
 import { CreateKeyDialog } from './dev/CreateKeyDialog'
 import { AreaSwitch, DevTopBar } from './dev/DevChrome'
+import { ThemeToggle, useTheme } from './theme'
 import { devGroups, devPath } from './dev/devNav'
 import { initials, money } from './format'
 import { useSimulatedActivity, useStore } from './store'
@@ -99,6 +100,8 @@ function Sidebar({
   const { state, dispatch } = useStore()
   const navigate = useNavigate()
   const user = state.user!
+  // The footer (and its toggle) only shows in the agents dashboard, which starts light.
+  const [theme, setTheme] = useTheme('light')
   const current = areas[area]
 
   const act = (open: () => void) => () => {
@@ -181,6 +184,7 @@ function Sidebar({
               <p className="truncate text-sm">{user.name}</p>
               <p className="truncate text-xs text-cream/60">{user.email}</p>
             </div>
+            <ThemeToggle theme={theme} onChange={setTheme} onDark />
             <button
               type="button"
               aria-label="Exit preview"
@@ -221,13 +225,15 @@ export function DashboardLayout({ area }: { area: Area }) {
   }, [wantsConnect, state.user, setParams])
 
   usePageMeta(area === 'developers' ? privatePages.developers : privatePages.demo)
+  // The developer console starts dark, the agents dashboard light; the toggle overrides both.
+  const developers = area === 'developers'
+  const [theme, setTheme] = useTheme(developers ? 'dark' : 'light')
 
   if (!state.user) {
     return <Navigate to="/app" replace state={{ from: location.pathname + location.search }} />
   }
 
-  // The developer console is dark throughout.
-  const dark = area === 'developers'
+  const dark = theme === 'dark'
 
   const exitPreview = () => {
     dispatch({ type: 'signOut' })
@@ -269,8 +275,9 @@ export function DashboardLayout({ area }: { area: Area }) {
 
       {/* Cards run edge to edge, with only a narrow margin around them. */}
       <main className={cn('min-h-svh p-3 md:p-4', dark && 'theme-dark tone-cream')}>
-        {dark && (
+        {developers && (
           <DevTopBar
+            extra={<ThemeToggle theme={theme} onChange={setTheme} />}
             mode={state.dev.mode}
             onMode={(mode) => dispatch({ type: 'setMode', mode })}
             account={{

@@ -1,0 +1,36 @@
+{
+  "name": "oryne-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Oryne admin: read-only views across accounts, wallets, agents, payments and API activity.",
+  "scripts": {
+    "dev": "vite --port 5175",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "lucide-react": "^1.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "8.3.2"
+  },
+  "overrides": {
+    "rolldown": "1.2.12",
+    "vite": "8.3.2"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

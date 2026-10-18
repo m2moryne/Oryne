@@ -35,6 +35,8 @@ export type Config = {
   devLogin: boolean
   /** Claude API key for the AI debugger. The debugger is off without it. */
   anthropicApiKey?: string
+  /** Bearer token for the admin API (32+ characters). The admin API is off without it. */
+  adminToken?: string
 }
 
 const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : undefined)
@@ -101,5 +103,6 @@ export function loadConfig(): Config {
     },
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
     anthropicApiKey: env('ANTHROPIC_API_KEY'),
+    adminToken: env('ADMIN_TOKEN'),
   }
 }

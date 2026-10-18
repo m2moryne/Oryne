@@ -23,6 +23,7 @@ import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
 import { AreaSwitch } from '../app/dev/DevChrome'
+import { ThemeToggle, useTheme } from '../app/theme'
 import { useEnterPreview } from '../app/preview'
 import { Field, inputClasses, Panel } from '../app/ui'
 import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
@@ -38,6 +39,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const live = useLive()
+  const [theme, setTheme] = useTheme('light')
   const pending = live.approvals.filter((approval) => approval.status === 'pending').length
 
   return (
@@ -106,6 +108,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {live.user?.email ?? live.user?.name ?? (live.session ? shortKey(live.session.address, 6, 6) : '')}
             </p>
           </div>
+          <ThemeToggle theme={theme} onChange={setTheme} onDark />
           <button
             type="button"
             aria-label="Sign out"
@@ -259,6 +262,7 @@ function Shell() {
   const live = useLive()
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [theme] = useTheme('light')
 
   usePageMeta(privatePages.dashboard)
 
@@ -292,7 +296,7 @@ function Shell() {
           <Sidebar onNavigate={() => setMenuOpen(false)} />
         </div>
       )}
-      <main className="min-h-svh p-3 md:p-4">
+      <main className={cn('min-h-svh p-3 md:p-4', theme === 'dark' && 'theme-dark tone-cream')}>
         {live.error && (
           <p role="alert" className="mb-3 border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy md:mb-4">
             {live.error}
