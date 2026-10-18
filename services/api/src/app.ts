@@ -129,14 +129,14 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     resolvedAt: row.resolved_at,
   })
 
-  const ownedWallet = (owner: string, id: string) => {
-    const wallet = db.prepare('select * from wallets where id = ? and owner = ?').get(id, owner) as WalletRow | undefined
+  const ownedWallet = async (owner: string, id: string) => {
+    const wallet = await db.prepare('select * from wallets where id = ? and owner = ?').get(id, owner) as WalletRow | undefined
     if (!wallet) throw new HTTPException(404, { message: 'No such wallet' })
     return wallet
   }
 
-  const walletAgent = (walletId: string, key: string) => {
-    const agent = db
+  const walletAgent = async (walletId: string, key: string) => {
+    const agent = await db
       .prepare("select * from agents where wallet_id = ? and public_key = ? and status != 'removed'")
       .get(walletId, key) as AgentDbRow | undefined
     if (!agent) throw new HTTPException(404, { message: 'No such agent on this wallet' })
@@ -213,12 +213,12 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   app.post('/v1/auth/challenge', async (c) => {
     const { address } = await body<{ address: string }>(c)
-    return c.json(createChallenge(db, address, new URL(config.publicUrl).host))
+    return c.json(await createChallenge(db, address, new URL(config.publicUrl).host))
   })
 
   app.post('/v1/auth/verify', async (c) => {
     const { nonce, signature } = await body<{ nonce: string; signature: string }>(c)
-    return c.json(verifyChallenge(db, nonce, signature))
+    return c.json(await verifyChallenge(db, nonce, signature))
   })
 
   const providerOf = (value: string): Provider => {
@@ -226,7 +226,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     return value as Provider
   }
 
-  app.get('/v1/auth/oauth/:provider/start', (c) => c.redirect(startUrl(config, db, providerOf(c.req.param('provider')))))
+  app.get('/v1/auth/oauth/:provider/start', async (c) => c.redirect(await startUrl(config, db, providerOf(c.req.param('provider')))))
 
   app.get('/v1/auth/oauth/:provider/callback', async (c) =>
     c.redirect(await finish(config, db, providerOf(c.req.param('provider')), c.req.query('code'), c.req.query('state'))),
@@ -237,12 +237,12 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     if (!config.devLogin) throw new HTTPException(404, { message: 'Not found' })
     const { subject } = await body<{ subject: string }>(c)
     if (!/^dev:[\w-]{1,64}$/.test(subject ?? '')) throw new HTTPException(400, { message: 'subject must look like dev:name' })
-    return c.json(createSession(db, subject, 'dev'))
+    return c.json(await createSession(db, subject, 'dev'))
   })
 
-  app.get('/v1/services', (c) => {
+  app.get('/v1/services', async (c) => {
     const q = `%${(c.req.query('q') ?? '').toLowerCase()}%`
-    const rows = db
+    const rows = await db
       .prepare('select * from services where lower(name || description || category) like ? order by created_at desc')
       .all(q) as Array<Record<string, unknown>>
     return c.json({ services: rows.map((row) => ({ ...row, price: row.price })) })
@@ -297,9 +297,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   const owner = new Hono<{ Variables: { owner: string } }>()
   owner.use('*', ownerAuth(db))
 
-  owner.get('/me', (c) => {
-    const wallets = db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
-    const user = db.prepare('select provider, email, name, avatar from users where subject = ?').get(c.var.owner)
+  owner.get('/me', async (c) => {
+    const wallets = await db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
+    const user = await db.prepare('select provider, email, name, avatar from users where subject = ?').get(c.var.owner)
     return c.json({ address: c.var.owner, user: user ?? { provider: 'freighter' }, wallets })
   })
 
@@ -340,7 +340,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     )
     const id = String(result.returnValue)
     const ownerKind = 'passkey' in walletOwner ? 'passkey' : 'account'
-    db.prepare('insert into wallets (id, owner, owner_kind, name, tx_hash, created_at) values (?, ?, ?, ?, ?, ?)').run(
+    await db.prepare('insert into wallets (id, owner, owner_kind, name, tx_hash, created_at) values (?, ?, ?, ?, ?, ?)').run(
       id,
       c.var.owner,
       ownerKind,
@@ -349,7 +349,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       now(),
     )
     if ('passkey' in walletOwner) {
-      db.prepare(
+      await db.prepare(
         'insert into passkeys (credential_id, subject, wallet_id, public_key, created_at) values (?, ?, ?, ?, ?)',
       ).run(input.passkey!.credentialId, c.var.owner, id, Buffer.from(walletOwner.passkey).toString('hex'), now())
     }
@@ -357,8 +357,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.get('/wallets/:id', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
-    const agents = db
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const agents = await db
       .prepare("select * from agents where wallet_id = ? and status != 'removed' order by created_at")
       .all(wallet.id) as AgentDbRow[]
     const [balance, remaining] = await Promise.all([balanceOf(wallet.id), Promise.all(agents.map(remainingOf))])
@@ -370,9 +370,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     })
   })
 
-  owner.get('/wallets/:id/payments', (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
-    const rows = db
+  owner.get('/wallets/:id/payments', async (c) => {
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const rows = await db
       .prepare('select * from payments where wallet_id = ? order by created_at desc limit 200')
       .all(wallet.id) as Array<Record<string, any>>
     return c.json({ payments: rows.map((row) => ({ ...row, amount: money(row.amount) })) })
@@ -380,16 +380,16 @@ export function createApp(config: Config, db: Db, chain: Chain) {
 
   // The AI debugger, over a snapshot of this wallet: agents and mandates, recent payments, approvals.
   owner.post('/wallets/:id/debug', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
     const { messages } = await body<{ messages: unknown }>(c)
-    const agents = db
+    const agents = await db
       .prepare('select * from agents where wallet_id = ? order by created_at')
       .all(wallet.id) as AgentDbRow[]
     const [balance, remaining] = await Promise.all([balanceOf(wallet.id), Promise.all(agents.map(remainingOf))])
-    const payments = db
+    const payments = await db
       .prepare('select * from payments where wallet_id = ? order by created_at desc limit 60')
       .all(wallet.id) as Array<Record<string, any>>
-    const approvals = db
+    const approvals = await db
       .prepare('select * from approvals where wallet_id = ? order by created_at desc limit 30')
       .all(wallet.id) as ApprovalRow[]
     const named = (key: string | null) => agents.find((agent) => agent.public_key === key)?.name ?? null
@@ -415,11 +415,11 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.post('/wallets/:id/agents', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
     const input = await body<Record<string, unknown>>(c)
     const agent = String(input.publicKey ?? '')
     if (!StrKey.isValidEd25519PublicKey(agent)) throw new HTTPException(400, { message: 'publicKey must be a G… key' })
-    if (db.prepare("select 1 from agents where public_key = ? and status != 'removed'").get(agent)) {
+    if (await db.prepare("select 1 from agents where public_key = ? and status != 'removed'").get(agent)) {
       throw new HTTPException(409, { message: 'This agent key is already registered' })
     }
     const policy = policyFrom(input)
@@ -435,8 +435,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.patch('/wallets/:id/agents/:key', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
-    const current = walletAgent(wallet.id, c.req.param('key'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const current = await walletAgent(wallet.id, c.req.param('key'))
     const policy = policyFrom(await body<Record<string, unknown>>(c), current)
     return c.json(
       await createIntent(db, chain, c.var.owner, wallet, 'set_policy', walletOps.setPolicy(wallet.id, current.public_key, policy), {
@@ -447,8 +447,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.post('/wallets/:id/agents/:key/pause', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
-    const agent = walletAgent(wallet.id, c.req.param('key'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const agent = await walletAgent(wallet.id, c.req.param('key'))
     const { paused } = await body<{ paused: boolean }>(c)
     return c.json(
       await createIntent(db, chain, c.var.owner, wallet, 'set_paused', walletOps.setPaused(wallet.id, agent.public_key, !!paused), {
@@ -459,8 +459,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.delete('/wallets/:id/agents/:key', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
-    const agent = walletAgent(wallet.id, c.req.param('key'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const agent = await walletAgent(wallet.id, c.req.param('key'))
     return c.json(
       await createIntent(db, chain, c.var.owner, wallet, 'remove_agent', walletOps.removeAgent(wallet.id, agent.public_key), {
         agent: agent.public_key,
@@ -469,7 +469,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   })
 
   owner.post('/wallets/:id/withdraw', async (c) => {
-    const wallet = ownedWallet(c.var.owner, c.req.param('id'))
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
     const input = await body<{ to?: string; amount: string }>(c)
     const fallback = StrKey.isValidEd25519PublicKey(c.var.owner) ? c.var.owner : undefined
     const to = addressOf(input.to ?? fallback, 'to')
@@ -482,9 +482,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     )
   })
 
-  owner.get('/approvals', (c) => {
+  owner.get('/approvals', async (c) => {
     const status = c.req.query('status') ?? 'pending'
-    const rows = db
+    const rows = await db
       .prepare(
         `select a.* from approvals a join wallets w on w.id = a.wallet_id
          where w.owner = ? and (? = 'all' or a.status = ?) order by a.created_at desc limit 200`,
@@ -493,8 +493,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     return c.json({ approvals: rows.map(approvalView) })
   })
 
-  const ownedApproval = (ownerAddress: string, id: string) => {
-    const row = db
+  const ownedApproval = async (ownerAddress: string, id: string) => {
+    const row = await db
       .prepare('select a.* from approvals a join wallets w on w.id = a.wallet_id where a.id = ? and w.owner = ?')
       .get(id, ownerAddress) as ApprovalRow | undefined
     if (!row) throw new HTTPException(404, { message: 'No such approval' })
@@ -503,8 +503,8 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   }
 
   owner.post('/approvals/:id/approve', async (c) => {
-    const approval = ownedApproval(c.var.owner, c.req.param('id'))
-    const wallet = ownedWallet(c.var.owner, approval.wallet_id)
+    const approval = await ownedApproval(c.var.owner, c.req.param('id'))
+    const wallet = await ownedWallet(c.var.owner, approval.wallet_id)
     const expiresAt = now() + 3600
     return c.json(
       await createIntent(
@@ -519,9 +519,9 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     )
   })
 
-  owner.post('/approvals/:id/decline', (c) => {
-    const approval = ownedApproval(c.var.owner, c.req.param('id'))
-    db.prepare("update approvals set status = 'declined', resolved_at = ? where id = ?").run(now(), approval.id)
+  owner.post('/approvals/:id/decline', async (c) => {
+    const approval = await ownedApproval(c.var.owner, c.req.param('id'))
+    await db.prepare("update approvals set status = 'declined', resolved_at = ? where id = ?").run(now(), approval.id)
     return c.json({ ok: true })
   })
 
@@ -534,7 +534,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
     const input = await body<Record<string, string>>(c)
     if (!input.name || !input.url) throw new HTTPException(400, { message: 'name and url are required' })
     const id = newId('svc')
-    db.prepare(
+    await db.prepare(
       'insert into services (id, name, description, category, url, pay_to, price, unit, owner, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(
       id,
@@ -558,7 +558,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   agentApi.use('*', agentAuth(db))
 
   agentApi.get('/', async (c) => {
-    const row = db.prepare('select * from agents where public_key = ?').get(c.var.agent.public_key) as AgentDbRow
+    const row = await db.prepare('select * from agents where public_key = ?').get(c.var.agent.public_key) as AgentDbRow
     return c.json({
       agent: agentView(row, await remainingOf(row)),
       network: networkId(chain.network),
@@ -573,7 +573,7 @@ export function createApp(config: Config, db: Db, chain: Chain) {
   agentApi.post('/approvals', async (c) => {
     const input = await body<Record<string, unknown>>(c)
     const id = newId('apr')
-    db.prepare(
+    await db.prepare(
       'insert into approvals (id, wallet_id, agent, payee, amount, description, resource, reason, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ).run(
       id,
@@ -586,11 +586,11 @@ export function createApp(config: Config, db: Db, chain: Chain) {
       input.reason ? String(input.reason).slice(0, 100) : null,
       now(),
     )
-    return c.json(approvalView(db.prepare('select * from approvals where id = ?').get(id) as ApprovalRow), 201)
+    return c.json(approvalView(await db.prepare('select * from approvals where id = ?').get(id) as ApprovalRow), 201)
   })
 
-  agentApi.get('/approvals/:id', (c) => {
-    const row = db
+  agentApi.get('/approvals/:id', async (c) => {
+    const row = await db
       .prepare('select * from approvals where id = ? and agent = ?')
       .get(c.req.param('id'), c.var.agent.public_key) as ApprovalRow | undefined
     if (!row) throw new HTTPException(404, { message: 'No such approval' })

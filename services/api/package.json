@@ -15,10 +15,12 @@
     "@hono/node-server": "^2.1.5",
     "@oryne/core": "*",
     "@stellar/stellar-sdk": "^17.2.1",
-    "hono": "^4.13.13"
+    "hono": "^4.13.13",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "typescript": "^7.0.2"
   }
 }

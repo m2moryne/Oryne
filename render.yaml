@@ -30,6 +30,10 @@ services:
       # Comma-separated browser origins, usually the same as WEB_URL.
       - key: CORS_ORIGINS
         sync: false
+      # Supabase (or any Postgres): Connect → Session pooler connection string, with
+      # the password filled in. Keeps accounts, wallets and sessions across restarts.
+      - key: DATABASE_URL
+        sync: false
       # The free plan's disk is wiped on every deploy and restart. Pin the testnet
       # keys so the same sponsor and test USDC come back (npm run keys -w @oryne/api).
       - key: SPONSOR_SECRET
@@ -47,8 +51,3 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
-    # To keep accounts, wallets and sessions across restarts, switch to a paid plan
-    # and give the database a disk:
-    #   plan: starter
-    #   disk: { name: oryne-data, mountPath: /var/data, sizeGB: 1 }
-    #   envVars: ORYNE_DATA_DIR=/var/data

@@ -51,12 +51,12 @@ async function ensureFunded(network: NetworkConfig, rpcServer: rpc.Server, keypa
   await fundWithFriendbot(network, keypair.publicKey())
 }
 
-function storedKeypair(db: Db, key: string, fromEnv?: string) {
+async function storedKeypair(db: Db, key: string, fromEnv?: string) {
   if (fromEnv) return Keypair.fromSecret(fromEnv)
-  const stored = getKv(db, key)
+  const stored = await getKv(db, key)
   if (stored) return Keypair.fromSecret(stored)
   const fresh = Keypair.random()
-  setKv(db, key, fresh.secret())
+  await setKv(db, key, fresh.secret())
   return fresh
 }
 
@@ -75,14 +75,14 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
   const testnet = network.name === 'testnet'
   if (!testnet && !config.sponsorSecret) throw new Error('SPONSOR_SECRET is required outside testnet')
 
-  const sponsor = storedKeypair(db, 'sponsor_secret', config.sponsorSecret)
+  const sponsor = await storedKeypair(db, 'sponsor_secret', config.sponsorSecret)
   await ensureFunded(network, rpcServer, sponsor)
 
   // The token agents spend.
-  let token = config.tokenId ?? network.token ?? getKv(db, 'token_id')
+  let token = config.tokenId ?? network.token ?? await getKv(db, 'token_id')
   let issuer: Keypair | undefined
   if (testnet && !config.tokenId) {
-    issuer = storedKeypair(db, 'token_issuer_secret', config.tokenIssuerSecret)
+    issuer = await storedKeypair(db, 'token_issuer_secret', config.tokenIssuerSecret)
     await ensureFunded(network, rpcServer, issuer)
     if (!token) {
       const asset = new Asset('USDC', issuer.publicKey())
@@ -97,7 +97,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
         // Already deployed is fine.
         if (!String(error).includes('ExistingValue') && !String(error).includes('already exists')) throw error
       }
-      setKv(db, 'token_id', token)
+      await setKv(db, 'token_id', token)
     }
   }
   if (!token) throw new Error('TOKEN_ID is required on this network')
@@ -106,7 +106,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
   // WALLET_WASM_HASH, fetch the latest build and upload it when it has changed.
   let wasmHashHex = config.walletWasmHash
   if (!wasmHashHex) {
-    const known = getKv(db, 'wallet_wasm_hash')
+    const known = await getKv(db, 'wallet_wasm_hash')
     try {
       const wasm = await loadWasm(config.walletWasm)
       const latest = Buffer.from(hash(wasm)).toString('hex')
@@ -116,7 +116,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
           await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm })),
           sponsor,
         )
-        setKv(db, 'wallet_wasm_hash', latest)
+        await setKv(db, 'wallet_wasm_hash', latest)
       }
       wasmHashHex = latest
     } catch (error) {

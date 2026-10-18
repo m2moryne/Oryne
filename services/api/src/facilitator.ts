@@ -87,13 +87,13 @@ export async function settle(
     return { success: false, errorReason: reasonOf(error) }
   }
 
-  const record = (status: string, extra: { reason?: string; hash?: string; ledger?: number }) => {
-    const wallet = db.prepare('select id from wallets where id = ?').get(auth.from)
+  const record = async (status: string, extra: { reason?: string; hash?: string; ledger?: number }) => {
+    const wallet = await db.prepare('select id from wallets where id = ?').get(auth.from)
     if (!wallet) return
-    const allowance = db
+    const allowance = await db
       .prepare("select id from approvals where wallet_id = ? and agent = ? and payee = ? and status = 'approved' and amount = ? order by resolved_at desc limit 1")
       .get(auth.from, auth.agent ?? '', auth.to, auth.amount.toString()) as { id: string } | undefined
-    db.prepare(
+    await db.prepare(
       `insert into payments (id, wallet_id, agent, payee, amount, asset, resource, status, reason, tx_hash, ledger, approved_by_owner, created_at)
        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
@@ -112,7 +112,7 @@ export async function settle(
       now(),
     )
     if (status === 'settled' && allowance) {
-      db.prepare("update approvals set status = 'used' where id = ?").run(allowance.id)
+      await db.prepare("update approvals set status = 'used' where id = ?").run(allowance.id)
     }
   }
 
@@ -121,11 +121,11 @@ export async function settle(
       const prepared = await buildSettlement(chain, auth)
       prepared.sign(chain.sponsor)
       const result = await submitSigned(chain.rpc, prepared)
-      record('settled', { hash: result.hash, ledger: result.ledger })
+      await record('settled', { hash: result.hash, ledger: result.ledger })
       return { success: true, transaction: result.hash, ledger: result.ledger, payer: auth.from }
     } catch (error) {
       const reason = reasonOf(error)
-      record(error instanceof StellarError || String(error).includes('Error(Contract') ? 'refused' : 'failed', { reason })
+      await record(error instanceof StellarError || String(error).includes('Error(Contract') ? 'refused' : 'failed', { reason })
       return { success: false, errorReason: reason, payer: auth.from }
     }
   })

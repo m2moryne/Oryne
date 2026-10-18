@@ -20,13 +20,13 @@ const AGENT_CLOCK_SKEW = 5 * 60
 /** SEP-53: sha256("Stellar Signed Message:\n" + message) */
 export const sep53Hash = (message: string) => hash(Buffer.from(`Stellar Signed Message:\n${message}`, 'utf8'))
 
-export function createChallenge(db: Db, address: string, domain: string) {
+export async function createChallenge(db: Db, address: string, domain: string) {
   if (!StrKey.isValidEd25519PublicKey(address)) {
     throw new HTTPException(400, { message: 'Sign-in with a message needs a G… account address' })
   }
   const nonce = randomBytes(16).toString('hex')
   const message = `${domain} wants you to sign in with your Stellar account:\n${address}\n\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`
-  db.prepare('insert into challenges (nonce, address, message, expires_at) values (?, ?, ?, ?)').run(
+  await db.prepare('insert into challenges (nonce, address, message, expires_at) values (?, ?, ?, ?)').run(
     nonce,
     address,
     message,
@@ -35,11 +35,11 @@ export function createChallenge(db: Db, address: string, domain: string) {
   return { nonce, message }
 }
 
-export function verifyChallenge(db: Db, nonce: string, signature: string) {
-  const row = db.prepare('select address, message, expires_at from challenges where nonce = ?').get(nonce) as
+export async function verifyChallenge(db: Db, nonce: string, signature: string) {
+  const row = await db.prepare('select address, message, expires_at from challenges where nonce = ?').get(nonce) as
     | { address: string; message: string; expires_at: number }
     | undefined
-  db.prepare('delete from challenges where nonce = ? or expires_at < ?').run(nonce, now())
+  await db.prepare('delete from challenges where nonce = ? or expires_at < ?').run(nonce, now())
   if (!row || row.expires_at < now()) throw new HTTPException(401, { message: 'Challenge expired, try again' })
 
   // Freighter returns base64; accept hex too.
@@ -49,7 +49,7 @@ export function verifyChallenge(db: Db, nonce: string, signature: string) {
   }
 
   const token = randomBytes(32).toString('base64url')
-  db.prepare('insert into sessions (token, address, expires_at) values (?, ?, ?)').run(token, row.address, now() + SESSION_TTL)
+  await db.prepare('insert into sessions (token, address, expires_at) values (?, ?, ?)').run(token, row.address, now() + SESSION_TTL)
   return { token, address: row.address, expiresAt: now() + SESSION_TTL }
 }
 
@@ -59,7 +59,7 @@ export const ownerAuth =
   async (c, next) => {
     const token = c.req.header('authorization')?.replace(/^Bearer\s+/i, '')
     const row = token
-      ? (db.prepare('select address, expires_at from sessions where token = ?').get(token) as
+      ? (await db.prepare('select address, expires_at from sessions where token = ?').get(token) as
           | { address: string; expires_at: number }
           | undefined)
       : undefined
@@ -79,13 +79,13 @@ export const agentMessage = (method: string, path: string, timestamp: number) =>
 export const agentAuth =
   (db: Db): MiddlewareHandler<{ Variables: { agent: AgentRow } }> =>
   async (c, next) => {
-    c.set('agent', authenticateAgent(db, c))
+    c.set('agent', await authenticateAgent(db, c))
     await next()
   }
 
 export type AgentRow = { public_key: string; wallet_id: string; name: string; status: string }
 
-export function authenticateAgent(db: Db, c: Context): AgentRow {
+export async function authenticateAgent(db: Db, c: Context): Promise<AgentRow> {
   const header = c.req.header('x-oryne-agent')
   const [publicKey, ts, signature] = header?.split('.') ?? []
   const timestamp = Number(ts)
@@ -100,7 +100,7 @@ export function authenticateAgent(db: Db, c: Context): AgentRow {
     Buffer.from(signature, 'base64'),
   )
   if (!valid) throw new HTTPException(401, { message: 'Agent signature does not match' })
-  const agent = db
+  const agent = await db
     .prepare("select public_key, wallet_id, name, status from agents where public_key = ? and status != 'removed'")
     .get(publicKey) as AgentRow | undefined
   if (!agent) throw new HTTPException(401, { message: 'This agent key is not registered on any wallet' })

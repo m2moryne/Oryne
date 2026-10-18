@@ -42,11 +42,11 @@ function credentials(config: Config, provider: Provider) {
 }
 
 /** Where to send the browser to start signing in. */
-export function startUrl(config: Config, db: Db, provider: Provider) {
+export async function startUrl(config: Config, db: Db, provider: Provider) {
   const app = credentials(config, provider)
   const state = randomBytes(16).toString('hex')
   // Reuse the challenges table: nonce = state, address = provider.
-  db.prepare('insert into challenges (nonce, address, message, expires_at) values (?, ?, ?, ?)').run(
+  await db.prepare('insert into challenges (nonce, address, message, expires_at) values (?, ?, ?, ?)').run(
     state,
     provider,
     'oauth',
@@ -110,13 +110,13 @@ async function profile(provider: Provider, token: string): Promise<Profile> {
 }
 
 /** Creates (or refreshes) the user and a session for them. */
-export function createSession(db: Db, subject: string, provider: string, details: Omit<Profile, 'id'> = {}) {
-  db.prepare(
+export async function createSession(db: Db, subject: string, provider: string, details: Omit<Profile, 'id'> = {}) {
+  await db.prepare(
     `insert into users (subject, provider, email, name, avatar, created_at) values (?, ?, ?, ?, ?, ?)
      on conflict(subject) do update set email = excluded.email, name = excluded.name, avatar = excluded.avatar`,
   ).run(subject, provider, details.email ?? null, details.name ?? null, details.avatar ?? null, now())
   const token = randomBytes(32).toString('base64url')
-  db.prepare('insert into sessions (token, address, expires_at) values (?, ?, ?)').run(token, subject, now() + SESSION_TTL)
+  await db.prepare('insert into sessions (token, address, expires_at) values (?, ?, ?)').run(token, subject, now() + SESSION_TTL)
   return { token, address: subject, expiresAt: now() + SESSION_TTL }
 }
 
@@ -124,17 +124,17 @@ export function createSession(db: Db, subject: string, provider: string, details
 export async function finish(config: Config, db: Db, provider: Provider, code?: string, state?: string) {
   const back = (params: Record<string, string>) => `${config.webUrl}/app#${new URLSearchParams(params)}`
   const row = state
-    ? (db.prepare('select address, expires_at from challenges where nonce = ?').get(state) as
+    ? (await db.prepare('select address, expires_at from challenges where nonce = ?').get(state) as
         | { address: string; expires_at: number }
         | undefined)
     : undefined
-  if (state) db.prepare('delete from challenges where nonce = ?').run(state)
+  if (state) await db.prepare('delete from challenges where nonce = ?').run(state)
   if (!code || !row || row.address !== provider || row.expires_at < now()) {
     return back({ error: 'Sign-in expired or was cancelled. Try again.' })
   }
   try {
     const user = await profile(provider, await exchange(config, provider, code))
-    const session = createSession(db, `${provider}:${user.id}`, provider, user)
+    const session = await createSession(db, `${provider}:${user.id}`, provider, user)
     return back({ session: Buffer.from(JSON.stringify(session)).toString('base64url') })
   } catch (error) {
     return back({ error: (error as Error).message || 'Sign-in failed' })

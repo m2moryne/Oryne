@@ -6,8 +6,10 @@ import { networks, type NetworkConfig } from '@oryne/core'
 export type Config = {
   port: number
   network: NetworkConfig
-  /** Directory for the SQLite database and generated testnet keys. */
+  /** Directory for the SQLite database, used when there's no databaseUrl. */
   dataDir: string
+  /** Postgres connection string (e.g. Supabase). Records survive restarts on hosts with no disk. */
+  databaseUrl?: string
   /** Origins allowed to call the API from a browser. */
   corsOrigins: string[]
   /** Public URL of this API, put in 402 responses as the facilitator. */
@@ -81,6 +83,7 @@ export function loadConfig(): Config {
     port,
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
+    databaseUrl: env('DATABASE_URL'),
     corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL')),
     // Render sets RENDER_EXTERNAL_URL to the service's https URL.
     publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,

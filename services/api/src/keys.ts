@@ -7,11 +7,11 @@
 import { loadConfig } from './config.ts'
 import { getKv, openDb } from './db.ts'
 
-const db = openDb(loadConfig().dataDir)
+const db = await openDb(loadConfig())
 for (const [name, key] of [
   ['SPONSOR_SECRET', 'sponsor_secret'],
   ['TOKEN_ISSUER_SECRET', 'token_issuer_secret'],
 ] as const) {
-  const value = getKv(db, key)
+  const value = await getKv(db, key)
   if (value) console.log(`${name}=${value}`)
 }

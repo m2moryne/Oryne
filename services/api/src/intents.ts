@@ -71,7 +71,7 @@ export async function createIntent(
     throw new HTTPException(400, { message: new StellarError('Could not prepare the transaction', message).message })
   }
   const envelope = prepared.toXDR()
-  db.prepare('insert into intents (id, owner, kind, data, xdr, mode, created_at) values (?, ?, ?, ?, ?, ?, ?)').run(
+  await db.prepare('insert into intents (id, owner, kind, data, xdr, mode, created_at) values (?, ?, ?, ?, ?, ?, ?)').run(
     id,
     owner,
     kind,
@@ -125,12 +125,12 @@ async function createPasskeyIntent(
   )
   if (!payload) throw new HTTPException(500, { message: 'Could not compute the signature payload' })
 
-  db.prepare(
+  await db.prepare(
     'insert into intents (id, owner, kind, data, xdr, mode, auth_entry, valid_until, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(id, owner, kind, stringify(data), '', 'passkey', entry.toXdr('base64'), validUntil, now())
 
   const credentialIds = (
-    db.prepare('select credential_id from passkeys where wallet_id = ?').all(wallet.id) as Array<{ credential_id: string }>
+    await db.prepare('select credential_id from passkeys where wallet_id = ?').all(wallet.id) as Array<{ credential_id: string }>
   ).map((row) => row.credential_id)
   return { id, kind, mode: 'passkey', challenge: base64url.encode(payload), credentialIds }
 }
@@ -163,18 +163,18 @@ export async function submitIntent(
   id: string,
   signed: { signedXdr?: string; passkey?: PasskeyResponse },
 ) {
-  const row = db.prepare('select * from intents where id = ? and owner = ?').get(id, owner) as IntentRow | undefined
+  const row = await db.prepare('select * from intents where id = ? and owner = ?').get(id, owner) as IntentRow | undefined
   if (!row) throw new HTTPException(404, { message: 'No such intent' })
   if (row.status !== 'pending') throw new HTTPException(409, { message: `Intent already ${row.status}` })
 
-  const finish = (result: { hash: string; ledger: number }) => {
-    db.prepare("update intents set status = 'submitted', tx_hash = ? where id = ?").run(result.hash, id)
-    applyEffect(db, row.kind, JSON.parse(row.data), result.hash)
+  const finish = async (result: { hash: string; ledger: number }) => {
+    await db.prepare("update intents set status = 'submitted', tx_hash = ? where id = ?").run(result.hash, id)
+    await applyEffect(db, row.kind, JSON.parse(row.data), result.hash)
     return result
   }
-  const fail = (error: unknown): never => {
+  const fail = async (error: unknown): Promise<never> => {
     const message = String((error as Error).message ?? error)
-    db.prepare("update intents set status = 'failed', error = ? where id = ?").run(message, id)
+    await db.prepare("update intents set status = 'failed', error = ? where id = ?").run(message, id)
     throw new HTTPException(502, { message })
   }
 
@@ -212,7 +212,7 @@ export async function submitIntent(
         // Simulating with the signed entry runs the wallet's passkey check.
         const prepared = await chain.rpc.prepareTransaction(tx)
         prepared.sign(chain.sponsor)
-        return finish(await submitSigned(chain.rpc, prepared))
+        return await finish(await submitSigned(chain.rpc, prepared))
       } catch (error) {
         return fail(new StellarError('Passkey transaction failed', String((error as Error).message ?? error)))
       }
@@ -227,16 +227,16 @@ export async function submitIntent(
     throw new HTTPException(400, { message: 'Signed transaction does not match the intent' })
   }
   try {
-    return finish(await submitSigned(chain.rpc, signedTx))
+    return await finish(await submitSigned(chain.rpc, signedTx))
   } catch (error) {
     return fail(error)
   }
 }
 
-function applyEffect(db: Db, kind: IntentKind, data: Record<string, any>, txHash: string) {
+async function applyEffect(db: Db, kind: IntentKind, data: Record<string, any>, txHash: string) {
   switch (kind) {
     case 'add_agent':
-      db.prepare(
+      await db.prepare(
         `insert into agents (public_key, wallet_id, name, kind, per_tx, budget, window_secs, expires_at, payees, created_at)
          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
@@ -253,18 +253,18 @@ function applyEffect(db: Db, kind: IntentKind, data: Record<string, any>, txHash
       )
       break
     case 'set_policy':
-      db.prepare(
+      await db.prepare(
         'update agents set per_tx = ?, budget = ?, window_secs = ?, expires_at = ?, payees = ? where public_key = ?',
       ).run(data.perTx, data.budget, data.windowSecs, data.expiresAt, JSON.stringify(data.payees), data.agent)
       break
     case 'set_paused':
-      db.prepare('update agents set status = ? where public_key = ?').run(data.paused ? 'paused' : 'active', data.agent)
+      await db.prepare('update agents set status = ? where public_key = ?').run(data.paused ? 'paused' : 'active', data.agent)
       break
     case 'remove_agent':
-      db.prepare("update agents set status = 'removed' where public_key = ?").run(data.agent)
+      await db.prepare("update agents set status = 'removed' where public_key = ?").run(data.agent)
       break
     case 'approve_once':
-      db.prepare("update approvals set status = 'approved', tx_hash = ?, resolved_at = ? where id = ?").run(
+      await db.prepare("update approvals set status = 'approved', tx_hash = ?, resolved_at = ? where id = ?").run(
         txHash,
         now(),
         data.approval,

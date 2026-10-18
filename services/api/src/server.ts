@@ -5,7 +5,8 @@ import { openDb } from './db.ts'
 import { connect } from './stellar.ts'
 
 const config = loadConfig()
-const db = openDb(config.dataDir)
+const db = await openDb(config)
+console.log(`Database: ${config.databaseUrl ? 'Postgres' : 'SQLite in ' + config.dataDir}`)
 
 console.log(`Connecting to Stellar ${config.network.name}…`)
 const chain = await connect(config, db)
