@@ -3,8 +3,8 @@ import { EMAIL, socials } from './social'
 type FooterLink = { label: string; to?: string; href?: string }
 
 /**
- * Top navigation. Product, Network and Directory are left out for now; their
- * pages still exist and are linked from the footer.
+ * Top navigation. Product is left out for now; its page still exists and is
+ * linked from the footer.
  */
 export const navLinks = [
   { to: '/', label: 'Home' },
@@ -21,8 +21,6 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
       { label: 'Overview', to: '/product' },
       { label: 'Dashboard', to: '/app' },
       { label: 'Demo', to: '/demo' },
-      { label: 'Network', to: '/network' },
-      { label: 'Directory', to: '/directory' },
       { label: 'Developers', to: '/dev' },
       { label: 'Documentation', to: '/docs' },
       { label: 'Status', to: '/status' },

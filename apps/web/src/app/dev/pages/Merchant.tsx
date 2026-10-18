@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { cn } from '../../../lib/cn'
 import { compact, shortKey, strkey, useLiveFeed, usdc } from '../../../lib/network'
 import { useStore } from '../../store'
@@ -90,11 +89,6 @@ export default function Merchant() {
               checked={listed}
               onChange={setListed}
             />
-            {listed && (
-              <Link to="/directory" className="mt-4 inline-block text-sm underline underline-offset-4">
-                See the directory
-              </Link>
-            )}
           </Panel>
         </div>
       </div>

@@ -48,20 +48,6 @@ export const publicPages = {
 
 /** Pages that exist but should not be indexed. */
 export const privatePages = {
-  // Network and Directory run on sample data (lib/network.ts). Move them to
-  // publicPages once they show real payments and services.
-  network: {
-    path: '/network',
-    title: 'Network — Oryne',
-    description: 'A preview of agent payments on Stellar through Oryne wallets, on sample data.',
-    noindex: true,
-  },
-  directory: {
-    path: '/directory',
-    title: 'Directory — Oryne',
-    description: 'A preview of services AI agents can pay for on Stellar, on sample data.',
-    noindex: true,
-  },
   signIn: {
     path: '/login',
     title: 'Sign in — Oryne',

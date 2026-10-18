@@ -35,9 +35,7 @@ import { ScrollManager } from './components/ScrollManager'
 import { soonPages } from './lib/site'
 import ComingSoon from './pages/ComingSoon'
 import Contact from './pages/Contact'
-import Directory from './pages/Directory'
 import Home from './pages/Home'
-import Network from './pages/Network'
 import Product from './pages/Product'
 import SignIn from './pages/SignIn'
 import Vision from './pages/Vision'
@@ -69,8 +67,6 @@ export default function App() {
         <Route element={<SiteLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/product" element={<Product />} />
-          <Route path="/network" element={<Network />} />
-          <Route path="/directory" element={<Directory />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/contact" element={<Contact />} />
           {soonPages.map((page) => (

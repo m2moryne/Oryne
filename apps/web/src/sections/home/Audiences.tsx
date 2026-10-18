@@ -18,8 +18,8 @@ const audiences = [
     icon: Store,
     title: 'Services and APIs',
     body: 'Charge agents per call, per page or per second, with no accounts, cards or invoices. Three lines of middleware.',
-    points: ['Paid in USDC within seconds', 'Listed in the Oryne directory', 'No chargebacks on settled payments'],
-    link: { to: '/directory', label: 'See the directory' },
+    points: ['Paid in USDC within seconds', 'Found by agents through the MCP server', 'No chargebacks on settled payments'],
+    link: { to: '/product', label: 'See the merchant kit' },
   },
   {
     index: '03',

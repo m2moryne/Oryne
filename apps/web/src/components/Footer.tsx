@@ -60,11 +60,6 @@ export function Footer() {
                   </a>
                 </li>
               </ul>
-
-              <p className="mt-8 inline-flex items-center gap-2.5 rounded-lg border border-taupe/50 px-3.5 py-2 text-sm">
-                <span aria-hidden="true" className="size-2 rounded-full bg-burgundy" />
-                More to come
-              </p>
             </div>
 
             <nav

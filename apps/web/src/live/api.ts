@@ -3,7 +3,10 @@
  * in with Freighter is kept in localStorage so a reload stays signed in.
  */
 
-export const API_URL = (import.meta.env.VITE_ORYNE_API_URL as string | undefined) ?? 'http://localhost:8787'
+/** VITE_ORYNE_API_URL wins; otherwise deployed builds use the hosted testnet API and `npm run dev:web` a local one. */
+export const API_URL =
+  (import.meta.env.VITE_ORYNE_API_URL as string | undefined) ??
+  (import.meta.env.PROD ? 'https://oryne.onrender.com' : 'http://localhost:8787')
 
 const TOKEN_KEY = 'oryne.live.session'
 
@@ -47,7 +50,12 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     })
   } catch {
-    throw new ApiError(`Can't reach the Oryne API at ${API_URL}. Is it running (npm run dev:api)?`, 0)
+    throw new ApiError(
+      import.meta.env.PROD
+        ? `Can't reach the Oryne API right now. It may be waking up; try again in a minute.`
+        : `Can't reach the Oryne API at ${API_URL}. Is it running (npm run dev:api)?`,
+      0,
+    )
   }
   const data = (await response.json().catch(() => ({}))) as T & { error?: string }
   if (!response.ok) throw new ApiError(data.error ?? `API error ${response.status}`, response.status)
