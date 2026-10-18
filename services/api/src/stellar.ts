@@ -82,7 +82,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
   let token = config.tokenId ?? network.token ?? getKv(db, 'token_id')
   let issuer: Keypair | undefined
   if (testnet && !config.tokenId) {
-    issuer = storedKeypair(db, 'token_issuer_secret')
+    issuer = storedKeypair(db, 'token_issuer_secret', config.tokenIssuerSecret)
     await ensureFunded(network, rpcServer, issuer)
     if (!token) {
       const asset = new Asset('USDC', issuer.publicKey())

@@ -1,0 +1,51 @@
+# Render Blueprint: the Oryne API on Stellar testnet.
+# Render → New → Blueprint → pick this repo. Fill in the "sync: false" values when asked.
+services:
+  - type: web
+    name: oryne-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: master
+    buildCommand: npm ci
+    startCommand: npm start -w @oryne/api
+    healthCheckPath: /v1/info
+    # Only redeploy for changes the API depends on.
+    buildFilter:
+      paths:
+        - services/api/**
+        - packages/core/**
+        - package.json
+        - package-lock.json
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ORYNE_NETWORK
+        value: testnet
+      - key: DEV_LOGIN
+        value: "1"
+      # Where the dashboard runs, e.g. http://localhost:5173 while testing.
+      - key: WEB_URL
+        sync: false
+      # Comma-separated browser origins, usually the same as WEB_URL.
+      - key: CORS_ORIGINS
+        sync: false
+      # The free plan's disk is wiped on every deploy and restart. Pin the testnet
+      # keys so the same sponsor and test USDC come back (npm run keys -w @oryne/api).
+      - key: SPONSOR_SECRET
+        sync: false
+      - key: TOKEN_ISSUER_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+    # To keep accounts, wallets and sessions across restarts, switch to a paid plan
+    # and give the database a disk:
+    #   plan: starter
+    #   disk: { name: oryne-data, mountPath: /var/data, sizeGB: 1 }
+    #   envVars: ORYNE_DATA_DIR=/var/data

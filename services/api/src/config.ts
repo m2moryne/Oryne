@@ -15,6 +15,8 @@ export type Config = {
   sponsorSecret?: string
   /** Token contract agents spend. On testnet, a test USDC is created if unset. */
   tokenId?: string
+  /** Testnet only: secret of the test-USDC issuer. Generated if unset. */
+  tokenIssuerSecret?: string
   /** Hash of the uploaded agent-wallet wasm. Uploaded from walletWasm if unset. */
   walletWasmHash?: string
   /** Path or URL of agent_wallet.wasm to upload when walletWasmHash is unset. */
@@ -44,9 +46,11 @@ export function loadConfig(): Config {
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
     corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:5173').split(',').map((origin) => origin.trim()),
-    publicUrl: env('PUBLIC_URL') ?? `http://localhost:${port}`,
+    // Render sets RENDER_EXTERNAL_URL to the service's https URL.
+    publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
     sponsorSecret: env('SPONSOR_SECRET'),
     tokenId: env('TOKEN_ID'),
+    tokenIssuerSecret: env('TOKEN_ISSUER_SECRET'),
     walletWasmHash: env('WALLET_WASM_HASH'),
     walletWasm:
       env('WALLET_WASM') ??
