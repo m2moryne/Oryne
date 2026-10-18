@@ -12,6 +12,7 @@ const chain = await connect(config, db)
 console.log(`  sponsor  ${chain.sponsor.publicKey()}`)
 console.log(`  token    ${chain.network.token}`)
 console.log(`  wallet   wasm ${chain.walletWasmHash.toString('hex')}`)
+console.log(`  browsers ${config.corsOrigins.join(', ')}`)
 
 serve({ fetch: createApp(config, db, chain).fetch, port: config.port }, (info) => {
   console.log(`Oryne API on http://localhost:${info.port}`)

@@ -36,6 +36,26 @@ const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, c
 
 const env = (name: string) => process.env[name]?.trim() || undefined
 
+/**
+ * Browser origins as the browser sends them: scheme and host, no path or
+ * trailing slash. Accepts commas, spaces or new lines between entries, quotes,
+ * and hosts without a scheme (https is assumed). The dashboard (WEB_URL) is
+ * always allowed.
+ */
+function corsOrigins(list: string, webUrl?: string) {
+  const origins = [...list.split(/[\s,]+/), webUrl ?? '']
+    .map((entry) => entry.replace(/^['"]|['"]$/g, '').trim())
+    .filter(Boolean)
+    .map((entry) => {
+      try {
+        return new URL(/^https?:\/\//.test(entry) ? entry : `https://${entry}`).origin
+      } catch {
+        throw new Error(`CORS_ORIGINS has an entry that isn't a URL: ${entry}`)
+      }
+    })
+  return [...new Set(origins)]
+}
+
 export function loadConfig(): Config {
   const networkName = (env('ORYNE_NETWORK') ?? 'testnet') as keyof typeof networks
   const base = networks[networkName]
@@ -45,7 +65,7 @@ export function loadConfig(): Config {
     port,
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
-    corsOrigins: (env('CORS_ORIGINS') ?? 'http://localhost:5173').split(',').map((origin) => origin.trim()),
+    corsOrigins: corsOrigins(env('CORS_ORIGINS') ?? 'http://localhost:5173', env('WEB_URL')),
     // Render sets RENDER_EXTERNAL_URL to the service's https URL.
     publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
     sponsorSecret: env('SPONSOR_SECRET'),
