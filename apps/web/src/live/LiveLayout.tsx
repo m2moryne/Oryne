@@ -252,8 +252,8 @@ function Gate() {
       ) : !live.session ? (
         <>
           <div className="text-center">
-            <h1 className="text-3xl tracking-[-0.02em]">Good to see you</h1>
-            <p className="mt-2 text-sm text-muted">Sign in to check on your agents.</p>
+            <h1 className="text-3xl tracking-[-0.02em]">Your agents are waiting</h1>
+            <p className="mt-2 text-sm text-muted">Sign in to see what they’ve been up to.</p>
           </div>
 
           <div className="mt-8 space-y-2.5">
