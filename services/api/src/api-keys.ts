@@ -125,7 +125,7 @@ export function scopeFor(path: string): Scope | null {
   if (route === '/me' || /^\/wallets\/[^/]+$/.test(route)) return 'wallets:read'
   if (/^\/wallets\/[^/]+\/payments$/.test(route)) return 'payments:read'
   if (route === '/approvals') return 'approvals:read'
-  if (route === '/logs') return 'logs:read'
+  if (route === '/logs' || route === '/usage') return 'logs:read'
   return null
 }
 

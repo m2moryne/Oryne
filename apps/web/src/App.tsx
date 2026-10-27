@@ -30,6 +30,8 @@ import RealDebugger from './live/dev/Debugger'
 import RealLogs from './live/dev/Logs'
 import RealKeys from './live/dev/Keys'
 import RealWebhooks from './live/dev/Webhooks'
+import RealUsage from './live/dev/Usage'
+import RealSettings from './live/dev/Settings'
 import DevOverview from './live/dev/Overview'
 import { Contracts as RealContracts, Merchant as RealMerchant, Sdks as RealSdks } from './live/dev/pages'
 import { realPages } from './live/dev/shared'
@@ -104,6 +106,8 @@ export default function App() {
             <Route path="logs" element={<RealLogs />} />
             <Route path="keys" element={<RealKeys />} />
             <Route path="webhooks" element={<RealWebhooks />} />
+            <Route path="usage" element={<RealUsage />} />
+            <Route path="settings" element={<RealSettings />} />
             {allDevPages
               .filter((page) => page.slug && !realPages.includes(page.slug))
               .map((page) => (

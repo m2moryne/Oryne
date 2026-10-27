@@ -30,6 +30,7 @@ import { adminApi } from './admin.ts'
 import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { listRequests, logRequests } from './requests.ts'
+import { usage, usageRanges } from './usage.ts'
 import type { Webhooks } from './webhooks.ts'
 import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
@@ -372,6 +373,27 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     sessionOnly(c)
     await webhooks.retry(c.var.owner, c.req.param('id'))
     return c.json({ ok: true })
+  })
+
+  // ---------------------------------------------------------------- account
+  owner.get('/sessions', async (c) => {
+    sessionOnly(c)
+    const row = await db
+      .prepare('select count(*) as n from sessions where address = ? and expires_at >= ?')
+      .get<{ n: number }>(c.var.owner, now())
+    return c.json({ active: Number(row?.n ?? 0) })
+  })
+  // Signs this account out on every device, this one included.
+  owner.post('/sessions/revoke', async (c) => {
+    sessionOnly(c)
+    await db.prepare('delete from sessions where address = ?').run(c.var.owner)
+    return c.json({ ok: true })
+  })
+
+  owner.get('/usage', async (c) => {
+    const requested = Number(c.req.query('days'))
+    const days = usageRanges.find((range) => range === requested) ?? 14
+    return c.json(await usage(db, c.var.owner, days, money, now()))
   })
 
   owner.get('/me', async (c) => {

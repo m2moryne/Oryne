@@ -36,7 +36,9 @@ function check(chain: Chain, payload: PaymentPayload, requirements: PaymentRequi
   const credentials = addressCredentialsOf(auth.entry)
   if (credentials) {
     try {
-      const signature = scValToNative(credentials.signature) as { public_key?: Uint8Array }
+      // The contract's Signature enum: Agent(AgentSignature) decodes to ['Agent', { public_key, signature }].
+      const decoded = scValToNative(credentials.signature) as unknown
+      const signature = (Array.isArray(decoded) && decoded[0] === 'Agent' ? decoded[1] : decoded) as { public_key?: Uint8Array }
       if (signature?.public_key) agent = StrKey.encodeEd25519PublicKey(Buffer.from(signature.public_key))
     } catch {
       // Not an Oryne agent signature; the contract will decide.
