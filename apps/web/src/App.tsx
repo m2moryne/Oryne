@@ -42,6 +42,7 @@ import LiveAgentDetail from './live/pages/LiveAgentDetail'
 import LiveAgents from './live/pages/LiveAgents'
 import LiveApprovals from './live/pages/LiveApprovals'
 import LiveOverview from './live/pages/LiveOverview'
+import LiveComingSoon, { soonPages as liveSoonPages } from './live/pages/ComingSoon'
 import { Footer } from './components/Footer'
 import { Navigation } from './components/Navigation'
 import { ScrollManager } from './components/ScrollManager'
@@ -97,6 +98,10 @@ export default function App() {
           <Route path="agents/:key" element={<LiveAgentDetail />} />
           <Route path="approvals" element={<LiveApprovals />} />
           <Route path="activity" element={<LiveActivity />} />
+          <Route path="settings" element={<RealSettings />} />
+          {liveSoonPages.map((page) => (
+            <Route key={page.slug} path={page.slug} element={<LiveComingSoon slug={page.slug} />} />
+          ))}
           {/* The developer console for real accounts: real pages where they exist, the rest in development. */}
           <Route path="developers">
             <Route index element={<DevOverview />} />

@@ -7,6 +7,7 @@ import {
   Mail,
   Menu,
   Receipt,
+  Settings,
   Sparkles,
   Wallet,
   X,
@@ -31,12 +32,15 @@ import { SignInField } from '../components/SignInField'
 import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
+import { soonPages } from './pages/ComingSoon'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/app/agents', label: 'Agents', icon: Bot },
   { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
+  ...soonPages.map((page) => ({ to: `/app/${page.slug}`, label: page.label, icon: page.icon })),
   { to: '/app/activity', label: 'Activity', icon: Receipt },
+  { to: '/app/settings', label: 'Settings', icon: Settings },
 ]
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
