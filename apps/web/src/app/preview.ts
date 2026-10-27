@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from './store'
 
+export { PREVIEW_ON } from '../lib/flags'
+
 /** The one user the in-browser store knows: the preview account, on sample data. */
 export const PREVIEW_USER = { name: 'Preview account', email: 'Sample data', provider: 'Preview' }
 

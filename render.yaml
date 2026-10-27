@@ -46,6 +46,12 @@ services:
       # The admin site's address, e.g. https://adminweb.oryne.org; always allowed by CORS.
       - key: ADMIN_URL
         sync: false
+      # "Continue with email": sign-in codes sent with Resend (resend.com).
+      # EMAIL_FROM must be on a domain verified in Resend.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Oryne <sign-in@oryne.org>
       # Claude API key for the AI debugger in the developer console.
       - key: ANTHROPIC_API_KEY
         sync: false

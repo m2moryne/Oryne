@@ -45,6 +45,7 @@ import LiveOverview from './live/pages/LiveOverview'
 import { Footer } from './components/Footer'
 import { Navigation } from './components/Navigation'
 import { ScrollManager } from './components/ScrollManager'
+import { PREVIEW_ON } from './lib/flags'
 import { soonPages } from './lib/site'
 import ComingSoon from './pages/ComingSoon'
 import Contact from './pages/Contact'
@@ -118,7 +119,12 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* The preview account: the clickable demo on sample data, opened from the sign-in card. */}
+        {/* The preview account: the clickable demo on sample data. Only in builds with
+            VITE_PREVIEW=1 (lib/flags.ts); otherwise its paths go to the real dashboards. */}
+        {!PREVIEW_ON && <Route path="/demo/*" element={<Navigate to="/app" replace />} />}
+        {!PREVIEW_ON && <Route path="/dev/*" element={<Navigate to="/app/developers" replace />} />}
+        {PREVIEW_ON && (
+        <>
         <Route path="/demo" element={<DashboardLayout area="agents" />}>
           <Route index element={<Overview />} />
           <Route path="agents" element={<Agents />} />
@@ -148,6 +154,8 @@ export default function App() {
           <Route path="billing" element={<Billing />} />
           <Route path="settings" element={<DevSettings />} />
         </Route>
+        </>
+        )}
         <Route path="/developers" element={<Navigate to="/app/developers" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -146,7 +146,8 @@ export type Info = {
   walletWasmHash: string
   facilitator: string
   faucet: string | null
-  auth: { freighter: boolean; google: boolean; github: boolean; dev: boolean }
+  /** `email` is missing on older API builds. */
+  auth: { freighter: boolean; google: boolean; github: boolean; email?: boolean; dev: boolean }
   /** Missing on older API builds. */
   features?: { aiDebugger: boolean }
 }

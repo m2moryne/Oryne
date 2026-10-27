@@ -23,6 +23,7 @@ import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
 import { createKey, listKeys, revokeKey, scopes as keyScopes } from './api-keys.ts'
 import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, type OwnerVariables } from './auth.ts'
+import { createEmailCodes } from './email-codes.ts'
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
@@ -102,6 +103,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   const app = new Hono()
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.anthropicApiKey)
+  const emailCodes = createEmailCodes(config, db)
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
   const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
@@ -215,6 +217,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
         freighter: true,
         google: !!config.oauth.google,
         github: !!config.oauth.github,
+        email: emailCodes.enabled,
         dev: config.devLogin,
       },
       features: { aiDebugger: aiDebugger.enabled },
@@ -247,6 +250,16 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   app.get('/v1/auth/oauth/:provider/callback', async (c) =>
     c.redirect(await finish(config, db, providerOf(c.req.param('provider')), c.req.query('code'), c.req.query('state'))),
   )
+
+  app.post('/v1/auth/email/start', async (c) => {
+    const { email } = await body<{ email?: unknown }>(c)
+    return c.json(await emailCodes.start(email, c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'))
+  })
+
+  app.post('/v1/auth/email/verify', async (c) => {
+    const { email, code } = await body<{ email?: unknown; code?: unknown }>(c)
+    return c.json(await emailCodes.verify(email, code))
+  })
 
   /** Testnet scripts only (DEV_LOGIN=1): a session without OAuth. */
   app.post('/v1/auth/dev', async (c) => {

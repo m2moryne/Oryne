@@ -1,8 +1,9 @@
-import { ArrowRight, Play } from 'lucide-react'
+import { ArrowRight, Code, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Container } from '../../components/Section'
 import { cn } from '../../lib/cn'
+import { PREVIEW_ON } from '../../lib/flags'
 import { HeroField } from './HeroField'
 
 /** "Machines can now ___." The first entry is the headline of record. */
@@ -63,9 +64,15 @@ export function Hero() {
             <Button to="/app/agents?connect=1" icon={ArrowRight}>
               Connect an agent
             </Button>
-            <Button to="/dev/playground" variant="outline" leadingIcon={Play}>
-              Watch demo
-            </Button>
+            {PREVIEW_ON ? (
+              <Button to="/dev/playground" variant="outline" leadingIcon={Play}>
+                Watch demo
+              </Button>
+            ) : (
+              <Button to="/app/developers" variant="outline" leadingIcon={Code}>
+                For developers
+              </Button>
+            )}
           </div>
         </div>
       </Container>

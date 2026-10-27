@@ -78,6 +78,12 @@ create table if not exists users (
   provider text not null, email text, name text, avatar text, created_at ${int} not null
 );
 
+-- Sign-in codes sent by email (see email-codes.ts). Only a hash of each code.
+create table if not exists email_codes (
+  email text primary key, code_hash text not null,
+  expires_at ${int} not null, tries ${int} not null default 0, sent_at ${int} not null
+);
+
 -- Passkeys that own wallets. The private key never leaves the user's device.
 create table if not exists passkeys (
   credential_id text primary key, -- base64url

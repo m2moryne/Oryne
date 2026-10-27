@@ -31,6 +31,8 @@ export type Config = {
     google?: { clientId: string; clientSecret: string }
     github?: { clientId: string; clientSecret: string }
   }
+  /** Sign-in codes by email, sent with Resend. Without a key, codes are only printed to the log, and only when devLogin is on. */
+  email: { resendApiKey?: string; from: string }
   /** Testnet only: POST /v1/auth/dev signs in without OAuth, for scripts/e2e. */
   devLogin: boolean
   /** Claude API key for the AI debugger. The debugger is off without it. */
@@ -106,6 +108,7 @@ export function loadConfig(): Config {
       google: pair(env('GOOGLE_CLIENT_ID'), env('GOOGLE_CLIENT_SECRET')),
       github: pair(env('GITHUB_CLIENT_ID'), env('GITHUB_CLIENT_SECRET')),
     },
+    email: { resendApiKey: env('RESEND_API_KEY'), from: env('EMAIL_FROM') ?? 'Oryne <sign-in@oryne.org>' },
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
     anthropicApiKey: env('ANTHROPIC_API_KEY'),
     adminToken: env('ADMIN_TOKEN'),
