@@ -166,23 +166,27 @@ function Gate() {
               </div>
 
               <div className="mt-8 space-y-2.5">
-                {(['google', 'github'] as const).map((provider) => (
-                  <a
-                    key={provider}
-                    href={auth?.[provider] ? oauthStart(provider) : undefined}
-                    aria-disabled={!auth?.[provider]}
-                    title={auth?.[provider] ? undefined : `${provider === 'google' ? 'Google' : 'GitHub'} sign-in is not set up on this server yet`}
-                    className={cn(providerButton, !auth?.[provider] && 'pointer-events-none opacity-45')}
-                  >
-                    <img src={providerLogos[provider]} alt="" width={18} height={18} className="size-[18px]" />
-                    Continue with {provider === 'google' ? 'Google' : 'GitHub'}
-                  </a>
-                ))}
+                {(['google', 'github'] as const).map((provider) => {
+                  // Ready unless the server is known not to offer it: the API may still be waking up.
+                  const off = !!auth && !auth[provider]
+                  return (
+                    <a
+                      key={provider}
+                      href={off ? undefined : oauthStart(provider)}
+                      aria-disabled={off}
+                      title={off ? `${provider === 'google' ? 'Google' : 'GitHub'} sign-in is not set up on this server yet` : undefined}
+                      className={cn(providerButton, off && 'pointer-events-none opacity-45')}
+                    >
+                      <img src={providerLogos[provider]} alt="" width={18} height={18} className="size-[18px]" />
+                      Continue with {provider === 'google' ? 'Google' : 'GitHub'}
+                    </a>
+                  )
+                })}
                 <button
                   type="button"
                   className={providerButton}
                   onClick={run('freighter', live.signIn)}
-                  disabled={!!busy || !live.info}
+                  disabled={!!busy}
                 >
                   <Icon icon={Wallet} size={18} />
                   {busy === 'freighter' ? 'Waiting for Freighter…' : 'Continue with Freighter'}

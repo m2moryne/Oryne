@@ -30,6 +30,25 @@ export function saveSession(session: Session | null) {
   }
 }
 
+const INFO_KEY = `oryne.live.info:${API_URL}`
+
+/** The last /v1/info seen, so the sign-in page is ready before the API answers. */
+export function loadInfo(): Info | null {
+  try {
+    return JSON.parse(localStorage.getItem(INFO_KEY) ?? 'null') as Info | null
+  } catch {
+    return null
+  }
+}
+
+export function saveInfo(info: Info) {
+  try {
+    localStorage.setItem(INFO_KEY, JSON.stringify(info))
+  } catch {
+    // Storage blocked: the page waits for the API instead.
+  }
+}
+
 export class ApiError extends Error {
   readonly status: number
   constructor(message: string, status: number) {

@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import {
   api,
   isAccount,
+  loadInfo,
   loadSession,
+  saveInfo,
   saveSession,
   type Info,
   type Intent,
@@ -61,7 +63,7 @@ type Live = {
 const LiveContext = createContext<Live | null>(null)
 
 export function LiveProvider({ children }: { children: ReactNode }) {
-  const [info, setInfo] = useState<Info | null>(null)
+  const [info, setInfo] = useState<Info | null>(loadInfo)
   const [redirect] = useState(sessionFromRedirect)
   const [session, setSession] = useState<Session | null>(() => redirect.session ?? loadSession())
   const [user, setUser] = useState<User | null>(null)
@@ -73,9 +75,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(redirect.error ?? null)
 
   useEffect(() => {
+    // Refresh the cached copy; the page already works from it while the API wakes up.
     api<Info>('/v1/info')
-      .then(setInfo)
-      .catch((reason: Error) => setError(reason.message))
+      .then((fresh) => {
+        saveInfo(fresh)
+        setInfo(fresh)
+      })
+      .catch((reason: Error) => {
+        if (!loadInfo()) setError(reason.message)
+      })
   }, [])
 
   const refresh = useCallback(async () => {
@@ -135,8 +143,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       error,
       token: session?.token ?? '',
       async signIn() {
-        if (!info) throw new Error('The API is not reachable yet')
-        const next = await signIn(info.networkPassphrase)
+        const current = info ?? (await api<Info>('/v1/info'))
+        const next = await signIn(current.networkPassphrase)
         saveSession(next)
         setLoading(true)
         setSession(next)
