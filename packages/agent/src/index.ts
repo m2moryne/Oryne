@@ -62,10 +62,13 @@ export class PaymentRefusedError extends Error {
   }
 }
 
+/** The hosted Oryne API, on Stellar testnet. */
+export const DEFAULT_API_URL = 'https://oryne.onrender.com'
+
 export type OryneAgentOptions = {
   /** The agent's secret key, S… */
   secret: string
-  /** Oryne API base URL. */
+  /** Oryne API base URL. Defaults to ORYNE_API_URL, then the hosted API. */
   apiUrl?: string
   /** Most this client will pay for a single request, whatever the service asks. In token units, e.g. "1". */
   maxPerRequest?: string
@@ -81,7 +84,7 @@ export class OryneAgent {
 
   constructor(options: OryneAgentOptions) {
     this.keypair = Keypair.fromSecret(options.secret)
-    this.apiUrl = (options.apiUrl ?? process.env.ORYNE_API_URL ?? 'http://localhost:8787').replace(/\/$/, '')
+    this.apiUrl = (options.apiUrl ?? process.env.ORYNE_API_URL ?? DEFAULT_API_URL).replace(/\/$/, '')
     this.maxPerRequest = options.maxPerRequest ? toBaseUnits(options.maxPerRequest) : undefined
     this.onPayment = options.onPayment
   }

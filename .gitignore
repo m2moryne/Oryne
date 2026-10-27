@@ -9,3 +9,6 @@ services/api/data/
 
 # The admin site lives in its own repository (git init inside apps/admin).
 apps/admin/
+
+# SDK builds for npm (npm run packages)
+packages/*/npm/

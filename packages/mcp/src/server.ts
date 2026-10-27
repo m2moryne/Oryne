@@ -10,7 +10,7 @@ import { z } from 'zod'
  * so the model can't talk its way past them.
  *
  *   ORYNE_AGENT_SECRET  the agent's secret key (S…), shown once when you connect it
- *   ORYNE_API_URL       defaults to http://localhost:8787
+ *   ORYNE_API_URL       defaults to the hosted API, https://oryne.onrender.com
  *   ORYNE_MAX_PER_REQUEST  optional client-side cap per request, e.g. "1"
  */
 

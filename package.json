@@ -20,7 +20,8 @@
     "dev:merchant": "npm run dev -w @oryne/demo-merchant",
     "mcp": "npm start -w @oryne/mcp",
     "setup": "node scripts/setup.ts",
-    "e2e": "node scripts/e2e.ts"
+    "e2e": "node scripts/e2e.ts",
+    "packages": "node scripts/packages.ts"
   },
   "overrides": {
     "rolldown": "1.2.12",

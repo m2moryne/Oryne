@@ -1,0 +1,29 @@
+# Publishes the SDKs to npm (@oryne/core, agent, merchant, mcp) when run by
+# hand from the Actions tab. Needs an NPM_TOKEN repository secret: an npm
+# granular access token with publish rights on the @oryne scope.
+# Bump the versions in packages/*/package.json first; npm refuses to publish
+# a version twice.
+name: Publish packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance: links each release to this workflow run
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm test -w @oryne/core
+      - run: npm run packages -- --publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
