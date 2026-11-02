@@ -1,9 +1,6 @@
-import { cn } from '../lib/cn'
+import { Logo } from './Logo'
 
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <span className={cn('inline-block font-medium uppercase tracking-[0.34em]', className)}>
-      Oryne
-    </span>
-  )
+/** The Oryne logo (mark + wordmark). Sized by the surrounding font-size; letters follow the text colour. */
+export function Wordmark({ className, variant = 'full' }: { className?: string; variant?: 'full' | 'mark' }) {
+  return <Logo variant={variant} className={className} />
 }

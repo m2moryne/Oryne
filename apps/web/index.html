@@ -15,7 +15,11 @@
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#202020" />
 
-    <!-- Open Graph. Add an og:image (1200×630 PNG) once brand artwork exists. -->
+    <!-- Open Graph -->
+    <meta property="og:image" content="https://oryne.org/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Oryne" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Oryne" />
     <meta property="og:locale" content="en_US" />
@@ -25,7 +29,8 @@
       content="Give your AI agent a wallet it can spend from, with a budget, a cap per payment and approved services enforced by a smart contract on Stellar. Not a promise: code."
     />
     <meta property="og:url" content="https://oryne.org/" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://oryne.org/og-image.png" />
     <meta name="twitter:title" content="Oryne — AI agent wallets with limits they can’t break" />
     <meta
       name="twitter:description"
@@ -42,7 +47,7 @@
             "@id": "https://oryne.org/#organization",
             "name": "Oryne",
             "url": "https://oryne.org/",
-            "logo": "https://oryne.org/favicon.svg",
+            "logo": "https://oryne.org/brand/oryne-mark.svg",
             "email": "hello@oryne.org",
             "description": "The mandate layer for AI agent payments on Stellar."
           },
@@ -66,8 +71,8 @@
       }
     </script>
 
-    <!-- Placeholder favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
     <div id="root"></div>
