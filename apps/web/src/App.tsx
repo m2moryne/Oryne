@@ -51,6 +51,7 @@ import { soonPages } from './lib/site'
 import ComingSoon from './pages/ComingSoon'
 import Contact from './pages/Contact'
 import Home from './pages/Home'
+import HowItWorks from './pages/HowItWorks'
 import Product from './pages/Product'
 import Vision from './pages/Vision'
 
@@ -81,6 +82,7 @@ export default function App() {
         <Route element={<SiteLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/product" element={<Product />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/contact" element={<Contact />} />
           {soonPages.map((page) => (

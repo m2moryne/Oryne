@@ -18,6 +18,7 @@ const escape = (text: string) =>
 /** How often each page changes and how it ranks against the others, for the sitemap. */
 const sitemapHints: Record<keyof typeof publicPages, { changefreq: string; priority: string }> = {
   home: { changefreq: 'weekly', priority: '1.0' },
+  howItWorks: { changefreq: 'monthly', priority: '0.9' },
   product: { changefreq: 'weekly', priority: '0.9' },
   vision: { changefreq: 'monthly', priority: '0.7' },
   contact: { changefreq: 'yearly', priority: '0.5' },

@@ -92,29 +92,33 @@ const code = {
   "mcpServers": {
     "oryne": {
       "command": "npx",
-      "args": ["@oryne/mcp"],
-      "env": { "ORYNE_AGENT_KEY": "oryne_agent_…" }
+      "args": ["-y", "@oryne/mcp"],
+      "env": { "ORYNE_AGENT_SECRET": "S…" }
     }
   }
 }
-// The agent now has tools: pay, balance, request_approval, find_service`,
+// The agent now has tools: fetch_paid, wallet_status, request_approval, find_service`,
   'Agent SDK': `import { OryneAgent } from '@oryne/agent'
 
-const agent = new OryneAgent({ key: process.env.ORYNE_AGENT_KEY })
+const agent = new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET })
 
 // fetch() that pays: answers 402 Payment Required with a signed USDC
 // transfer from your wallet, inside the mandate, then retries.
 const res = await agent.fetch('https://api.lumensearch.example/v1/search?q=stellar')
 
 console.log(await res.json())
-console.log(await agent.remaining()) // budget left this window`,
+console.log((await agent.me(true)).agent.remaining) // budget left this window`,
   'Merchant middleware': `import express from 'express'
-import { paywall } from '@oryne/merchant'
+import { expressPaywall } from '@oryne/merchant'
 
 const app = express()
+const pay = expressPaywall({
+  payTo: process.env.STELLAR_ADDRESS,
+  facilitator: 'https://oryne.onrender.com/v1/x402',
+})
 
 // Agents pay 0.008 USDC per call. Settles to your Stellar address.
-app.get('/v1/search', paywall({ price: '0.008', payTo: process.env.STELLAR_ADDRESS }), search)
+app.get('/v1/search', pay('0.008'), search)
 
 app.listen(3000)`,
 }

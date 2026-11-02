@@ -9,6 +9,7 @@ type FooterLink = { label: string; to?: string; href?: string }
  */
 export const navLinks = [
   { to: '/', label: 'Home' },
+  { to: '/how-it-works', label: 'How it works' },
   { to: '/app/developers', label: 'Developers' },
   { to: '/vision', label: 'Vision' },
   { to: '/contact', label: 'Contact' },
@@ -20,6 +21,7 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
     title: 'Product',
     links: [
       { label: 'Overview', to: '/product' },
+      { label: 'How it works', to: '/how-it-works' },
       { label: 'Dashboard', to: '/app' },
       ...(PREVIEW_ON ? [{ label: 'Preview', to: '/demo' }] : []),
       { label: 'Developers', to: '/app/developers' },

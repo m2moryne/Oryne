@@ -26,6 +26,12 @@ export const publicPages = {
     description:
       'Give your AI agent a wallet it can spend from, with a budget, a cap per payment and approved services enforced by a smart contract on Stellar. Not a promise: code.',
   },
+  howItWorks: {
+    path: '/how-it-works',
+    title: 'How Oryne works — Give your AI agent a wallet with limits | Oryne',
+    description:
+      'In plain words: how you connect an AI agent to your Oryne wallet, what happens when it pays, and how people use it with Claude, their own agents, apps and paid services.',
+  },
   product: {
     path: '/product',
     title: 'Product — Agent wallets, on-chain mandates and approvals | Oryne',
