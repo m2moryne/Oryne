@@ -74,6 +74,22 @@ type ApprovalRow = {
 
 const DAY = 86_400
 
+type ServiceRow = {
+  id: string
+  name: string
+  description: string
+  category: string
+  url: string
+  pay_to: string
+  price: string
+  unit: string
+  owner: string | null
+  created_at: number
+}
+
+/** Directory categories, in the order the dashboard shows them. */
+const serviceCategories = ['Search', 'Data', 'AI models', 'Media', 'Finance', 'Developer tools', 'Other']
+
 async function body<T>(c: Context): Promise<T> {
   try {
     return (await c.req.json()) as T
@@ -108,6 +124,36 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
   const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
+
+  /** Listings as the API returns them, with how often agents have paid each one through Oryne. */
+  const serviceViews = async (rows: ServiceRow[]) => {
+    if (rows.length === 0) return []
+    const payees = [...new Set(rows.map((row) => row.pay_to))]
+    const stats = await db
+      .prepare(
+        `select payee, count(*) as calls, max(created_at) as last_at from payments
+         where status = 'settled' and payee in (${payees.map(() => '?').join(', ')}) group by payee`,
+      )
+      .all(...payees) as Array<{ payee: string; calls: number; last_at: number }>
+    const byPayee = new Map(stats.map((stat) => [stat.payee, stat]))
+    return rows.map((row) => {
+      const stat = byPayee.get(row.pay_to)
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        category: row.category,
+        url: row.url,
+        payTo: row.pay_to,
+        price: row.price,
+        unit: row.unit,
+        createdAt: Number(row.created_at),
+        /** Payments settled to this payee through Oryne: a sign the service really charges agents. */
+        paidCalls: Number(stat?.calls ?? 0),
+        lastPaidAt: stat ? Number(stat.last_at) : null,
+      }
+    })
+  }
 
   const agentView = (row: AgentDbRow, remaining?: bigint) => ({
     publicKey: row.public_key,
@@ -272,12 +318,17 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     return c.json(await createSession(db, subject, 'dev'))
   })
 
+  /** The service directory: paid APIs agents can use. Public, so agents and the MCP server can search it. */
   app.get('/v1/services', async (c) => {
-    const q = `%${(c.req.query('q') ?? '').toLowerCase()}%`
+    const q = `%${(c.req.query('q') ?? '').toLowerCase().slice(0, 100)}%`
+    const category = c.req.query('category') ?? ''
     const rows = await db
-      .prepare('select * from services where lower(name || description || category) like ? order by created_at desc')
-      .all(q) as Array<Record<string, unknown>>
-    return c.json({ services: rows.map((row) => ({ ...row, price: row.price })) })
+      .prepare(
+        `select * from services where lower(name || ' ' || description || ' ' || category) like ?
+         and (? = '' or category = ?) order by created_at desc limit 200`,
+      )
+      .all(q, category, category) as ServiceRow[]
+    return c.json({ services: await serviceViews(rows), categories: serviceCategories })
   })
 
   app.post('/v1/x402/verify', async (c) => {
@@ -717,25 +768,81 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     )
   })
 
+  // ---------------------------------------------------------------- services
+
+  /** Checks a listing and returns what to store. With `existing`, fields left out keep their value (an edit). */
+  const serviceInput = (input: Record<string, unknown>, existing?: ServiceRow) => {
+    const text = (field: string, max: number, fallback?: string) => {
+      const value = input[field] === undefined ? fallback : String(input[field]).trim()
+      if (!value) throw new HTTPException(400, { message: `${field} is required` })
+      if (value.length > max) throw new HTTPException(400, { message: `${field} can be at most ${max} characters` })
+      return value
+    }
+    let parsed: URL
+    try {
+      parsed = new URL(text('url', 300, existing?.url))
+    } catch (error) {
+      if (error instanceof HTTPException) throw error
+      throw new HTTPException(400, { message: 'url must be a full address, like https://api.example.com/search' })
+    }
+    if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && config.network.name === 'testnet')) {
+      throw new HTTPException(400, { message: 'url must use https' })
+    }
+    const category = text('category', 40, existing?.category ?? 'Other')
+    if (!serviceCategories.includes(category)) {
+      throw new HTTPException(400, { message: `category must be one of: ${serviceCategories.join(', ')}` })
+    }
+    return {
+      name: text('name', 80, existing?.name),
+      description: input.description === undefined ? (existing?.description ?? '') : String(input.description).trim().slice(0, 300),
+      category,
+      url: parsed.toString(),
+      payTo: addressOf(input.payTo ?? existing?.pay_to, 'payTo'),
+      price: fromBaseUnits(amountOf(input.price ?? existing?.price, 'price', decimals), decimals),
+      unit: text('unit', 20, existing?.unit ?? 'call'),
+    }
+  }
+
+  const ownedService = async (ownerAddress: string, id: string) => {
+    const row = await db.prepare('select * from services where id = ? and owner = ?').get<ServiceRow>(id, ownerAddress)
+    if (!row) throw new HTTPException(404, { message: 'No such listing' })
+    return row
+  }
+
+  const serviceById = async (id: string) => (await serviceViews([(await db.prepare('select * from services where id = ?').get<ServiceRow>(id))!]))[0]
+
+  owner.get('/services/mine', async (c) => {
+    const rows = await db.prepare('select * from services where owner = ? order by created_at desc').all(c.var.owner) as ServiceRow[]
+    return c.json({ services: await serviceViews(rows), categories: serviceCategories })
+  })
+
   owner.post('/services', async (c) => {
-    const input = await body<Record<string, string>>(c)
-    if (!input.name || !input.url) throw new HTTPException(400, { message: 'name and url are required' })
+    sessionOnly(c)
+    const count = await db.prepare('select count(*) as n from services where owner = ?').get<{ n: number }>(c.var.owner)
+    if (Number(count?.n ?? 0) >= 20) throw new HTTPException(429, { message: 'At most 20 listings per account' })
+    const service = serviceInput(await body<Record<string, unknown>>(c))
     const id = newId('svc')
     await db.prepare(
       'insert into services (id, name, description, category, url, pay_to, price, unit, owner, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(
-      id,
-      input.name.slice(0, 80),
-      (input.description ?? '').slice(0, 300),
-      (input.category ?? 'Other').slice(0, 40),
-      input.url,
-      addressOf(input.payTo, 'payTo'),
-      fromBaseUnits(amountOf(input.price, 'price', decimals), decimals),
-      (input.unit ?? 'call').slice(0, 20),
-      c.var.owner,
-      now(),
-    )
-    return c.json({ id }, 201)
+    ).run(id, service.name, service.description, service.category, service.url, service.payTo, service.price, service.unit, c.var.owner, now())
+    return c.json(await serviceById(id), 201)
+  })
+
+  owner.patch('/services/:id', async (c) => {
+    sessionOnly(c)
+    const existing = await ownedService(c.var.owner, c.req.param('id'))
+    const service = serviceInput(await body<Record<string, unknown>>(c), existing)
+    await db.prepare(
+      'update services set name = ?, description = ?, category = ?, url = ?, pay_to = ?, price = ?, unit = ? where id = ?',
+    ).run(service.name, service.description, service.category, service.url, service.payTo, service.price, service.unit, existing.id)
+    return c.json(await serviceById(existing.id))
+  })
+
+  owner.delete('/services/:id', async (c) => {
+    sessionOnly(c)
+    const existing = await ownedService(c.var.owner, c.req.param('id'))
+    await db.prepare('delete from services where id = ?').run(existing.id)
+    return c.json({ ok: true })
   })
 
 

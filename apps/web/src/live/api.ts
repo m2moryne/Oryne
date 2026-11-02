@@ -156,6 +156,22 @@ export type Info = {
 
 export type CardInfo = { currency: string; rate: number; min: string; max: string }
 
+/** A paid API in the service directory. */
+export type ServiceListing = {
+  id: string
+  name: string
+  description: string
+  category: string
+  url: string
+  payTo: string
+  price: string
+  unit: string
+  createdAt: number
+  /** Payments settled to this payee through Oryne. */
+  paidCalls: number
+  lastPaidAt: number | null
+}
+
 /** Money into or out of a wallet: a card top-up, test USDC or a withdrawal. */
 export type FundMovement = {
   id: string

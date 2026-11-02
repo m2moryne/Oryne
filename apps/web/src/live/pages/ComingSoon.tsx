@@ -1,17 +1,11 @@
-import { ArrowLeft, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Panel } from '../../app/ui'
 import { Icon } from '../../components/Icon'
 
 /** Owner dashboard pages that are linked in the sidebar but not built yet. */
 export const soonPages: Array<{ slug: string; label: string; icon: LucideIcon; title: string; text: string }> = [
-  {
-    slug: 'services',
-    label: 'Services',
-    icon: Store,
-    title: 'A marketplace for your agents',
-    text: 'Find APIs and tools your agents can pay for per request, see what each one costs, and choose which services every agent may buy from.',
-  },
+  // Every owner page is built for now. Add one here to link it before it exists.
 ]
 
 /** A page that's on its way: what it will do, and a way back to what works today. */
