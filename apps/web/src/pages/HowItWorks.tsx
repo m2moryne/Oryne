@@ -124,8 +124,9 @@ function Band({
   className?: string
 }) {
   return (
-    <section aria-labelledby={labelledBy} className={`tone-${tone}`}>
-      <Container className={cn('py-20 md:py-28', className)}>{children}</Container>
+    // Each chapter fills the screen on its own, its content centred in it.
+    <section aria-labelledby={labelledBy} className={cn('flex min-h-svh flex-col', `tone-${tone}`)}>
+      <Container className={cn('flex flex-1 flex-col justify-center py-20 md:py-24', className)}>{children}</Container>
     </section>
   )
 }
@@ -136,7 +137,7 @@ export default function HowItWorks() {
   return (
     <>
       <PageHero
-        label="How it works"
+        fill
         title="Your agent gets a card. You keep the limits."
         lede="Oryne gives an AI agent a way to pay for things from your wallet, while the wallet itself checks every payment against rules only you can change. Here is what happens, step by step."
       >
@@ -150,11 +151,13 @@ export default function HowItWorks() {
         </div>
       </PageHero>
 
-      <Band labelledBy="pieces-title" className="pt-0 md:pt-0">
-        <h2 id="pieces-title" className="type-label text-muted">
-          Four pieces
-        </h2>
-        <ul className="mt-6 grid gap-px border border-line bg-taupe/50 sm:grid-cols-2 xl:grid-cols-4">
+      <Band tone="cream" labelledBy="pieces-title">
+        <Reveal>
+          <h2 id="pieces-title" className="type-statement max-w-[14ch]">
+            Four pieces.
+          </h2>
+        </Reveal>
+        <ul className="mt-14 grid gap-px border border-line bg-taupe/50 sm:grid-cols-2 xl:grid-cols-4">
           {pieces.map((piece) => (
             <li key={piece.title} className="flex flex-col bg-white p-6 md:p-7">
               <Icon icon={piece.icon} size={20} className="text-muted" />

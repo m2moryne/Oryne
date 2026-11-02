@@ -1,4 +1,4 @@
-export const EMAIL = 'hello@oryne.org'
+export const EMAIL = 'info@oryne.org'
 
 export type SocialId = 'x' | 'linkedin' | 'github'
 
@@ -7,7 +7,7 @@ export type SocialId = 'x' | 'linkedin' | 'github'
  * coming-soon page at `soonPath`; set `href` once the account exists.
  */
 export const socials: Array<{ id: SocialId; label: string; href: string; soonPath: string }> = [
-  { id: 'x', label: 'X', href: '', soonPath: '/x' },
+  { id: 'x', label: 'X', href: 'https://x.com/oryneorg', soonPath: '/x' },
   { id: 'linkedin', label: 'LinkedIn', href: '', soonPath: '/linkedin' },
   { id: 'github', label: 'GitHub', href: '', soonPath: '/github' },
 ]
