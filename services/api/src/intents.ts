@@ -275,6 +275,14 @@ async function applyEffect(db: Db, kind: IntentKind, data: Record<string, any>, 
       )
       break
     case 'withdraw':
+      // Older intents don't carry the wallet; those withdrawals just aren't listed under Funds.
+      if (data.wallet) {
+        const at = now()
+        await db.prepare(
+          `insert into funds (id, wallet_id, owner, kind, amount, status, counterparty, tx_hash, created_at, completed_at)
+           values (?, ?, ?, 'withdrawal', ?, 'completed', ?, ?, ?, ?)`,
+        ).run(newId('fund'), data.wallet, data.owner, String(data.amount), data.to, txHash, at, at)
+      }
       break
   }
 }

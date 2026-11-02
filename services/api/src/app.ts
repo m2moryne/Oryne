@@ -5,7 +5,6 @@ import {
   buildTx,
   deployWalletOp,
   fromBaseUnits,
-  i128,
   isAddress,
   publicKeyFromSpki,
   networkId,
@@ -17,13 +16,14 @@ import {
   type PaymentRequirements,
   type Policy,
 } from '@oryne/core'
-import { hash, Operation, StrKey, Address } from '@stellar/stellar-sdk'
+import { hash, StrKey } from '@stellar/stellar-sdk'
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
 import { createKey, listKeys, revokeKey, scopes as keyScopes } from './api-keys.ts'
 import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, type OwnerVariables } from './auth.ts'
 import { createEmailCodes } from './email-codes.ts'
+import { createFunding } from './funding.ts'
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
@@ -104,6 +104,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.anthropicApiKey)
   const emailCodes = createEmailCodes(config, db)
+  const funding = createFunding(config, db, chain)
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
   const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
@@ -221,6 +222,8 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
         dev: config.devLogin,
       },
       features: { aiDebugger: aiDebugger.enabled },
+      /** Card top-ups with Paystack: the currency and how much one USDC costs in it. Null when off. */
+      card: funding.card,
       /** Where records live: postgres (survives restarts) or sqlite (a local file). */
       storage: config.databaseUrl ? 'postgres' : 'sqlite',
       /** Classic asset behind the token, so G… accounts can add a trustline. */
@@ -320,22 +323,16 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     if (StrKey.isValidEd25519PublicKey(target) && chain.network.friendbotUrl) {
       await fetch(`${chain.network.friendbotUrl}/?addr=${target}`).catch(() => undefined)
     }
-    const issuer = chain.issuer
-    const result = await prepareSignSubmit(
-      chain.rpc,
-      await buildTx(
-        chain.rpc,
-        chain.network,
-        issuer.publicKey(),
-        Operation.invokeContractFunction({
-          contract: chain.network.token,
-          function: 'mint',
-          args: [new Address(target).toScVal(), i128(units)],
-        }),
-      ),
-      issuer,
-    )
-    return c.json({ hash: result.hash, amount: money(units) })
+    const txHash = await funding.send(target, units)
+    const wallet = await db.prepare('select * from wallets where id = ?').get<WalletRow>(target)
+    if (wallet) await funding.record({ wallet: wallet.id, owner: wallet.owner, kind: 'test', units, txHash })
+    return c.json({ hash: txHash, amount: money(units) })
+  })
+
+  /** Paystack calls this when a card payment succeeds. Signed with the Paystack secret key. */
+  app.post('/v1/paystack/webhook', async (c) => {
+    await funding.webhook(await c.req.text(), c.req.header('x-paystack-signature'))
+    return c.json({ ok: true })
   })
 
   // ---------------------------------------------------------------- owners
@@ -632,8 +629,36 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
       await createIntent(db, chain, c.var.owner, wallet, 'withdraw', walletOps.withdraw(wallet.id, chain.network.token, to, units), {
         to,
         amount: units,
+        wallet: wallet.id,
+        owner: wallet.owner,
       }),
     )
+  })
+
+  // ---------------------------------------------------------------- funds
+
+  owner.get('/wallets/:id/funds', async (c) => {
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    return c.json({ funds: await funding.list(wallet.id), card: funding.card })
+  })
+
+  /** Starts a card top-up: returns Paystack's checkout URL. */
+  owner.post('/wallets/:id/topups', async (c) => {
+    sessionOnly(c)
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const input = await body<{ amount?: string; email?: string }>(c)
+    const user = await db.prepare('select email from users where subject = ?').get<{ email: string | null }>(c.var.owner)
+    const fromSubject = c.var.owner.startsWith('email:') ? c.var.owner.slice(6) : undefined
+    const email = (input.email ?? user?.email ?? fromSubject ?? '').trim()
+    return c.json(await funding.startCard({ wallet: wallet.id, owner: wallet.owner, units: amountOf(input.amount, 'amount', decimals), email }))
+  })
+
+  /** Called when the owner returns from checkout: confirms with Paystack and credits the wallet once. */
+  owner.post('/topups/:reference/confirm', async (c) => {
+    const row = await db.prepare('select wallet_id from funds where reference = ?').get<{ wallet_id: string }>(c.req.param('reference'))
+    if (!row) throw new HTTPException(404, { message: 'No such top-up' })
+    await ownedWallet(c.var.owner, row.wallet_id)
+    return c.json(await funding.confirm(c.req.param('reference')))
   })
 
   owner.get('/approvals', async (c) => {

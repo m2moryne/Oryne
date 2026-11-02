@@ -150,6 +150,25 @@ export type Info = {
   auth: { freighter: boolean; google: boolean; github: boolean; email?: boolean; dev: boolean }
   /** Missing on older API builds. */
   features?: { aiDebugger: boolean }
+  /** Card top-ups with Paystack; null when off, missing on older API builds. */
+  card?: CardInfo | null
+}
+
+export type CardInfo = { currency: string; rate: number; min: string; max: string }
+
+/** Money into or out of a wallet: a card top-up, test USDC or a withdrawal. */
+export type FundMovement = {
+  id: string
+  kind: 'card' | 'test' | 'withdrawal'
+  amount: string
+  status: 'pending' | 'completed' | 'failed' | 'review'
+  charge: { amount: string; currency: string } | null
+  counterparty: string | null
+  reference: string | null
+  txHash: string | null
+  error: string | null
+  createdAt: number
+  completedAt: number | null
 }
 
 export type User = { provider: string; email?: string | null; name?: string | null; avatar?: string | null }

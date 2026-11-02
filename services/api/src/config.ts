@@ -39,6 +39,16 @@ export type Config = {
   anthropicApiKey?: string
   /** Bearer token for the admin API (32+ characters). The admin API is off without it. */
   adminToken?: string
+  /**
+   * Card top-ups with Paystack. Off without a secret key. `rate` is how many
+   * units of `currency` one USDC costs, e.g. 130 for KES.
+   */
+  paystack?: { secretKey: string; currency: string; rate: number }
+  /**
+   * Account that sends the USDC for card top-ups where it can't be minted
+   * (mainnet). On testnet, test USDC is minted instead and this isn't needed.
+   */
+  treasurySecret?: string
 }
 
 const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : undefined)
@@ -112,5 +122,17 @@ export function loadConfig(): Config {
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
     anthropicApiKey: env('ANTHROPIC_API_KEY'),
     adminToken: env('ADMIN_TOKEN'),
+    paystack: paystackConfig(),
+    treasurySecret: secret('TREASURY_SECRET'),
   }
+}
+
+function paystackConfig(): Config['paystack'] {
+  const secretKey = env('PAYSTACK_SECRET_KEY')
+  if (!secretKey) return undefined
+  if (!/^sk_(test|live)_/.test(secretKey)) throw new Error('PAYSTACK_SECRET_KEY must be a Paystack secret key (sk_test_… or sk_live_…)')
+  const currency = (env('PAYSTACK_CURRENCY') ?? 'KES').toUpperCase()
+  const rate = Number(env('PAYSTACK_RATE') ?? (currency === 'USD' ? '1' : '130'))
+  if (!(rate > 0)) throw new Error('PAYSTACK_RATE must be a positive number: how much one USDC costs in PAYSTACK_CURRENCY')
+  return { secretKey, currency, rate }
 }

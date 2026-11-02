@@ -43,6 +43,7 @@ import LiveAgents from './live/pages/LiveAgents'
 import LiveApprovals from './live/pages/LiveApprovals'
 import LiveOverview from './live/pages/LiveOverview'
 import LiveWallet from './live/pages/LiveWallet'
+import LiveFunds from './live/pages/LiveFunds'
 import LiveComingSoon, { soonPages as liveSoonPages } from './live/pages/ComingSoon'
 import { Footer } from './components/Footer'
 import { Navigation } from './components/Navigation'
@@ -104,6 +105,7 @@ export default function App() {
           <Route path="approvals" element={<LiveApprovals />} />
           <Route path="activity" element={<LiveActivity />} />
           <Route path="wallet" element={<LiveWallet />} />
+          <Route path="funds" element={<LiveFunds />} />
           <Route path="settings" element={<RealSettings />} />
           {liveSoonPages.map((page) => (
             <Route key={page.slug} path={page.slug} element={<LiveComingSoon slug={page.slug} />} />

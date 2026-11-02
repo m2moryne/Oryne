@@ -130,6 +130,20 @@ create table if not exists requests (
 );
 create index if not exists requests_owner on requests(owner, created_at desc);
 
+-- Money into and out of wallets: card top-ups, test USDC and withdrawals.
+create table if not exists funds (
+  id text primary key, wallet_id text not null, owner text not null,
+  kind text not null,             -- card | test | withdrawal
+  amount text not null,           -- USDC base units
+  status text not null,           -- pending | crediting | completed | failed | review
+  reference text unique,          -- the card payment's Paystack reference
+  charge_amount ${int}, charge_currency text,  -- what the card was charged, in the currency's subunit
+  counterparty text,              -- where a withdrawal went
+  tx_hash text, error text, claim text,
+  created_at ${int} not null, completed_at ${int}
+);
+create index if not exists funds_wallet on funds(wallet_id, created_at desc);
+
 create table if not exists services (
   id text primary key, name text not null, description text not null default '',
   category text not null default 'Other', url text not null, pay_to text not null,

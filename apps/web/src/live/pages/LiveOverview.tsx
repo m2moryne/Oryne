@@ -1,20 +1,13 @@
-import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button'
-import { Field, inputClasses, Panel, Stat } from '../../app/ui'
-import { api, type Intent } from '../api'
+import { Panel, Stat } from '../../app/ui'
 import { useLive } from '../LiveContext'
-import { AddressLink, ErrorNote, TxLink, useAction, usd, when } from '../shared'
+import { AddressLink, TxLink, usd, when } from '../shared'
 
 export default function LiveOverview() {
   const live = useLive()
   const wallet = live.wallet!
-  const fund = useAction()
-  const withdraw = useAction()
-  const [amount, setAmount] = useState('100')
-  const [out, setOut] = useState('')
-  const [to, setTo] = useState('')
-  const passkey = wallet.owner_kind === 'passkey'
 
   const active = wallet.agents.filter((agent) => agent.status === 'active').length
   const settled = live.payments.filter((payment) => payment.status === 'settled')
@@ -69,76 +62,19 @@ export default function LiveOverview() {
           </p>
         </Panel>
 
-        <div className="space-y-4">
-          {live.info?.faucet && (
-            <Panel title="Add test USDC">
-              <p className="mb-4 text-sm text-muted">Testnet only: mints test USDC straight into your wallet.</p>
-              <div className="flex gap-2">
-                <input
-                  aria-label="Amount"
-                  value={amount}
-                  inputMode="decimal"
-                  onChange={(event) => setAmount(event.target.value)}
-                  className={`${inputClasses} py-2`}
-                />
-                <Button
-                  size="sm"
-                  disabled={fund.busy}
-                  onClick={() =>
-                    fund.run(async () => {
-                      await api('/v1/faucet', { body: { to: wallet.id, amount } })
-                      await live.refresh()
-                    })
-                  }
-                >
-                  {fund.busy ? 'Adding…' : 'Add'}
-                </Button>
-              </div>
-              <ErrorNote error={fund.error} />
-            </Panel>
-          )}
-
-          <Panel title="Withdraw">
-            <Field
-              label="Amount, USDC"
-              hint={passkey ? undefined : 'Sent to your Freighter account. It needs a USDC trustline.'}
-            >
-              {(id) => (
-                <input id={id} value={out} inputMode="decimal" onChange={(event) => setOut(event.target.value)} className={`${inputClasses} py-2`} />
-              )}
-            </Field>
-            {passkey && (
-              <div className="mt-3">
-                <Field label="To" hint="A Stellar address with a USDC trustline, or a contract.">
-                  {(id) => (
-                    <input id={id} value={to} onChange={(event) => setTo(event.target.value.trim())} placeholder="G… or C…" className={`${inputClasses} py-2 font-mono text-xs`} />
-                  )}
-                </Field>
-              </div>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-4"
-              disabled={withdraw.busy || !out || (passkey && !to)}
-              onClick={() =>
-                withdraw.run(() =>
-                  live.sign((token) =>
-                    api<Intent>(`/v1/wallets/${wallet.id}/withdraw`, { body: { amount: out, to: to || undefined }, token }),
-                  ),
-                )
-              }
-            >
-              {withdraw.busy ? 'Waiting for your signature…' : 'Withdraw'}
+        <Panel title="Funds">
+          <p className="text-sm leading-relaxed text-muted">
+            Your agents spend from this balance, within their limits. Top up by card{live.info?.faucet ? ' or with test USDC' : ''}, or move money back out.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button to="/app/funds" size="sm" leadingIcon={Plus}>
+              Add money
             </Button>
-            {withdraw.done && (
-              <p className="mt-3 text-sm text-muted">
-                Sent. <TxLink hash={withdraw.done} />
-              </p>
-            )}
-            <ErrorNote error={withdraw.error} />
-          </Panel>
-        </div>
+            <Button to="/app/funds" size="sm" variant="outline">
+              Withdraw
+            </Button>
+          </div>
+        </Panel>
       </div>
     </div>
   )

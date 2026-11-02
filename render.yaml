@@ -52,6 +52,15 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Oryne <noreply@oryne.org>
+      # Card top-ups with Paystack. Webhook URL in the Paystack dashboard:
+      # https://<this service>/v1/paystack/webhook
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      # Currency cards are charged in, and how much one USDC costs in it.
+      - key: PAYSTACK_CURRENCY
+        value: KES
+      - key: PAYSTACK_RATE
+        value: "130"
       # Claude API key for the AI debugger in the developer console.
       - key: ANTHROPIC_API_KEY
         sync: false

@@ -1,6 +1,7 @@
 import {
   Bot,
   ClipboardCheck,
+  Coins,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -40,6 +41,7 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
   { to: '/app/agents', label: 'Agents', icon: Bot },
   { to: '/app/approvals', label: 'Approvals', icon: ClipboardCheck },
   { to: '/app/wallet', label: 'Wallet', icon: ShieldCheck },
+  { to: '/app/funds', label: 'Funds', icon: Coins },
   ...soonPages.map((page) => ({ to: `/app/${page.slug}`, label: page.label, icon: page.icon })),
   { to: '/app/activity', label: 'Activity', icon: Receipt },
   { to: '/app/settings', label: 'Settings', icon: Settings },

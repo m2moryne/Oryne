@@ -1,4 +1,4 @@
-import { ArrowLeft, Coins, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Store, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Panel } from '../../app/ui'
 import { Icon } from '../../components/Icon'
@@ -11,13 +11,6 @@ export const soonPages: Array<{ slug: string; label: string; icon: LucideIcon; t
     icon: Store,
     title: 'A marketplace for your agents',
     text: 'Find APIs and tools your agents can pay for per request, see what each one costs, and choose which services every agent may buy from.',
-  },
-  {
-    slug: 'funds',
-    label: 'Funds',
-    icon: Coins,
-    title: 'Money in, money out',
-    text: 'Top up your wallet with USDC and move it back out whenever you like, with every deposit and withdrawal in one place.',
   },
 ]
 
