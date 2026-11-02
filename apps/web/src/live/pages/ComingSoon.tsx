@@ -1,4 +1,4 @@
-import { ArrowLeft, Coins, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Coins, Store, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Panel } from '../../app/ui'
 import { Icon } from '../../components/Icon'
@@ -11,13 +11,6 @@ export const soonPages: Array<{ slug: string; label: string; icon: LucideIcon; t
     icon: Store,
     title: 'A marketplace for your agents',
     text: 'Find APIs and tools your agents can pay for per request, see what each one costs, and choose which services every agent may buy from.',
-  },
-  {
-    slug: 'wallet',
-    label: 'Wallet',
-    icon: ShieldCheck,
-    title: 'Your wallet, up close',
-    text: 'The contract that holds your funds: its owner, its rules, the agents it trusts, and every change made to it on Stellar.',
   },
   {
     slug: 'funds',
