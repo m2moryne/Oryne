@@ -114,8 +114,8 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
                 {
                   mcpServers: {
                     oryne: {
-                      command: 'node',
-                      args: ['<path to oryne>/packages/mcp/src/server.ts'],
+                      command: 'npx',
+                      args: ['-y', '@oryne/mcp'],
                       env: { ORYNE_AGENT_SECRET: result.secret, ORYNE_API_URL: API_URL },
                     },
                   },

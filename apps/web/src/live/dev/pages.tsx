@@ -12,21 +12,25 @@ const packages = [
   {
     name: '@oryne/agent',
     path: 'packages/agent',
+    install: 'npm install @oryne/agent',
     note: 'A fetch() that pays 402 Payment Required from the agent’s wallet, inside its mandate, and can ask the owner to approve the rest.',
   },
   {
     name: '@oryne/mcp',
     path: 'packages/mcp',
+    install: 'npx -y @oryne/mcp',
     note: 'An MCP server for Claude, Cursor and other clients: fetch_paid, wallet_status, request_approval and find_service.',
   },
   {
     name: '@oryne/merchant',
     path: 'packages/merchant',
+    install: 'npm install @oryne/merchant',
     note: 'Paywall middleware for Hono and Express. Put a price on a route; Oryne verifies and settles the payment.',
   },
   {
     name: '@oryne/core',
     path: 'packages/core',
+    install: 'npm install @oryne/core',
     note: 'The agent-wallet contract client, payment signing and the x402 payload format the others are built on.',
   },
 ]
@@ -44,14 +48,27 @@ export function Sdks() {
           <Panel key={pkg.name}>
             <p className="font-mono text-sm">{pkg.name}</p>
             <p className="mt-2 text-sm leading-relaxed text-muted">{pkg.note}</p>
-            <a
-              href={`${REPO}/tree/master/${pkg.path}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm underline underline-offset-4"
-            >
-              Source <Icon icon={ExternalLink} size={13} />
-            </a>
+            <div className="mt-4">
+              <CodeBlock code={pkg.install} />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <a
+                href={`https://www.npmjs.com/package/${pkg.name}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 underline underline-offset-4"
+              >
+                npm <Icon icon={ExternalLink} size={13} />
+              </a>
+              <a
+                href={`${REPO}/tree/master/${pkg.path}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 underline underline-offset-4"
+              >
+                Source <Icon icon={ExternalLink} size={13} />
+              </a>
+            </div>
           </Panel>
         ))}
       </div>

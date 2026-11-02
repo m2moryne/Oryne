@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon'
 import { API_URL } from '../api'
 import { useLive } from '../LiveContext'
 import { DEV_BASE } from './LiveDevShell'
-import { realPages, REPO, Value } from './shared'
+import { realPages, Value } from './shared'
 
 const comingSoon = allDevPages.filter((page) => page.slug && !realPages.includes(page.slug))
 
@@ -46,13 +46,12 @@ export default function Overview() {
             </div>
           </Panel>
 
-          <Panel title="2. Get the SDKs">
+          <Panel title="2. Install the SDK">
             <p className="text-sm leading-relaxed text-muted">
-              The agent SDK, MCP server and merchant kit aren't on npm yet. Use them from the repository; they run on
-              Node 22.18 or later.
+              Add the agent SDK to your project. It needs Node 20 or later and comes with TypeScript types.
             </p>
             <div className="mt-4">
-              <CodeBlock code={`git clone ${REPO}.git\ncd Oryne\nnpm install`} />
+              <CodeBlock code="npm install @oryne/agent" />
             </div>
           </Panel>
 
@@ -90,8 +89,8 @@ console.log(await response.json())`}
                 code={`{
   "mcpServers": {
     "oryne": {
-      "command": "node",
-      "args": ["/path/to/Oryne/packages/mcp/src/server.ts"],
+      "command": "npx",
+      "args": ["-y", "@oryne/mcp"],
       "env": {
         "ORYNE_AGENT_SECRET": "S…",
         "ORYNE_API_URL": "${API_URL}",
