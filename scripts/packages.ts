@@ -3,7 +3,8 @@
  *
  *   npm run packages             build each package into packages/<name>/npm/
  *   npm run packages -- --pack   also show what each tarball would contain
- *   npm run packages -- --publish  publish them (needs `npm login` first)
+ *   npm run packages -- --publish  publish them (needs `npm login` and 2FA on the
+ *                                  npm account; versions already on npm are skipped)
  *
  * In the monorepo the packages run from their TypeScript sources. For npm each
  * one gets its own folder with compiled JavaScript, type definitions, a
@@ -25,6 +26,15 @@ const keywords = ['stellar', 'x402', 'ai-agents', 'agent-payments', 'usdc', 'sor
 const mode = process.argv.includes('--publish') ? 'publish' : process.argv.includes('--pack') ? 'pack' : 'build'
 const run = (command: string, args: string[], cwd = root) =>
   execFileSync(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' })
+
+/** Whether this exact version is already on npm, so a rerun after a partial publish carries on. */
+const isPublished = (name: string, version: string) => {
+  try {
+    return execFileSync('npm', ['view', `${name}@${version}`, 'version'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32' }).trim() === version
+  } catch {
+    return false
+  }
+}
 
 const manifests = Object.fromEntries(
   packages.map((name) => [name, JSON.parse(readFileSync(join(root, 'packages', name, 'package.json'), 'utf8'))]),
@@ -101,6 +111,10 @@ for (const name of packages) {
   if (mode === 'pack') run('npm', ['pack', '--dry-run'], out)
   if (mode === 'publish') {
     if (!existsSync(join(out, 'dist'))) throw new Error(`${name}: nothing built`)
+    if (isPublished(manifest.name, manifest.version)) {
+      console.log(`${manifest.name}@${manifest.version} is already on npm, skipping`)
+      continue
+    }
     run('npm', ['publish'], out)
   }
 }
