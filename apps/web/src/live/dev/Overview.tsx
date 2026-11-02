@@ -48,7 +48,11 @@ export default function Overview() {
 
           <Panel title="2. Install the SDK">
             <p className="text-sm leading-relaxed text-muted">
-              Add the agent SDK to your project. It needs Node 20 or later and comes with TypeScript types.
+              Add the agent SDK to your project. It needs Node 20 or later and comes with TypeScript types. The{' '}
+              <a href="/docs#quickstart" className="underline underline-offset-4">
+                quickstart
+              </a>{' '}
+              walks through it end to end.
             </p>
             <div className="mt-4">
               <CodeBlock code="npm install @oryne/agent" />

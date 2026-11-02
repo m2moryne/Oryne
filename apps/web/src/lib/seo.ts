@@ -38,6 +38,12 @@ export const publicPages = {
     description:
       'Everything an AI agent needs to pay safely: a wallet you own, spending mandates enforced on Stellar, ask-first approvals, live receipts, an MCP server, agent SDK and merchant kit.',
   },
+  docs: {
+    path: '/docs',
+    title: 'Documentation — Agent SDK, MCP server and merchant kit | Oryne',
+    description:
+      'Developer docs for Oryne: give an AI agent a wallet with @oryne/agent or @oryne/mcp, charge agents with @oryne/merchant. Quickstart, API reference, refusal reasons and the x402 payment protocol on Stellar.',
+  },
   vision: {
     path: '/vision',
     title: 'Vision — An economy where software can pay | Oryne',

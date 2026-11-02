@@ -34,6 +34,10 @@
  * so the same component works on any background.
  */
 @theme inline {
+  /* Code blocks: a soft warm grey on light pages, near-black in the dark theme. */
+  --color-code: var(--code-bg);
+  --color-code-fg: var(--code-fg);
+  --color-code-string: var(--code-string);
   --color-muted: var(--tone-muted);
   --color-line: var(--tone-line);
   --color-accent: var(--tone-accent);
@@ -44,6 +48,9 @@
   :root {
     /* Space the floating navigation takes at the top: its offset, height and a gap. */
     --nav-h: 5.5rem;
+    --code-bg: #f6f4f0;
+    --code-fg: #202020;
+    --code-string: #6e1f2a;
   }
 
   html {
@@ -88,6 +95,9 @@
   --color-burgundy: #d97f8c;
   --color-purple: #b7a0d8;
   --color-green: #4fbf86;
+  --code-bg: #141414;
+  --code-fg: #f5f0e8;
+  --code-string: #e3a6ae;
 }
 
 /* Section tones */

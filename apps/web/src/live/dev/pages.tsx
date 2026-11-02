@@ -40,9 +40,15 @@ export function Sdks() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl tracking-[-0.02em]">SDKs & tools</h1>
-        <p className="mt-1 text-sm text-muted">TypeScript, on Node 22.18 or later. Not on npm yet: use them from the repository.</p>
+        <p className="mt-1 text-sm text-muted">
+          On npm, with TypeScript types included. They need Node 20 or later and are MIT licensed. Guides and the
+          full API reference are in the{' '}
+          <a href="/docs" className="underline underline-offset-4">
+            documentation
+          </a>
+          .
+        </p>
       </div>
-      <CodeBlock code={`git clone ${REPO}.git\ncd Oryne\nnpm install`} />
       <div className="grid gap-4 md:grid-cols-2">
         {packages.map((pkg) => (
           <Panel key={pkg.name}>

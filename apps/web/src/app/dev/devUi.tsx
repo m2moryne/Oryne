@@ -58,8 +58,8 @@ export function CodeBlock({
   const text = samples ? samples[language] : (code ?? '')
 
   return (
-    <div className="border border-paper/10 bg-ink text-paper">
-      <div className="flex items-center justify-between border-b border-paper/10 pl-4 pr-1.5">
+    <div className="border border-code-fg/10 bg-code text-code-fg">
+      <div className="flex items-center justify-between border-b border-code-fg/10 pl-4 pr-1.5">
         {samples ? (
           <div role="tablist" aria-label="Language" className="flex">
             {languages.map((option) => (
@@ -72,8 +72,8 @@ export function CodeBlock({
                 className={cn(
                   '-mb-px mr-5 border-b py-3 text-xs font-medium transition-colors duration-200',
                   language === option
-                    ? 'border-paper text-paper'
-                    : 'border-transparent text-paper/55 hover:text-paper',
+                    ? 'border-code-fg text-code-fg'
+                    : 'border-transparent text-code-fg/55 hover:text-code-fg',
                 )}
               >
                 {option}
@@ -81,21 +81,69 @@ export function CodeBlock({
             ))}
           </div>
         ) : (
-          <span className="py-3 text-xs text-paper/55">{label ?? 'Terminal'}</span>
+          <span className="py-3 text-xs text-code-fg/55">{label ?? 'Terminal'}</span>
         )}
-        <CopyButton value={text} className="text-paper/65 hover:text-paper" />
+        <CopyButton value={text} className="text-code-fg/65 hover:text-code-fg" />
       </div>
       <pre className="overflow-x-auto p-4 font-mono text-[0.8125rem] leading-relaxed">
         <code>
           {text.split('\n').map((line, index) => (
-            // Comment lines are set back so the code that runs stands out.
-            <span key={index} className={cn('block', /^\s*(#|\/\/)/.test(line) && 'text-paper/45')}>
-              {line || ' '}
+            <span key={index} className="block">
+              {line ? <Highlighted line={line} /> : ' '}
             </span>
           ))}
         </code>
       </pre>
     </div>
+  )
+}
+
+type Token = { text: string; kind: 'plain' | 'string' | 'comment' }
+
+/**
+ * Just enough highlighting for TypeScript, JSON and shell: strings stand out,
+ * comments step back. A `//` or `#` only starts a comment at the start of a
+ * line or after a space, so URLs are left alone.
+ */
+export function tokenize(line: string): Token[] {
+  const tokens: Token[] = []
+  let plain = ''
+  const flush = () => {
+    if (plain) tokens.push({ text: plain, kind: 'plain' })
+    plain = ''
+  }
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    const atBoundary = i === 0 || /\s/.test(line[i - 1])
+    if (atBoundary && (line.startsWith('//', i) || (char === '#' && /^\s*$/.test(line.slice(0, i))))) {
+      flush()
+      tokens.push({ text: line.slice(i), kind: 'comment' })
+      return tokens
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      const end = line.indexOf(char, i + 1)
+      if (end > i) {
+        flush()
+        tokens.push({ text: line.slice(i, end + 1), kind: 'string' })
+        i = end
+        continue
+      }
+    }
+    plain += char
+  }
+  flush()
+  return tokens
+}
+
+function Highlighted({ line }: { line: string }) {
+  return tokenize(line).map((token, index) =>
+    token.kind === 'plain' ? (
+      token.text
+    ) : (
+      <span key={index} className={token.kind === 'string' ? 'text-code-string' : 'text-code-fg/45'}>
+        {token.text}
+      </span>
+    ),
   )
 }
 

@@ -10,6 +10,7 @@ type FooterLink = { label: string; to?: string; href?: string }
 export const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/how-it-works', label: 'How it works' },
+  { to: '/docs', label: 'Docs' },
   { to: '/app/developers', label: 'Developers' },
   { to: '/vision', label: 'Vision' },
   { to: '/contact', label: 'Contact' },
@@ -65,7 +66,6 @@ export const legalLinks: FooterLink[] = [
  * page. To launch one, remove it here and add a real <Route> in App.tsx.
  */
 export const soonPages: Array<{ path: string; name: string }> = [
-  { path: '/docs', name: 'The documentation' },
   { path: '/status', name: 'The status page' },
   { path: '/about', name: 'The about page' },
   { path: '/careers', name: 'The careers page' },
