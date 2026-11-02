@@ -16,7 +16,7 @@ const intro: ChatMessage = {
 
 const starters = ['Why was my last payment refused?', 'Which agent is closest to its budget?', 'Is anything stopping my agents from paying?']
 
-/** The AI debugger for a real account: Claude, grounded in this wallet's own data. */
+/** The AI debugger for a real account: DeepSeek, grounded in this wallet's own data. */
 export default function Debugger() {
   const live = useLive()
   const enterPreview = useEnterPreview()
@@ -83,7 +83,7 @@ export default function Debugger() {
       <div>
         <h1 className="text-2xl tracking-[-0.02em]">AI debugger</h1>
         <p className="mt-1 text-sm text-muted">
-          Ask why a payment was refused or an agent can’t pay. Claude reads your wallet, mandates and payments.
+          Ask why a payment was refused or an agent can’t pay. The debugger reads your wallet, mandates and payments.
         </p>
       </div>
 
@@ -152,7 +152,7 @@ export default function Debugger() {
             onSend={ask}
             busy={busy}
             placeholder="Why can’t my agent pay?"
-            footnote="Answers come from Claude and can be wrong; check before you change a mandate."
+            footnote="Answers come from an AI model (DeepSeek) and can be wrong; check before you change a mandate."
           />
         </div>
       )}

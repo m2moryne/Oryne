@@ -35,8 +35,10 @@ export type Config = {
   email: { resendApiKey?: string; from: string }
   /** Testnet only: POST /v1/auth/dev signs in without OAuth, for scripts/e2e. */
   devLogin: boolean
-  /** Claude API key for the AI debugger. The debugger is off without it. */
-  anthropicApiKey?: string
+  /** DeepSeek API key for the AI debugger. The debugger is off without it. */
+  deepseekApiKey?: string
+  /** DeepSeek model for the debugger. Defaults to deepseek-chat. */
+  deepseekModel?: string
   /** Bearer token for the admin API (32+ characters). The admin API is off without it. */
   adminToken?: string
   /**
@@ -120,7 +122,8 @@ export function loadConfig(): Config {
     },
     email: { resendApiKey: env('RESEND_API_KEY'), from: env('EMAIL_FROM') ?? 'Oryne <noreply@oryne.org>' },
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
-    anthropicApiKey: env('ANTHROPIC_API_KEY'),
+    deepseekApiKey: env('DEEPSEEK_API_KEY'),
+    deepseekModel: env('DEEPSEEK_MODEL'),
     adminToken: env('ADMIN_TOKEN'),
     paystack: paystackConfig(),
     treasurySecret: secret('TREASURY_SECRET'),

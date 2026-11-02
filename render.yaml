@@ -61,8 +61,8 @@ services:
         value: KES
       - key: PAYSTACK_RATE
         value: "130"
-      # Claude API key for the AI debugger in the developer console.
-      - key: ANTHROPIC_API_KEY
+      # DeepSeek API key (platform.deepseek.com) for the AI debugger in the developer console.
+      - key: DEEPSEEK_API_KEY
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false

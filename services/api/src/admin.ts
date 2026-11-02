@@ -232,7 +232,7 @@ export function adminApi(config: Config, db: Db, chain: Chain) {
         googleSignIn: !!config.oauth.google,
         githubSignIn: !!config.oauth.github,
         devLogin: config.devLogin,
-        aiDebugger: !!config.anthropicApiKey,
+        aiDebugger: !!config.deepseekApiKey,
       },
       startedAt,
     }),

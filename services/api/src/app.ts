@@ -102,7 +102,7 @@ function addressOf(value: unknown, field: string) {
 export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhooks) {
   const app = new Hono()
   const decimals = chain.network.decimals
-  const aiDebugger = createDebugger(config.anthropicApiKey)
+  const aiDebugger = createDebugger(config.deepseekApiKey, config.deepseekModel)
   const emailCodes = createEmailCodes(config, db)
   const funding = createFunding(config, db, chain)
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */

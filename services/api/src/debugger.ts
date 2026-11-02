@@ -1,19 +1,20 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { streamSSE } from 'hono/streaming'
 
 /**
  * The AI debugger: answers an owner's questions about their own wallet, agents
- * and payments with Claude, grounded in a snapshot of that account. Streams the
+ * and payments with DeepSeek, grounded in a snapshot of that account. Streams the
  * answer as server-sent events: `text` (a JSON string chunk), then `done`, or
  * `error` (a JSON string) if it can't answer.
  */
 
-const MODEL = 'claude-opus-5-5'
+/** DeepSeek's chat API speaks the OpenAI format. */
+const ENDPOINT = 'https://api.deepseek.com/chat/completions'
+const MODEL = 'deepseek-chat'
 const MAX_TURNS = 20
 const MAX_CHARS = 4000
-/** Questions per owner per hour; Claude calls cost money. */
+/** Questions per owner per hour; model calls cost money. */
 const HOURLY_LIMIT = 30
 
 export type DebugTurn = { role: 'user' | 'assistant'; content: string }
@@ -29,7 +30,7 @@ export type DebugSnapshot = {
   failedRequests: unknown[]
 }
 
-// Stable instructions first, so they can be cached; the account snapshot follows.
+// Stable instructions first, so DeepSeek's prefix cache can reuse them; the account snapshot follows.
 const SYSTEM = `You are the AI debugger inside the Oryne developer console. Oryne gives AI agents wallets on Stellar with limits they can't break: each owner has an agent-wallet smart contract (Soroban) that holds USDC, and every agent has an ed25519 session key and a mandate (policy) stored in that contract. On each payment, the network calls the wallet's __check_auth, which checks the transfer against the agent's mandate; if a rule fails, the transaction is refused and no money moves.
 
 A mandate has: token (the one asset the agent may spend), perTx (most per payment), budget per window (windowDays), payees (allowed recipients; empty means any) and expiresAt (when the key stops working; null means never).
@@ -83,58 +84,80 @@ function validTurns(input: unknown): DebugTurn[] {
   return turns
 }
 
-export function createDebugger(apiKey: string | undefined) {
-  const client = apiKey ? new Anthropic({ apiKey }) : null
-
+export function createDebugger(apiKey: string | undefined, model = MODEL) {
   return {
-    enabled: !!client,
+    enabled: !!apiKey,
 
-    /** Streams Claude's answer to the last question, as SSE. */
+    /** Streams the model's answer to the last question, as SSE. */
     answer(c: Context, owner: string, rawTurns: unknown, snapshot: DebugSnapshot) {
-      if (!client) throw new HTTPException(503, { message: 'The AI debugger is not set up on this server yet' })
+      if (!apiKey) throw new HTTPException(503, { message: 'The AI debugger is not set up on this server yet' })
       const turns = validTurns(rawTurns)
       checkRate(owner)
 
       return streamSSE(c, async (sse) => {
-        const stream = client.beta.messages.stream({
-          model: MODEL,
-          max_tokens: 8000,
-          output_config: { effort: 'medium' },
-          // Re-run on Anthropic's recommended model if a safety classifier declines.
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default',
-          system: [
-            { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: `Account snapshot (JSON, newest first):\n${JSON.stringify(snapshot)}` },
-          ],
-          messages: turns,
-        })
-        sse.onAbort(() => stream.abort())
+        const abort = new AbortController()
+        sse.onAbort(() => abort.abort())
+        const fail = (message: string) => sse.writeSSE({ event: 'error', data: JSON.stringify(message) })
 
         try {
-          for await (const event of stream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              await sse.writeSSE({ event: 'text', data: JSON.stringify(event.delta.text) })
+          const response = await fetch(ENDPOINT, {
+            method: 'POST',
+            signal: abort.signal,
+            headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              stream: true,
+              max_tokens: 4000,
+              temperature: 0.3,
+              messages: [
+                { role: 'system', content: SYSTEM },
+                { role: 'system', content: `Account snapshot (JSON, newest first):\n${JSON.stringify(snapshot)}` },
+                ...turns,
+              ],
+            }),
+          })
+          if (!response.ok || !response.body) {
+            console.error('debugger: DeepSeek', response.status, await response.text().catch(() => ''))
+            await fail(
+              response.status === 401 || response.status === 403
+                ? 'The AI debugger is not set up correctly on this server.'
+                : response.status === 402
+                  ? 'The AI debugger is out of credit. Try again later.'
+                  : response.status === 429 || response.status === 503
+                    ? 'The debugger is busy right now. Try again in a minute.'
+                    : 'The AI service had a problem answering. Try again.',
+            )
+            return
+          }
+
+          // Server-sent events: lines of "data: {json}", ending with "data: [DONE]".
+          const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+          let buffer = ''
+          let finish: string | null = null
+          for (;;) {
+            const { value, done } = await reader.read()
+            if (done) break
+            buffer += value
+            const lines = buffer.split('\n')
+            buffer = lines.pop() ?? ''
+            for (const line of lines) {
+              const data = line.startsWith('data:') ? line.slice(5).trim() : ''
+              if (!data || data === '[DONE]') continue
+              const chunk = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }> }
+              const choice = chunk.choices?.[0]
+              if (choice?.delta?.content) await sse.writeSSE({ event: 'text', data: JSON.stringify(choice.delta.content) })
+              if (choice?.finish_reason) finish = choice.finish_reason
             }
           }
-          const final = await stream.finalMessage()
-          if (final.stop_reason === 'refusal') {
-            await sse.writeSSE({ event: 'error', data: JSON.stringify("I can't help with that one. Try asking about a specific payment or agent.") })
+          if (finish === 'content_filter') {
+            await fail("I can't help with that one. Try asking about a specific payment or agent.")
             return
           }
           await sse.writeSSE({ event: 'done', data: '' })
         } catch (error) {
-          if (stream.aborted) return
-          const message =
-            error instanceof Anthropic.RateLimitError
-              ? 'The debugger is busy right now. Try again in a minute.'
-              : error instanceof Anthropic.AuthenticationError
-                ? 'The AI debugger is not set up correctly on this server.'
-                : error instanceof Anthropic.APIError
-                  ? 'The AI service had a problem answering. Try again.'
-                  : 'Something went wrong while answering.'
+          if (abort.signal.aborted) return
           console.error('debugger', error)
-          await sse.writeSSE({ event: 'error', data: JSON.stringify(message) })
+          await fail('Something went wrong while answering.')
         }
       })
     },
