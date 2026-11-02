@@ -51,7 +51,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: Oryne <info@oryne.org>
+        value: Oryne <sign-in@oryne.org>
       # Claude API key for the AI debugger in the developer console.
       - key: ANTHROPIC_API_KEY
         sync: false

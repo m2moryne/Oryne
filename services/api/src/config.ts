@@ -108,7 +108,7 @@ export function loadConfig(): Config {
       google: pair(env('GOOGLE_CLIENT_ID'), env('GOOGLE_CLIENT_SECRET')),
       github: pair(env('GITHUB_CLIENT_ID'), env('GITHUB_CLIENT_SECRET')),
     },
-    email: { resendApiKey: env('RESEND_API_KEY'), from: env('EMAIL_FROM') ?? 'Oryne <info@oryne.org>' },
+    email: { resendApiKey: env('RESEND_API_KEY'), from: env('EMAIL_FROM') ?? 'Oryne <sign-in@oryne.org>' },
     devLogin: env('DEV_LOGIN') === '1' && networkName === 'testnet',
     anthropicApiKey: env('ANTHROPIC_API_KEY'),
     adminToken: env('ADMIN_TOKEN'),
