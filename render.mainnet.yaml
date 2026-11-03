@@ -11,8 +11,10 @@ services:
   - type: web
     name: oryne-api-mainnet
     runtime: node
-    # Always on: the free plan sleeps, and payments can't wait a minute.
-    plan: starter
+    # Free while Oryne is an MVP. The free plan sleeps after ~15 idle minutes, so
+    # the first request after that takes up to a minute. Switch to starter
+    # (always on) before real users rely on it.
+    plan: free
     region: frankfurt
     branch: master
     buildCommand: npm ci
