@@ -272,6 +272,15 @@ function numbered(sql: string) {
 pg.types.setTypeParser(pg.types.builtins.INT8, (value) => Number(value))
 
 async function openPostgres(url: string): Promise<Db> {
+  try {
+    new URL(url)
+  } catch {
+    // Usually a password with / @ # & ? or % in it, which a URL can't hold as is.
+    throw new Error(
+      'DATABASE_URL is not a valid URL. If the database password has symbols like / @ # & ? or %, ' +
+        'reset it to letters and numbers only, or percent-encode them (/ is %2F, & is %26, @ is %40).',
+    )
+  }
   const pool = new pg.Pool({
     connectionString: url,
     max: 5,
