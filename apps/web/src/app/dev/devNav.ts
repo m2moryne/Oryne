@@ -1,6 +1,8 @@
 import {
   Activity,
   Bot,
+  ClipboardCheck,
+  Coins,
   CreditCard,
   FileCode2,
   FlaskConical,
@@ -59,6 +61,8 @@ export const devGroups: Array<{ heading?: string; pages: DevPage[] }> = [
     heading: 'Payments',
     pages: [
       { slug: 'agents', label: 'Agents', icon: Bot, summary: 'Every agent on your wallet, its key and its mandate.' },
+      { slug: 'approvals', label: 'Approvals', icon: ClipboardCheck, summary: 'Payments your agents asked you to allow beyond their mandate.' },
+      { slug: 'funds', label: 'Funds', icon: Coins, summary: 'Test USDC, card top-ups and withdrawals for your wallet.' },
       {
         slug: 'merchant',
         label: 'Accept payments',

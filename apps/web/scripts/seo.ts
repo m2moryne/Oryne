@@ -23,6 +23,7 @@ const sitemapHints: Record<keyof typeof publicPages, { changefreq: string; prior
   docs: { changefreq: 'weekly', priority: '0.9' },
   vision: { changefreq: 'monthly', priority: '0.7' },
   contact: { changefreq: 'yearly', priority: '0.5' },
+  pricing: { changefreq: 'monthly', priority: '0.8' },
   about: { changefreq: 'monthly', priority: '0.6' },
   status: { changefreq: 'daily', priority: '0.5' },
   security: { changefreq: 'monthly', priority: '0.6' },

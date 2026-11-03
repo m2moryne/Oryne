@@ -3,12 +3,43 @@
  * in with Freighter is kept in localStorage so a reload stays signed in.
  */
 
-/** VITE_ORYNE_API_URL wins; otherwise deployed builds use the hosted testnet API and `npm run dev:web` a local one. */
-export const API_URL =
+/** Test mode's API (Stellar testnet). VITE_ORYNE_API_URL wins; otherwise deployed builds use the hosted one and `npm run dev:web` a local one. */
+export const TEST_API_URL =
   (import.meta.env.VITE_ORYNE_API_URL as string | undefined) ??
   (import.meta.env.PROD ? 'https://oryne.onrender.com' : 'http://localhost:8787')
 
-const TOKEN_KEY = 'oryne.live.session'
+/** Live mode's API (Stellar mainnet, real USDC). Unset until mainnet opens; see render.mainnet.yaml. */
+export const LIVE_API_URL = (import.meta.env.VITE_ORYNE_LIVE_API_URL as string | undefined) || null
+
+/** Test: testnet and test USDC. Live: mainnet and real USDC. Each has its own API, sign-in and data. */
+export type Mode = 'test' | 'live'
+const MODE_KEY = 'oryne.mode'
+
+/** The mode this page load runs in. Live only once a live API is configured. */
+export const MODE: Mode = (() => {
+  try {
+    return LIVE_API_URL && localStorage.getItem(MODE_KEY) === 'live' ? 'live' : 'test'
+  } catch {
+    return 'test'
+  }
+})()
+
+/** Switches mode and reloads at `path`, so every request and session follows. */
+export function switchMode(mode: Mode, path: string) {
+  try {
+    localStorage.setItem(MODE_KEY, mode)
+  } catch {
+    // Storage blocked: can't remember the mode across the reload.
+  }
+  window.location.assign(path)
+}
+
+/** The API this page load talks to. */
+export const API_URL = MODE === 'live' && LIVE_API_URL ? LIVE_API_URL : TEST_API_URL
+
+// Test keeps the original keys, so nobody is signed out by the switch arriving.
+const suffix = MODE === 'live' ? '.mainnet' : ''
+const TOKEN_KEY = `oryne.live.session${suffix}`
 
 export type Session = { token: string; address: string; expiresAt: number }
 
@@ -30,7 +61,7 @@ export function saveSession(session: Session | null) {
   }
 }
 
-const ACCOUNT_KEY = 'oryne.live.account'
+const ACCOUNT_KEY = `oryne.live.account${suffix}`
 
 /** The team account this person is working in, when it isn't their own. Sent as X-Oryne-Account. */
 export function loadAccount(): string | null {
@@ -162,6 +193,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 export type Info = {
   network: string
   networkPassphrase: string
+  /** test or live; missing on older API builds. */
+  mode?: Mode
   /** Soroban RPC the API uses. */
   rpcUrl?: string
   token: string
@@ -210,6 +243,9 @@ export type FundMovement = {
   createdAt: number
   completedAt: number | null
 }
+
+/** Which dashboard an account uses: the agent dashboard (owner) or the developer console (developer). */
+export type AccountKind = 'owner' | 'developer'
 
 export type Role = 'admin' | 'developer' | 'viewer'
 

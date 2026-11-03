@@ -68,26 +68,22 @@ export default function Keys() {
     }
   }
 
-  // This server is on testnet, so every key is a test key; live keys come with mainnet.
+  // Each mode has its own API: test keys work against testnet, live keys against mainnet.
   const shown = keys.filter((key) => key.mode === mode)
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl tracking-[-0.02em]">API keys</h1>
-        {mode === 'test' && (
-          <Button size="sm" leadingIcon={Plus} onClick={() => setCreating(true)}>
-            Create key
-          </Button>
-        )}
+        <Button size="sm" leadingIcon={Plus} onClick={() => setCreating(true)}>
+          Create {mode} key
+        </Button>
       </div>
 
       {error && <p className="border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy">{error}</p>}
 
       <Panel flush>
-        {mode === 'live' ? (
-          <EmptyState icon={KeyRound} title="Live keys arrive with mainnet" />
-        ) : shown.length === 0 && !loading ? (
+        {shown.length === 0 && !loading ? (
           <EmptyState icon={KeyRound} title="No keys yet" />
         ) : (
           <div className="overflow-x-auto">

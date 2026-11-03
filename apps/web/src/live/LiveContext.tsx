@@ -12,6 +12,7 @@ import {
   type Intent,
   type LiveApproval,
   type LivePayment,
+  type AccountKind,
   type Membership,
   type Role,
   type Session,
@@ -64,7 +65,11 @@ type Live = {
   reloadMemberships: () => Promise<void>
   /** Switches to a team account, or back to their own with null. Reloads the dashboard. */
   switchAccount: (account: string | null) => void
-  createWallet: (name: string) => Promise<void>
+  createWallet: (name: string, kind?: AccountKind) => Promise<void>
+  /** owner: the agent dashboard only. developer: the developer console only. Null until known. */
+  kind: AccountKind | null
+  /** Switches the account between the two. Owner only. */
+  setKind: (kind: AccountKind) => Promise<void>
   refresh: () => Promise<void>
   /** Builds an intent with `create`, has Freighter or the passkey sign it, submits it, refreshes. Returns the tx hash. */
   sign: (create: (token: string) => Promise<Intent>) => Promise<string>
@@ -85,6 +90,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [member, setMember] = useState<Live['member']>(null)
   const [memberships, setMemberships] = useState<Membership[]>([])
+  const [kind, setKindState] = useState<AccountKind | null>(null)
   const [error, setError] = useState<string | null>(redirect.error ?? null)
 
   useEffect(() => {
@@ -105,7 +111,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
-      let me: { wallets: WalletSummary[]; user: User; member?: Live['member'] }
+      let me: { wallets: WalletSummary[]; user: User; member?: Live['member']; kind?: AccountKind }
       try {
         me = await api('/v1/me', { token: session.token })
       } catch (reason) {
@@ -117,6 +123,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setWallets(me.wallets)
       setUser(me.user)
       setMember(me.member ?? null)
+      setKindState(me.kind ?? 'owner')
       const current = me.wallets[0]
       if (current) {
         const [detail, history, pending] = await Promise.all([
@@ -204,8 +211,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setWallets([])
         setWallet(null)
+        setKindState(null)
       },
-      async createWallet(name: string) {
+      kind,
+      async setKind(next: AccountKind) {
+        if (!session) return
+        await api('/v1/account', { method: 'PUT', body: { kind: next }, token: session.token })
+        setKindState(next)
+      },
+      async createWallet(name: string, chosen?: AccountKind) {
         if (!session) return
         // Freighter accounts own their wallet directly; everyone else with a new passkey.
         const passkey = isAccount(session.address)
@@ -214,7 +228,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
               name: user?.email ?? session.address,
               displayName: user?.name ?? user?.email ?? 'Oryne wallet owner',
             })
-        await api('/v1/wallets', { body: { name, passkey }, token: session.token })
+        await api('/v1/wallets', { body: { name, passkey, kind: chosen }, token: session.token })
+        if (chosen) setKindState(chosen)
         await refresh()
       },
       refresh,
@@ -232,7 +247,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         return result.hash
       },
     }),
-    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh, member, memberships, reloadMemberships],
+    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh, member, memberships, reloadMemberships, kind],
   )
 
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>

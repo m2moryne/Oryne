@@ -1,0 +1,72 @@
+# Render Blueprint: the Oryne API on Stellar MAINNET (live mode, real USDC).
+#
+# Kept apart from render.yaml so a Blueprint sync never starts a paid service by
+# surprise. When you're ready: Render → New → Blueprint → this repo, and set the
+# blueprint file to render.mainnet.yaml. Then set VITE_ORYNE_LIVE_API_URL in
+# Vercel to this service's URL and redeploy the website: the dashboard's Live
+# switch starts using it.
+#
+# Before real money: the wallet contract should be audited (see /security).
+services:
+  - type: web
+    name: oryne-api-mainnet
+    runtime: node
+    # Always on: the free plan sleeps, and payments can't wait a minute.
+    plan: starter
+    region: frankfurt
+    branch: master
+    buildCommand: npm ci
+    startCommand: npm start -w @oryne/api
+    healthCheckPath: /v1/info
+    buildFilter:
+      paths:
+        - services/api/**
+        - packages/core/**
+        - package.json
+        - package-lock.json
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ORYNE_NETWORK
+        value: mainnet
+      # The website, e.g. https://oryne.org.
+      - key: WEB_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # A separate Postgres from testnet's: live accounts, wallets and payments.
+      - key: DATABASE_URL
+        sync: false
+      # Pays network fees and deploys wallets. A mainnet account you fund with XLM.
+      - key: SPONSOR_SECRET
+        sync: false
+      # Sends real USDC for card top-ups. Fund it with USDC (and a little XLM).
+      - key: TREASURY_SECRET
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: ADMIN_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Oryne <noreply@oryne.org>
+      # Use Paystack's LIVE secret key here, and add the webhook
+      # https://<this service>/v1/paystack/webhook in Paystack's live settings.
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_CURRENCY
+        value: KES
+      - key: PAYSTACK_RATE
+        value: "130"
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      # Add this service's callback URLs to the Google and GitHub OAuth apps.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false

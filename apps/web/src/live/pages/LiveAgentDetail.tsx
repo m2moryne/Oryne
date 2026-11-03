@@ -6,7 +6,7 @@ import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { api, type Intent, type LiveAgent } from '../api'
 import { useLive } from '../LiveContext'
-import { AddressLink, ErrorNote, TxLink, useAction, usd, when } from '../shared'
+import { AddressLink, ErrorNote, TxLink, useAction, useBase, usd, when } from '../shared'
 
 function PolicyForm({ agent }: { agent: LiveAgent }) {
   const live = useLive()
@@ -68,12 +68,13 @@ function PolicyForm({ agent }: { agent: LiveAgent }) {
 export default function LiveAgentDetail() {
   const { key } = useParams()
   const live = useLive()
+  const base = useBase()
   const navigate = useNavigate()
   const pause = useAction()
   const remove = useAction()
 
   const agent = live.wallet!.agents.find((candidate) => candidate.publicKey === key)
-  if (!agent) return <Navigate to="/app/agents" replace />
+  if (!agent) return <Navigate to={`${base}/agents`} replace />
 
   const paused = agent.status === 'paused'
   const budget = Number(agent.budget)
@@ -82,7 +83,7 @@ export default function LiveAgentDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/app/agents" className="inline-flex items-center gap-2 text-sm text-muted hover:text-charcoal">
+      <Link to={`${base}/agents`} className="inline-flex items-center gap-2 text-sm text-muted hover:text-charcoal">
         <Icon icon={ArrowLeft} size={16} /> All agents
       </Link>
 
@@ -167,7 +168,7 @@ export default function LiveAgentDetail() {
                     api<Intent>(`/v1/wallets/${agent.wallet}/agents/${agent.publicKey}`, { method: 'DELETE', token }),
                   ),
                 )
-                if (ok) navigate('/app/agents')
+                if (ok) navigate(`${base}/agents`)
               }}
             >
               {remove.busy ? 'Waiting for your signature…' : 'Disconnect agent'}

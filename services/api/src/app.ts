@@ -33,6 +33,7 @@ import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { listRequests, logRequests } from './requests.ts'
 import { usage, usageRanges } from './usage.ts'
+import { billing } from './pricing.ts'
 import type { Webhooks } from './webhooks.ts'
 import { createIntent, submitIntent, type PasskeyResponse } from './intents.ts'
 import { readContract, type Chain } from './stellar.ts'
@@ -254,6 +255,8 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   app.get('/v1/info', (c) =>
     c.json({
       network: networkId(chain.network),
+      /** test on testnet, live on mainnet: which side of the dashboard's Test/Live switch this API is. */
+      mode: keyMode,
       networkPassphrase: chain.network.networkPassphrase,
       rpcUrl: chain.network.rpcUrl,
       token: chain.network.token,
@@ -493,19 +496,61 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     return c.json(await usage(db, c.var.owner, days, money, now()))
   })
 
+  const accountKinds = ['owner', 'developer'] as const
+  type AccountKind = (typeof accountKinds)[number]
+  /** The account's kind. Accounts from before kinds existed: developer if they made keys or webhooks. */
+  async function accountKind(owner: string): Promise<AccountKind> {
+    const profile = await db.prepare('select kind from profiles where owner = ?').get<{ kind: AccountKind }>(owner)
+    if (profile) return profile.kind
+    const built = await db
+      .prepare('select (select count(*) from api_keys where owner = ?) + (select count(*) from webhooks where owner = ?) as n')
+      .get<{ n: number }>(owner, owner)
+    return Number(built?.n ?? 0) > 0 ? 'developer' : 'owner'
+  }
+  async function setAccountKind(owner: string, kind: unknown) {
+    if (!accountKinds.includes(kind as AccountKind)) {
+      throw new HTTPException(400, { message: `kind must be one of: ${accountKinds.join(', ')}` })
+    }
+    await db
+      .prepare('insert into profiles (owner, kind, updated_at) values (?, ?, ?) on conflict (owner) do update set kind = excluded.kind, updated_at = excluded.updated_at')
+      .run(owner, kind as AccountKind, now())
+    return kind as AccountKind
+  }
+
   owner.get('/me', async (c) => {
     const wallets = await db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
     const user = await db.prepare('select provider, email, name, avatar from users where subject = ?').get(c.var.owner)
     // A teammate sees the account's wallets, and who they are in it.
     const member = c.var.member ? { ...c.var.member, actor: c.var.actor } : null
-    return c.json({ address: c.var.owner, user: user ?? { provider: 'freighter' }, wallets, member })
+    return c.json({
+      address: c.var.owner,
+      user: user ?? { provider: 'freighter' },
+      wallets,
+      member,
+      kind: await accountKind(c.var.owner),
+    })
   })
 
+  /** Switches between the owner dashboard and the developer console. Owner only. */
+  owner.put('/account', async (c) => {
+    sessionOnly(c)
+    const input = await body<{ kind?: unknown }>(c)
+    return c.json({ kind: await setAccountKind(c.var.owner, input.kind) })
+  })
+
+  /** This month's agent payments and the fee they'd carry (charged on mainnet only). */
+  owner.get('/billing', async (c) =>
+    c.json(await billing(db, c.var.owner, now(), money, config.network.name === 'mainnet')),
+  )
+
   owner.post('/wallets', async (c) => {
-    const input = await body<{ name?: string; passkey?: { publicKey: string; credentialId: string } }>(c).catch(
-      () => ({}) as { name?: string; passkey?: { publicKey: string; credentialId: string } },
-    )
+    type WalletInput = { name?: string; kind?: string; passkey?: { publicKey: string; credentialId: string } }
+    const input = await body<WalletInput>(c).catch(() => ({}) as WalletInput)
     const { name } = input
+    // Chosen when the first wallet is made; checked before anything is deployed.
+    if (input.kind !== undefined && !accountKinds.includes(input.kind as AccountKind)) {
+      throw new HTTPException(400, { message: `kind must be one of: ${accountKinds.join(', ')}` })
+    }
     // Freighter users own their wallet with their account; everyone else with a passkey.
     let walletOwner: { address: string } | { passkey: Uint8Array }
     if (input.passkey) {
@@ -551,6 +596,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
         'insert into passkeys (credential_id, subject, wallet_id, public_key, created_at) values (?, ?, ?, ?, ?)',
       ).run(input.passkey!.credentialId, c.var.owner, id, Buffer.from(walletOwner.passkey).toString('hex'), now())
     }
+    if (input.kind) await setAccountKind(c.var.owner, input.kind)
     return c.json({ id, hash: result.hash, ledger: result.ledger }, 201)
   })
 

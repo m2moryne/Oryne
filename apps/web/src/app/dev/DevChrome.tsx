@@ -123,7 +123,8 @@ export function AccountMenu({
   email: string
   /** Developer console base path, for Settings, Team and Billing. */
   base: string
-  ownerDashboard: string
+  /** The agent dashboard, in the preview. Real developer accounts don't have one. */
+  ownerDashboard?: string
   signOutLabel: string
   onSignOut: () => void
 }) {
@@ -180,10 +181,12 @@ export function AccountMenu({
             ))}
           </div>
           <div className="border-t border-taupe/40 py-1.5">
-            <Link role="menuitem" to={ownerDashboard} onClick={close} className={menuItem}>
-              <Icon icon={LayoutDashboard} size={16} className="text-muted" />
-              Owner dashboard
-            </Link>
+            {ownerDashboard && (
+              <Link role="menuitem" to={ownerDashboard} onClick={close} className={menuItem}>
+                <Icon icon={LayoutDashboard} size={16} className="text-muted" />
+                Owner dashboard
+              </Link>
+            )}
             <Link role="menuitem" to="/docs" onClick={close} className={menuItem}>
               <Icon icon={BookOpen} size={16} className="text-muted" />
               Documentation

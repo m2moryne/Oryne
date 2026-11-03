@@ -6,7 +6,7 @@ import { Container } from '../components/Section'
 import { usePageMeta } from '../hooks/usePageMeta'
 import { cn } from '../lib/cn'
 import { publicPages } from '../lib/seo'
-import { API_URL, type Info } from '../live/api'
+import { LIVE_API_URL, TEST_API_URL, type Info } from '../live/api'
 
 type State = 'checking' | 'up' | 'slow' | 'down' | 'off' | 'unknown'
 type Check = { name: string; what: string; state: State; detail: string }
@@ -40,10 +40,10 @@ const latency = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed
 async function runChecks(): Promise<Check[]> {
   // The API sleeps when idle on its current host, so the first call can take up to a minute.
   let info: Info | null = null
-  const api: Check = { name: 'Oryne API', what: 'Wallets, agents, the dashboard and the SDKs talk to this.', state: 'down', detail: '' }
+  const api: Check = { name: 'Oryne API (test mode)', what: 'Wallets, agents, the dashboard and the SDKs talk to this, on testnet.', state: 'down', detail: '' }
   try {
     const result = await timed(async (signal) => {
-      const response = await fetch(`${API_URL}/v1/info`, { signal })
+      const response = await fetch(`${TEST_API_URL}/v1/info`, { signal })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       return (await response.json()) as Info
     }, 60_000)
@@ -116,7 +116,22 @@ async function runChecks(): Promise<Check[]> {
     detail: !info ? 'Down while the API is down' : info.features?.aiDebugger ? 'Enabled' : 'Not configured yet',
   }
 
-  return [api, facilitator, network, signIn, faucet, card, debuggerCheck]
+  const liveApi: Check = { name: 'Live mode (mainnet)', what: 'Real USDC on Stellar mainnet.', state: 'off', detail: 'Opens after the contract audit' }
+  if (LIVE_API_URL) {
+    try {
+      const result = await timed(async (signal) => {
+        const response = await fetch(`${LIVE_API_URL}/v1/info`, { signal })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      }, 30_000)
+      liveApi.state = result.ms > 5000 ? 'slow' : 'up'
+      liveApi.detail = `Answered in ${latency(result.ms)}`
+    } catch {
+      liveApi.state = 'down'
+      liveApi.detail = 'Couldn’t reach it'
+    }
+  }
+
+  return [api, facilitator, network, liveApi, signIn, faucet, card, debuggerCheck]
 }
 
 /** Live checks of Oryne's services, run from the visitor's browser. */
@@ -140,7 +155,7 @@ export default function Status() {
     return () => window.clearInterval(timer)
   }, [check])
 
-  const core = checks?.slice(0, 3) ?? []
+  const core = checks?.slice(0, 4) ?? []
   const overall: State = !checks
     ? 'checking'
     : core.some((c) => c.state === 'down')
@@ -219,6 +234,6 @@ export default function Status() {
   )
 }
 
-const placeholder: Check[] = ['Oryne API', 'x402 facilitator', 'Stellar network', 'Sign-in', 'Test USDC faucet', 'Card top-ups', 'AI debugger'].map(
+const placeholder: Check[] = ['Oryne API (test mode)', 'x402 facilitator', 'Stellar network', 'Live mode (mainnet)', 'Sign-in', 'Test USDC faucet', 'Card top-ups', 'AI debugger'].map(
   (name) => ({ name, what: '', state: 'checking', detail: '' }),
 )

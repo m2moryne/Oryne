@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon'
 import { shortKey } from '../lib/network'
 import { explorerAccount, explorerTx } from './api'
 import { useLive } from './LiveContext'
+import { useLocation } from 'react-router-dom'
 
 /** Runs an async action with a busy flag and a readable error. */
 export function useAction() {
@@ -71,3 +72,9 @@ export const when = (seconds: number) =>
   )
 
 export const usd = (value: string | undefined) => (value === undefined ? '—' : `${value} USDC`)
+
+/** Where this dashboard lives: /app for owners, /app/developers in the developer console. */
+export function useBase() {
+  const { pathname } = useLocation()
+  return pathname === '/app/developers' || pathname.startsWith('/app/developers/') ? '/app/developers' : '/app'
+}

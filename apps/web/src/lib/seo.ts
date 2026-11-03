@@ -56,6 +56,12 @@ export const publicPages = {
     description:
       'Talk to Oryne about agent wallets, accepting payments from AI agents, partnerships or research. Builders, researchers and companies welcome.',
   },
+  pricing: {
+    path: '/pricing',
+    title: 'Pricing — No subscription, pay when your agents do | Oryne',
+    description:
+      'Free for your agents’ first $100 of payments each month, then 0.5% per payment capped at $2. No monthly fee, every feature included, receiving payments always free.',
+  },
   about: {
     path: '/about',
     title: 'About Oryne — Wallets for software that pays',

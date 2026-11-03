@@ -1,7 +1,8 @@
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Outlet, useOutletContext } from 'react-router-dom'
-import { AreaSwitch, DevSidebarNav, DevTopBar } from '../../app/dev/DevChrome'
+import { DevSidebarNav, DevTopBar } from '../../app/dev/DevChrome'
+import { useModeChange } from '../ModeControl'
 import { ThemeToggle, useTheme } from '../../app/theme'
 import type { Mode } from '../../app/dev/devData'
 import { Icon } from '../../components/Icon'
@@ -12,29 +13,6 @@ import { useLive } from '../LiveContext'
 import { TeamNotice } from '../TeamBar'
 
 export const DEV_BASE = '/app/developers'
-const MODE_KEY = 'oryne.dev.mode'
-
-/** Test or live, remembered in this browser. */
-function useStoredMode(): [Mode, (mode: Mode) => void] {
-  const [mode, setMode] = useState<Mode>(() => {
-    try {
-      return localStorage.getItem(MODE_KEY) === 'live' ? 'live' : 'test'
-    } catch {
-      return 'test'
-    }
-  })
-  const update = (next: Mode) => {
-    setMode(next)
-    try {
-      localStorage.setItem(MODE_KEY, next)
-    } catch {
-      // Not remembered; the switch still works for this visit.
-    }
-  }
-  return [mode, update]
-}
-
-/** Lets developer pages read the mode the top-right switch is on. */
 export const useDevMode = () => useOutletContext<{ mode: Mode }>().mode
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -49,9 +27,6 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {live.info?.network ?? 'stellar'}
       </p>
       <div className="mt-6">
-        <AreaSwitch current="developers" agents="/app" developers={DEV_BASE} onNavigate={onNavigate} />
-      </div>
-      <div className="mt-6">
         <DevSidebarNav base={DEV_BASE} onNavigate={onNavigate} />
       </div>
     </div>
@@ -62,7 +37,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 export function LiveDevShell() {
   const live = useLive()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [mode, setMode] = useStoredMode()
+  const { mode, change: setMode, dialog: modeDialog } = useModeChange()
   const [theme, setTheme] = useTheme('dark')
 
   // A teammate is shown as themselves, not as the account's owner.
@@ -101,14 +76,9 @@ export function LiveDevShell() {
           mode={mode}
           onMode={setMode}
           extra={<ThemeToggle theme={theme} onChange={setTheme} />}
-          account={{ name, email, base: DEV_BASE, ownerDashboard: '/app', signOutLabel: 'Sign out', onSignOut: live.signOut }}
+          account={{ name, email, base: DEV_BASE, signOutLabel: 'Sign out', onSignOut: live.signOut }}
         />
-        {mode === 'live' && (
-          <p className="mb-3 border border-green/50 px-4 py-2.5 text-sm text-muted md:mb-4">
-            <span className="font-medium text-green">Live mode is coming.</span> It will run on Stellar mainnet with
-            real USDC. Until it opens, your wallet, agents and payments are on testnet, shown in test mode.
-          </p>
-        )}
+        {modeDialog}
         {live.error && (
           <p role="alert" className="mb-3 border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy md:mb-4">
             {live.error}

@@ -130,6 +130,12 @@ create table if not exists requests (
 );
 create index if not exists requests_owner on requests(owner, created_at desc);
 
+-- What kind of account this is: owner (gives their own agents a wallet) or
+-- developer (builds with the API and SDKs). Decides which dashboard they see.
+create table if not exists profiles (
+  owner text primary key, kind text not null, updated_at ${int} not null
+);
+
 -- Teammates invited to an account (see team.ts). account is the owner's sign-in subject.
 create table if not exists members (
   id text primary key, account text not null, email text not null,

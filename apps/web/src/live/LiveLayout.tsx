@@ -2,6 +2,7 @@ import {
   Bot,
   ClipboardCheck,
   Coins,
+  CreditCard,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -12,12 +13,13 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
+  Users,
   Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import githubLogo from '../assets/github.svg'
 import googleLogo from '../assets/google.svg'
 import { Button } from '../components/Button'
@@ -27,7 +29,6 @@ import { usePageMeta } from '../hooks/usePageMeta'
 import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
-import { AreaSwitch } from '../app/dev/DevChrome'
 import { ThemeToggle, useTheme } from '../app/theme'
 import { PREVIEW_ON, useEnterPreview } from '../app/preview'
 import { Field, inputClasses } from '../app/ui'
@@ -37,6 +38,8 @@ import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
 import { soonPages } from './pages/ComingSoon'
 import { AccountSwitcher, GateTeams, TeamNotice } from './TeamBar'
+import { LiveBanner, SidebarModeToggle } from './ModeControl'
+import type { AccountKind } from './api'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -47,8 +50,21 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
   { to: '/app/services', label: 'Services', icon: Store },
   ...soonPages.map((page) => ({ to: `/app/${page.slug}`, label: page.label, icon: page.icon })),
   { to: '/app/activity', label: 'Activity', icon: Receipt },
+  { to: '/app/team', label: 'Team', icon: Users },
+  { to: '/app/billing', label: 'Billing', icon: CreditCard },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ]
+
+/** Pages both sides have; anything else lands on the other side's overview. */
+const shared = ['agents', 'approvals', 'funds', 'settings', 'team', 'billing']
+
+/** The same page on the other side, for links that cross from one dashboard to the other. */
+function sidePath(pathname: string, kind: AccountKind) {
+  const from = kind === 'developer' ? '/app' : DEV_BASE
+  const to = kind === 'developer' ? DEV_BASE : '/app'
+  const rest = pathname.slice(from.length)
+  return shared.includes(rest.split('/')[1] ?? '') ? `${to}${rest}` : to
+}
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const live = useLive()
@@ -66,7 +82,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </p>
 
       <div className="mt-6">
-        <AreaSwitch current="agents" agents="/app" developers={DEV_BASE} onNavigate={onNavigate} />
+        <SidebarModeToggle />
       </div>
 
       <nav aria-label="Dashboard" className="mt-6">
@@ -162,6 +178,11 @@ function AuthFrame({ children }: { children: ReactNode }) {
   )
 }
 
+const kindOptions: Array<{ kind: AccountKind; title: string; note: string }> = [
+  { kind: 'owner', title: 'Give my AI agents a wallet', note: 'Set limits, approve payments and see what they spend.' },
+  { kind: 'developer', title: 'Build with Oryne', note: 'API keys, SDKs, logs and webhooks for agents or a paid API.' },
+]
+
 /** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
@@ -171,6 +192,9 @@ function Gate() {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('My agent wallet')
+  // Coming from the developer console (or the website's Developers link) suggests a developer account.
+  const { pathname } = useLocation()
+  const [kind, setKind] = useState<AccountKind>(pathname.startsWith(DEV_BASE) ? 'developer' : 'owner')
   // Continue with email: enter the address, then the code sent to it.
   const [emailStep, setEmailStep] = useState<'address' | 'code' | null>(null)
   const [email, setEmail] = useState('')
@@ -349,12 +373,38 @@ function Gate() {
               : 'Oryne deploys a wallet contract on Stellar owned by your Freighter account.'}{' '}
             Oryne pays the network fee.
           </p>
+          <fieldset className="mt-6">
+            <legend className="text-sm font-medium">How will you use Oryne?</legend>
+            <div className="mt-2 grid gap-2">
+              {kindOptions.map((option) => (
+                <label
+                  key={option.kind}
+                  className={cn(
+                    'flex cursor-pointer gap-3 rounded-lg border px-4 py-3 text-sm',
+                    kind === option.kind ? 'border-charcoal' : 'border-taupe/60 hover:border-charcoal/50',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="kind"
+                    checked={kind === option.kind}
+                    onChange={() => setKind(option.kind)}
+                    className="mt-1 accent-charcoal"
+                  />
+                  <span>
+                    <span className="font-medium">{option.title}</span>
+                    <span className="mt-0.5 block text-muted">{option.note}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="mt-6">
             <Field label="Name">
               {(id) => <input id={id} value={name} onChange={(event) => setName(event.target.value)} className={inputClasses} />}
             </Field>
           </div>
-          <Button className="mt-6 w-full" onClick={run('create', () => live.createWallet(name))} disabled={!!busy}>
+          <Button className="mt-6 w-full" onClick={run('create', () => live.createWallet(name, kind))} disabled={!!busy}>
             {busy
               ? passkeyOwner
                 ? 'Creating passkey and wallet…'
@@ -389,7 +439,11 @@ function Shell() {
     return <div className="tone-white flex min-h-svh items-center justify-center text-sm text-muted">Loading…</div>
   }
   if (!live.session || !live.wallet) return <Gate />
-  if (pathname.startsWith(DEV_BASE)) return <LiveDevShell />
+  // Each kind of account sees only its own side: owners the agent dashboard, developers the console.
+  const inConsole = pathname === DEV_BASE || pathname.startsWith(`${DEV_BASE}/`)
+  if (live.kind === 'developer' && !inConsole) return <Navigate to={sidePath(pathname, 'developer')} replace />
+  if (live.kind === 'owner' && inConsole) return <Navigate to={sidePath(pathname, 'owner')} replace />
+  if (inConsole) return <LiveDevShell />
 
   return (
     <div className="tone-white min-h-svh lg:pl-64">
@@ -421,6 +475,7 @@ function Shell() {
             {live.error}
           </p>
         )}
+        <LiveBanner className="mb-3 md:mb-4" />
         <TeamNotice className="mb-3 md:mb-4" />
         <Outlet />
       </main>

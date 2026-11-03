@@ -9,7 +9,7 @@ import { Icon } from '../../components/Icon'
 import { shortKey } from '../../lib/network'
 import { api, API_URL, type Intent } from '../api'
 import { useLive } from '../LiveContext'
-import { ErrorNote, TxLink, useAction, usd } from '../shared'
+import { ErrorNote, TxLink, useAction, usd, useBase } from '../shared'
 
 const kinds = ['Research', 'Shopping', 'Travel', 'Operations', 'Other']
 
@@ -143,6 +143,7 @@ const res = await agent.fetch(url) // pays 402s inside the mandate`,
 
 export default function LiveAgents() {
   const live = useLive()
+  const base = useBase()
   const [params, setParams] = useSearchParams()
   const [open, setOpen] = useState(params.get('connect') === '1')
   const agents = live.wallet!.agents
@@ -184,7 +185,7 @@ export default function LiveAgents() {
             const budget = Number(agent.budget)
             return (
               <li key={agent.publicKey}>
-                <Link to={`/app/agents/${agent.publicKey}`} className="tone-white block border border-taupe/50 p-5 transition-colors hover:border-charcoal/40 md:p-6">
+                <Link to={`${base}/agents/${agent.publicKey}`} className="tone-white block border border-taupe/50 p-5 transition-colors hover:border-charcoal/40 md:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="truncate text-lg">{agent.name}</p>

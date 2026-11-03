@@ -59,6 +59,7 @@ import Home from './pages/Home'
 import HowItWorks from './pages/HowItWorks'
 import Docs from './pages/Docs'
 import About from './pages/About'
+import Pricing from './pages/Pricing'
 import Privacy from './pages/Privacy'
 import Security from './pages/Security'
 import Status from './pages/Status'
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/docs" element={<Docs />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/about" element={<About />} />
           <Route path="/status" element={<Status />} />
           <Route path="/security" element={<Security />} />
@@ -120,6 +122,8 @@ export default function App() {
           <Route path="wallet" element={<LiveWallet />} />
           <Route path="funds" element={<LiveFunds />} />
           <Route path="services" element={<LiveServices />} />
+          <Route path="team" element={<RealTeam />} />
+          <Route path="billing" element={<RealBilling />} />
           <Route path="settings" element={<RealSettings />} />
           {liveSoonPages.map((page) => (
             <Route key={page.slug} path={page.slug} element={<LiveComingSoon slug={page.slug} />} />
@@ -139,6 +143,9 @@ export default function App() {
             <Route path="settings" element={<RealSettings />} />
             <Route path="playground" element={<RealPlayground />} />
             <Route path="team" element={<RealTeam />} />
+            <Route path="funds" element={<LiveFunds />} />
+            <Route path="approvals" element={<LiveApprovals />} />
+            <Route path="agents/:key" element={<LiveAgentDetail />} />
             <Route path="billing" element={<RealBilling />} />
             {allDevPages
               .filter((page) => page.slug && !realPages.includes(page.slug))
@@ -179,6 +186,8 @@ export default function App() {
           <Route path="usage" element={<Usage />} />
           <Route path="sdks" element={<Sdks />} />
           <Route path="agents" element={<DevAgents />} />
+          <Route path="funds" element={<Funds />} />
+          <Route path="approvals" element={<Approvals />} />
           <Route path="team" element={<Team />} />
           <Route path="billing" element={<Billing />} />
           <Route path="settings" element={<DevSettings />} />

@@ -11,8 +11,8 @@ export const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/how-it-works', label: 'How it works' },
   { to: '/docs', label: 'Docs' },
+  { to: '/pricing', label: 'Pricing' },
   { to: '/app/developers', label: 'Developers' },
-  { to: '/vision', label: 'Vision' },
   { to: '/contact', label: 'Contact' },
 ]
 
@@ -27,6 +27,7 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
       ...(PREVIEW_ON ? [{ label: 'Preview', to: '/demo' }] : []),
       { label: 'Developers', to: '/app/developers' },
       { label: 'Documentation', to: '/docs' },
+      { label: 'Pricing', to: '/pricing' },
       { label: 'Status', to: '/status' },
     ],
   },

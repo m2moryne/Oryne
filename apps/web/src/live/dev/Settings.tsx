@@ -35,6 +35,20 @@ export default function Settings() {
     }
   }
 
+  const [switching, setSwitching] = useState(false)
+  const other = live.kind === 'developer' ? 'owner' : 'developer'
+  const switchKind = async () => {
+    setSwitching(true)
+    setError(null)
+    try {
+      await live.setKind(other)
+      window.location.assign(other === 'developer' ? '/app/developers' : '/app')
+    } catch (reason) {
+      setError((reason as Error).message)
+      setSwitching(false)
+    }
+  }
+
   const address = live.session?.address ?? ''
   const provider = live.user?.provider ?? (isAccount(address) ? 'freighter' : address.split(':')[0])
 
@@ -67,6 +81,21 @@ export default function Settings() {
           </div>
         </dl>
       </Panel>
+
+      {!live.member && live.kind && (
+        <Panel title="Account type">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-xl text-sm text-muted">
+              {live.kind === 'developer'
+                ? 'Developer: the console with API keys, SDKs, logs and webhooks. If you only want to give your agents a wallet, the agent dashboard is simpler.'
+                : 'Agent wallet: set your agents’ limits, approve payments and see what they spend. Building agents or a paid API? Switch to a developer account for API keys, SDKs and logs.'}
+            </p>
+            <Button variant="outline" size="sm" onClick={switchKind} disabled={switching}>
+              {switching ? 'Switching…' : other === 'developer' ? 'Switch to developer' : 'Switch to agent dashboard'}
+            </Button>
+          </div>
+        </Panel>
+      )}
 
       <Panel title="Sessions">
         <div className="flex flex-wrap items-center justify-between gap-4">
