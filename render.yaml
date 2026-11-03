@@ -72,3 +72,30 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
+
+  # The demo merchant: a small paid API the example agents buy from
+  # (examples/research-agent). Testnet only. MERCHANT_ADDRESS is a public
+  # testnet address with a trustline to the API's test USDC; no secret needed.
+  - type: web
+    name: oryne-demo-merchant
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: master
+    buildCommand: npm ci
+    startCommand: npm start -w @oryne/demo-merchant
+    healthCheckPath: /
+    buildFilter:
+      paths:
+        - examples/demo-merchant/**
+        - packages/merchant/**
+        - packages/core/**
+        - package.json
+        - package-lock.json
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MERCHANT_ADDRESS
+        value: GBVW7MH67HCBJVQGO3M6SKI7X5SPTINFDYFIIP4FUXU23OME4LIYWBQW
+      - key: FACILITATOR_URL
+        value: https://oryne.onrender.com/v1/x402

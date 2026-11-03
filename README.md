@@ -250,7 +250,8 @@ runs off-chain makes the product pleasant to use, but cannot spend a cent.
 | Agent-wallet contract ([`contracts/agent-wallet`](contracts/agent-wallet)) | ✅ Built and unit-tested in CI (10 tests); running on **testnet**. ⏳ Not audited |
 | API ([`services/api`](services/api)): sign-in, wallets, agents, approvals, x402 facilitator | ✅ Working on testnet |
 | Agent SDK ([`packages/agent`](packages/agent)): `fetch()` that pays | ✅ Working on testnet |
-| Merchant middleware ([`packages/merchant`](packages/merchant)) + [demo merchant](examples/demo-merchant) | ✅ Working on testnet |
+| Merchant middleware ([`packages/merchant`](packages/merchant)) + [demo merchant](examples/demo-merchant) | ✅ Working on testnet; hosted at oryne-demo-merchant.onrender.com |
+| [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, gets refused over its limit, asks for approval, pays (testnet) |
 | MCP server ([`packages/mcp`](packages/mcp)) | ✅ Built on the agent SDK. ⏳ Not yet tried inside Claude Desktop |
 | Passkey owners (Google/GitHub sign-in) | ✅ Contract verifies WebAuthn signatures (6 tests in CI); full flow passes on testnet with a simulated authenticator. ⏳ Not yet tried with a real device passkey |
 | Google and GitHub sign-in | ✅ Built. ⏳ Needs your OAuth apps (see below) |
@@ -274,7 +275,8 @@ Circle's USDC.
 │   ├── agent/                 @oryne/agent: fetch() that pays from the agent wallet
 │   ├── merchant/              @oryne/merchant: paywall middleware (Hono, Express)
 │   └── mcp/                   @oryne/mcp: MCP server for Claude, Cursor, …
-├── examples/demo-merchant/    A small paid API to try it all against
+├── examples/demo-merchant/    A small paid API to try it all against (hosted on testnet)
+├── examples/research-agent/   A DeepSeek agent with an Oryne wallet; installs the SDK from npm
 ├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
 ├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow, headless)
 └── .github/workflows/         CI: contract build + tests (publishes the wasm), web build

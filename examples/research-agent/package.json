@@ -1,0 +1,17 @@
+{
+  "name": "oryne-research-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A DeepSeek research agent that pays for services from its own Oryne wallet, inside limits its owner sets.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/agent.ts"
+  },
+  "dependencies": {
+    "@oryne/agent": "^0.1.0"
+  }
+}

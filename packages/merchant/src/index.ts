@@ -49,7 +49,11 @@ export function createPaywall(options: PaywallOptions) {
         tokenDecimals: number
       }
       return { network: options.network ?? info.network, asset: options.asset ?? info.token, decimals: info.tokenDecimals }
-    })())
+    })().catch((error) => {
+      // A facilitator that was asleep or briefly down: ask again next request, don't fail forever.
+      resolved = undefined
+      throw error
+    }))
 
   async function requirements(price: string, resource: string, description?: string): Promise<PaymentRequirements> {
     const { network, asset, decimals } = await resolve()

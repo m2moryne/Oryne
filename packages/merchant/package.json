@@ -1,6 +1,6 @@
 {
   "name": "@oryne/merchant",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Paywall middleware: charge AI agents per request in USDC on Stellar.",
