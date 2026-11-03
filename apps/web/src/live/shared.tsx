@@ -1,5 +1,6 @@
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, RotateCw } from 'lucide-react'
 import { useState } from 'react'
+import { cn } from '../lib/cn'
 import { Icon } from '../components/Icon'
 import { shortKey } from '../lib/network'
 import { explorerAccount, explorerTx } from './api'
@@ -27,6 +28,35 @@ export function useAction() {
     }
   }
   return { busy, error, done, run, setError }
+}
+
+/**
+ * Round button that reloads the balance, agents, payments and approvals from
+ * the API (and anything else the page passes as `onRefresh`), for when money
+ * arrived from outside Oryne and the page hasn't caught up.
+ */
+export function RefreshButton({ onRefresh }: { onRefresh?: () => Promise<unknown> }) {
+  const live = useLive()
+  const [busy, setBusy] = useState(false)
+  const refresh = async () => {
+    if (busy) return
+    setBusy(true)
+    // Spin for at least a moment, so a fast reload still reads as done.
+    await Promise.all([(onRefresh ?? live.refresh)().catch(() => undefined), new Promise((done) => setTimeout(done, 600))])
+    setBusy(false)
+  }
+  return (
+    <button
+      type="button"
+      onClick={refresh}
+      aria-label="Refresh"
+      title="Refresh"
+      aria-busy={busy}
+      className="flex size-10 shrink-0 items-center justify-center rounded-full border border-taupe text-charcoal transition-colors hover:border-charcoal"
+    >
+      <Icon icon={RotateCw} size={16} className={cn(busy && 'animate-spin')} />
+    </button>
+  )
 }
 
 export function ErrorNote({ error }: { error: string | null }) {

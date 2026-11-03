@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon'
 import { shortKey } from '../../lib/network'
 import { explorerAccount } from '../api'
 import { useLive } from '../LiveContext'
-import { AddressLink, TxLink, usd, when } from '../shared'
+import { AddressLink, RefreshButton, TxLink, usd, when } from '../shared'
 
 const fixed = (value: number) => value.toFixed(2).replace(/\.00$/, '')
 
@@ -74,6 +74,9 @@ export default function LiveWallet() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">{wallet.name}</h1>
+      <div className="flex justify-end">
+        <RefreshButton />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Balance" value={usd(wallet.balance)} note={<Link to="/app" className="underline underline-offset-4">Add or withdraw</Link>} />

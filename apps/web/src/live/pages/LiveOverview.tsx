@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Panel, Stat } from '../../app/ui'
 import { useLive } from '../LiveContext'
-import { AddressLink, TxLink, usd, when } from '../shared'
+import { AddressLink, RefreshButton, TxLink, usd, when } from '../shared'
 
 export default function LiveOverview() {
   const live = useLive()
@@ -17,6 +17,9 @@ export default function LiveOverview() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Overview</h1>
+      <div className="flex justify-end">
+        <RefreshButton />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Balance" value={usd(wallet.balance)} note="In your wallet contract" />

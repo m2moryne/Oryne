@@ -9,7 +9,7 @@ import { Icon } from '../../components/Icon'
 import { shortKey } from '../../lib/network'
 import { api, API_URL, type Intent } from '../api'
 import { useLive } from '../LiveContext'
-import { ErrorNote, TxLink, useAction, usd, useBase } from '../shared'
+import { ErrorNote, RefreshButton, TxLink, useAction, usd, useBase } from '../shared'
 
 const kinds = ['Research', 'Shopping', 'Travel', 'Operations', 'Other']
 
@@ -158,6 +158,7 @@ export default function LiveAgents() {
     <div className="space-y-4">
       <h1 className="sr-only">Agents</h1>
       <div className="flex flex-wrap items-center justify-end gap-3">
+        <RefreshButton />
         <Button size="sm" leadingIcon={Plus} onClick={openDialog}>
           Connect agent
         </Button>

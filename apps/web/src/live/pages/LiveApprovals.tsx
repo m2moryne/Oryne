@@ -4,7 +4,7 @@ import { EmptyState, Panel } from '../../app/ui'
 import { Button } from '../../components/Button'
 import { api, type Intent } from '../api'
 import { useLive } from '../LiveContext'
-import { AddressLink, ErrorNote, TxLink, usd, when } from '../shared'
+import { AddressLink, ErrorNote, RefreshButton, TxLink, usd, when } from '../shared'
 
 /** Payments an agent's mandate refused and it asked about. Approving signs approve_once. */
 export default function LiveApprovals() {
@@ -36,6 +36,9 @@ export default function LiveApprovals() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Approvals</h1>
+      <div className="flex justify-end">
+        <RefreshButton />
+      </div>
       <ErrorNote error={error} />
 
       <Panel title={`Waiting for you${pending.length ? ` (${pending.length})` : ''}`} flush>

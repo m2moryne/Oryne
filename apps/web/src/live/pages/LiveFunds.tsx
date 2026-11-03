@@ -8,7 +8,7 @@ import { cn } from '../../lib/cn'
 import { api, type CardInfo, type FundMovement, type Intent } from '../api'
 import { formatCharge } from './AddMoney'
 import { useLive } from '../LiveContext'
-import { AddressLink, ErrorNote, TxLink, useAction, useBase, usd, when } from '../shared'
+import { AddressLink, ErrorNote, RefreshButton, TxLink, useAction, useBase, usd, when } from '../shared'
 import { Loader } from '../../components/Loader'
 
 const kindLabel: Record<FundMovement['kind'], string> = {
@@ -90,7 +90,8 @@ export default function LiveFunds() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Funds</h1>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        <RefreshButton onRefresh={refreshAll} />
         <Button size="sm" leadingIcon={Plus} to={`${base}/add-money`}>
           Add money
         </Button>

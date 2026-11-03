@@ -1,7 +1,7 @@
 import { Receipt } from 'lucide-react'
 import { EmptyState, Panel } from '../../app/ui'
 import { useLive } from '../LiveContext'
-import { AddressLink, TxLink, usd, when } from '../shared'
+import { AddressLink, RefreshButton, TxLink, usd, when } from '../shared'
 
 /** Every payment agents made or tried from this wallet, as settled (or refused) on Stellar. */
 export default function LiveActivity() {
@@ -12,6 +12,9 @@ export default function LiveActivity() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Activity</h1>
+      <div className="flex justify-end">
+        <RefreshButton />
+      </div>
       <Panel flush>
         {live.payments.length === 0 ? (
           <EmptyState icon={Receipt} title="No payments yet">
