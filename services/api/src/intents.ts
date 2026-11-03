@@ -174,7 +174,9 @@ export async function submitIntent(
     const data = JSON.parse(row.data)
     await applyEffect(db, row.kind, data, result.hash)
     await onApplied?.(row.kind, data)
-    return result
+    // Only what the dashboard needs: the full result carries bigints (the fee),
+    // which JSON can't hold, and the transaction has already landed by now.
+    return { hash: result.hash, ledger: result.ledger }
   }
   const fail = async (error: unknown): Promise<never> => {
     const message = String((error as Error).message ?? error)
