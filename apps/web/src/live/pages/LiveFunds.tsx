@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Coins } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Coins, Plus } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState, Field, inputClasses, Panel, Stat } from '../../app/ui'
@@ -6,9 +6,9 @@ import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
 import { api, type CardInfo, type FundMovement, type Intent } from '../api'
-import { AddMoney, formatCharge } from './AddMoney'
+import { formatCharge } from './AddMoney'
 import { useLive } from '../LiveContext'
-import { AddressLink, ErrorNote, TxLink, useAction, usd, when } from '../shared'
+import { AddressLink, ErrorNote, TxLink, useAction, useBase, usd, when } from '../shared'
 import { Loader } from '../../components/Loader'
 
 const kindLabel: Record<FundMovement['kind'], string> = {
@@ -25,8 +25,8 @@ const statusLabel: Record<FundMovement['status'], { label: string; classes: stri
 }
 
 /**
- * Money into and out of the wallet: top up by card (Paystack), with test USDC
- * on testnet, or by sending USDC on Stellar; withdraw; and every movement.
+ * Money into and out of the wallet: balances, withdrawals and every movement.
+ * Adding money is its own page (AddMoney.tsx), linked from here.
  * Paystack sends the owner back here with ?reference=…, which is confirmed
  * with the API and credited once.
  */
@@ -34,8 +34,7 @@ export default function LiveFunds() {
   const live = useLive()
   const wallet = live.wallet!
   const token = live.session?.token
-  const faucet = !!live.info?.faucet
-  const [card, setCard] = useState<CardInfo | null>(live.info?.card ?? null)
+  const base = useBase()
   const [funds, setFunds] = useState<FundMovement[] | null>(null)
   const [params, setParams] = useSearchParams()
 
@@ -43,7 +42,6 @@ export default function LiveFunds() {
     if (!token) return
     const data = await api<{ funds: FundMovement[]; card: CardInfo | null }>(`/v1/wallets/${wallet.id}/funds`, { token })
     setFunds(data.funds)
-    setCard(data.card)
   }, [token, wallet.id])
 
   useEffect(() => {
@@ -92,6 +90,11 @@ export default function LiveFunds() {
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Funds</h1>
+      <div className="flex justify-end">
+        <Button size="sm" leadingIcon={Plus} to={`${base}/add-money`}>
+          Add money
+        </Button>
+      </div>
 
       {(returned || returnError) && <ReturnBanner movement={returned} error={returnError} onClose={() => { setReturned(null); setReturnError(null) }} />}
 
@@ -100,8 +103,6 @@ export default function LiveFunds() {
         <Stat label="Added" value={usd(totalIn.toFixed(2).replace(/\.00$/, ''))} note="Card and test top-ups" />
         <Stat label="Withdrawn" value={usd(totalOut.toFixed(2).replace(/\.00$/, ''))} note="Moved out by you" />
       </div>
-
-      <AddMoney card={card} faucet={faucet} onDone={refreshAll} />
 
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_24rem]">
       <Panel title="History" flush>

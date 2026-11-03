@@ -18,6 +18,7 @@ import LiveApprovals from './live/pages/LiveApprovals'
 import LiveOverview from './live/pages/LiveOverview'
 import LiveWallet from './live/pages/LiveWallet'
 import LiveFunds from './live/pages/LiveFunds'
+import { AddMoneyPage } from './live/pages/AddMoney'
 import LiveServices from './live/pages/LiveServices'
 import { Footer } from './components/Footer'
 import { Navigation } from './components/Navigation'
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="activity" element={<LiveActivity />} />
           <Route path="wallet" element={<LiveWallet />} />
           <Route path="funds" element={<LiveFunds />} />
+          <Route path="add-money" element={<AddMoneyPage />} />
           <Route path="services" element={<LiveServices />} />
           <Route path="team" element={<RealTeam />} />
           <Route path="billing" element={<RealBilling />} />
@@ -111,6 +113,7 @@ export default function App() {
             <Route path="playground" element={<RealPlayground />} />
             <Route path="team" element={<RealTeam />} />
             <Route path="funds" element={<LiveFunds />} />
+            <Route path="add-money" element={<AddMoneyPage />} />
             <Route path="approvals" element={<LiveApprovals />} />
             <Route path="agents/:key" element={<LiveAgentDetail />} />
             <Route path="billing" element={<RealBilling />} />

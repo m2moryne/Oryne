@@ -1,12 +1,16 @@
-import { ArrowRight, CreditCard, FlaskConical, Landmark, Lock } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CreditCard, FlaskConical, Landmark, Lock } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { CopyButton } from '../../app/dev/devUi'
+import { useTheme } from '../../app/theme'
+import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
+import { Wordmark } from '../../components/Wordmark'
 import { cn } from '../../lib/cn'
 import { shortKey } from '../../lib/network'
 import { api, type CardInfo } from '../api'
 import { useLive } from '../LiveContext'
-import { ErrorNote, TxLink, useAction, usd } from '../shared'
+import { ErrorNote, TxLink, useAction, useBase, usd } from '../shared'
 
 type Method = 'card' | 'test' | 'stellar'
 
@@ -18,34 +22,60 @@ export const formatCharge = (amount: string, currency: string) => {
   }
 }
 
-/** Brand blue from the logo, for the one action on the page. */
-const payButton =
-  'flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#0576fe] px-5 text-[0.9375rem] font-medium text-[#ffffff] shadow-[0_10px_30px_-12px_rgba(5,118,254,0.7)] transition-[background-color,opacity] hover:bg-[#0466e0] disabled:opacity-45'
 
 const presets = { card: ['10', '20', '50', '100'], test: ['50', '100', '500', '1000'] }
+
+/**
+ * /app/add-money: its own page, outside the dashboard, like a checkout. Back
+ * goes to Funds, where card payments also come back to be confirmed.
+ */
+export function AddMoneyPage() {
+  const live = useLive()
+  const base = useBase()
+  const [theme] = useTheme('light')
+  return (
+    <div className={cn('tone-cream min-h-svh', theme === 'dark' && 'theme-dark')}>
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 md:py-7">
+        <Link
+          to={`${base}/funds`}
+          className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-charcoal"
+        >
+          <Icon icon={ArrowLeft} size={16} />
+          Back to Funds
+        </Link>
+        <Link to={base} aria-label="Oryne dashboard" className="text-[0.9375rem]">
+          <Wordmark />
+        </Link>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 md:pb-20">
+        <AddMoney card={live.info?.card ?? null} faucet={!!live.info?.faucet} onDone={live.refresh} />
+      </main>
+    </div>
+  )
+}
 
 /**
  * Adding money, laid out as a checkout: a picture of the wallet on the left,
  * the payment on the right. Card details are never entered here: Paystack's
  * own checkout takes them, so they never reach Oryne.
  */
-export function AddMoney({ card, faucet, onDone }: { card: CardInfo | null; faucet: boolean; onDone: () => Promise<void> }) {
+function AddMoney({ card, faucet, onDone }: { card: CardInfo | null; faucet: boolean; onDone: () => Promise<void> }) {
   const live = useLive()
   const [method, setMethod] = useState<Method>(card ? 'card' : faucet ? 'test' : 'stellar')
   const testnet = live.info?.network !== 'stellar-mainnet'
 
   return (
-    <section className="tone-white grid overflow-hidden rounded-2xl border border-taupe/50 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <section className="tone-white grid overflow-hidden rounded-2xl border border-taupe/50 shadow-[0_30px_80px_-40px_rgba(10,16,26,0.35)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <WalletArt balance={usd(live.wallet!.balance)} address={live.wallet!.id} testnet={testnet} />
 
       <div className="px-5 py-7 sm:px-8 md:px-12 md:py-10">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-2xl tracking-[-0.02em]">Add money</h2>
+          <h1 className="text-2xl tracking-[-0.02em]">Add money</h1>
           {method !== 'stellar' && (
             <button
               type="button"
               onClick={() => setMethod('stellar')}
-              className="mt-1 inline-flex items-center gap-1.5 text-sm text-[#0576fe] hover:underline hover:underline-offset-4"
+              className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-charcoal"
             >
               Wallet address <Icon icon={ArrowRight} size={14} />
             </button>
@@ -87,12 +117,10 @@ function MethodPill({ active, icon, children, onClick }: { active: boolean; icon
       onClick={onClick}
       className={cn(
         'flex h-12 items-center justify-center gap-2 rounded-xl border text-sm transition-colors',
-        active
-          ? 'border-[#0576fe] bg-[#0576fe]/[0.06] text-charcoal shadow-[0_0_0_3px_rgba(5,118,254,0.12)]'
-          : 'border-taupe/50 bg-charcoal/[0.025] text-muted hover:border-charcoal/40 hover:text-charcoal',
+        active ? 'border-charcoal text-charcoal' : 'border-taupe/50 text-muted hover:border-charcoal/40 hover:text-charcoal',
       )}
     >
-      <Icon icon={icon} size={16} className={active ? 'text-[#0576fe]' : undefined} />
+      <Icon icon={icon} size={16} />
       {children}
     </button>
   )
@@ -102,13 +130,13 @@ function FieldLabel({ htmlFor, children, required }: { htmlFor: string; children
   return (
     <label htmlFor={htmlFor} className="block text-sm font-medium">
       {children}
-      {required && <span className="ml-1 text-[#0576fe]">*</span>}
+      {required && <span className="ml-1 text-muted">*</span>}
     </label>
   )
 }
 
 const boxInput =
-  'mt-2 h-13 w-full rounded-xl border border-taupe/60 bg-white px-4 text-[0.9375rem] outline-none transition-[border-color,box-shadow] placeholder:text-muted focus:border-[#0576fe] focus:shadow-[0_0_0_3px_rgba(5,118,254,0.14)]'
+  'mt-2 h-13 w-full rounded-xl border border-taupe/60 bg-white px-4 text-[0.9375rem] outline-none transition-[border-color,box-shadow] placeholder:text-muted focus:border-charcoal'
 
 /** The amount, as a big input with USDC beside it and quick picks under it. */
 function AmountInput({ value, onChange, choices }: { value: string; onChange: (value: string) => void; choices: string[] }) {
@@ -152,7 +180,7 @@ function Total({ label, value, note }: { label: string; value: ReactNode; note?:
     <div className="mt-8 border-t border-taupe/40 pt-5">
       <div className="flex items-baseline justify-between gap-4">
         <span className="text-sm font-medium">{label}</span>
-        <span className="text-xl tabular-nums tracking-[-0.01em] text-[#0576fe]">{value}</span>
+        <span className="text-xl tabular-nums tracking-[-0.01em]">{value}</span>
       </div>
       {note && <p className="mt-1 text-right text-xs text-muted">{note}</p>}
     </div>
@@ -201,9 +229,8 @@ function CardForm({ card, testnet }: { card: CardInfo | null; testnet: boolean }
         }
       />
 
-      <button
-        type="button"
-        className={cn(payButton, 'mt-6')}
+      <Button
+        className="mt-6 w-full"
         disabled={!valid || start.busy || !email}
         onClick={() =>
           start.run(async () => {
@@ -216,7 +243,7 @@ function CardForm({ card, testnet }: { card: CardInfo | null; testnet: boolean }
         }
       >
         {start.busy ? 'Opening secure checkout…' : charge ? `Pay ${charge}` : 'Pay'}
-      </button>
+      </Button>
       <ErrorNote error={start.error} />
       <p className="mt-4 flex items-start justify-center gap-2 text-center text-xs leading-relaxed text-muted">
         <Icon icon={Lock} size={13} className="mt-0.5 shrink-0" />
@@ -245,9 +272,8 @@ function TestForm({ onDone }: { onDone: () => Promise<void> }) {
     <div>
       <AmountInput value={amount} onChange={setAmount} choices={presets.test} />
       <Total label="Total amount" value="Free" note="Test USDC on Stellar testnet, up to 1,000 at a time" />
-      <button
-        type="button"
-        className={cn(payButton, 'mt-6')}
+      <Button
+        className="mt-6 w-full"
         disabled={!valid || fund.busy}
         onClick={() =>
           fund.run(async () => {
@@ -258,7 +284,7 @@ function TestForm({ onDone }: { onDone: () => Promise<void> }) {
         }
       >
         {fund.busy ? 'Adding…' : `Add ${valid ? amount : ''} test USDC`}
-      </button>
+      </Button>
       {fund.done && (
         <p className="mt-4 text-center text-sm text-muted">
           Added to your wallet. <TxLink hash={fund.done} />
@@ -297,8 +323,8 @@ function StellarForm({ testnet }: { testnet: boolean }) {
 }
 
 /**
- * The left half: the wallet as three stacked glass cards on a deep blue field,
- * lit with the logo's blue and orange. Decorative, apart from the balance.
+ * The left half: the wallet as three stacked glass cards on a plain dark
+ * field. Decorative, apart from the balance.
  */
 function WalletArt({ balance, address, testnet }: { balance: string; address: string; testnet: boolean }) {
   const short = shortKey(address, 4, 4)
@@ -321,11 +347,7 @@ function WalletArt({ balance, address, testnet }: { balance: string; address: st
   return (
     <div
       aria-hidden="true"
-      className="relative min-h-[23rem] overflow-hidden bg-[#071228] text-[#ffffff] lg:min-h-[34rem]"
-      style={{
-        backgroundImage:
-          'radial-gradient(40% 35% at 8% 30%, rgba(5,118,254,0.55), transparent 70%), radial-gradient(35% 30% at 95% 92%, rgba(252,119,31,0.45), transparent 70%), radial-gradient(30% 25% at 85% 8%, rgba(123,47,247,0.35), transparent 70%)',
-      }}
+      className="relative min-h-[23rem] overflow-hidden bg-[#141414] text-[#ffffff] lg:min-h-[34rem]"
     >
       <div className="absolute inset-0 flex items-center justify-center [perspective:1400px]">
         <div
@@ -355,7 +377,7 @@ function WalletArt({ balance, address, testnet }: { balance: string; address: st
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#071228] via-[#071228]/70 to-transparent px-6 pb-6 pt-16 md:px-8 md:pb-8">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#141414] via-[#141414]/70 to-transparent px-6 pb-6 pt-16 md:px-8 md:pb-8">
         <p className="text-xs uppercase tracking-[0.18em] text-[rgba(255,255,255,0.6)]">{testnet ? 'Test wallet' : 'Live wallet'} balance</p>
         <p className="mt-1.5 text-3xl tabular-nums tracking-[-0.02em]">{balance}</p>
       </div>

@@ -415,6 +415,8 @@ function Shell() {
     if (!live.kindChosen) return <BecomeDeveloper />
     return <ConsolePrompt />
   }
+  // Adding money is a page of its own, without the dashboard around it.
+  if (pathname === '/app/add-money' || pathname === `${DEV_BASE}/add-money`) return <Outlet />
   if (inConsole) return <LiveDevShell />
 
   return (
