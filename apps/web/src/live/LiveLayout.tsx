@@ -31,7 +31,7 @@ import { privatePages } from '../lib/seo'
 import { ThemeToggle, useTheme } from '../app/theme'
 import { Field, inputClasses } from '../app/ui'
 import { SignInField } from '../components/SignInField'
-import { api, explorerAccount, oauthStart, type Session } from './api'
+import { api, explorerAccount, loadSession, oauthStart, type Session } from './api'
 import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
 import { CreateWallet } from './CreateWallet'
@@ -403,10 +403,12 @@ function Shell() {
 
   usePageMeta(privatePages.dashboard)
 
-  if (live.loading) return <Loader screen />
-  if (!live.session || !live.wallet) return <Gate />
   // Each kind of account sees only its own side: owners the agent dashboard, developers the console.
   const inConsole = pathname === DEV_BASE || pathname.startsWith(`${DEV_BASE}/`)
+  // Signed in already (a reload, or a switch between test and live): keep the
+  // dashboard's frame on screen while it loads, not a blank page.
+  if (live.loading) return loadSession() ? <ShellSkeleton console={inConsole} /> : <Loader screen />
+  if (!live.session || !live.wallet) return <Gate />
   if (live.kind === 'developer' && !inConsole) return <Navigate to={sidePath(pathname, 'developer')} replace />
   if (live.kind === 'owner' && inConsole) {
     // A teammate can't change the account's kind: back to the side the account uses.
@@ -452,6 +454,30 @@ function Shell() {
         <LiveBanner className="mb-3 md:mb-4" />
         <TeamNotice className="mb-3 md:mb-4" />
         <Outlet />
+      </main>
+    </div>
+  )
+}
+
+/** The dashboard's frame with nothing in it yet: dark sidebar, page colour, a small loader. */
+function ShellSkeleton({ console }: { console: boolean }) {
+  const [theme] = useTheme(console ? 'dark' : 'light')
+  return (
+    <div className="tone-white min-h-svh lg:pl-64">
+      <aside className="tone-charcoal fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-cream/10 px-6 py-6 lg:block">
+        <Wordmark />
+      </aside>
+      <header className="tone-charcoal sticky top-0 z-30 flex h-16 items-center px-5 lg:hidden">
+        <Wordmark />
+      </header>
+      <main
+        className={cn(
+          'flex min-h-[calc(100svh-4rem)] items-center justify-center lg:min-h-svh',
+          console ? 'tone-cream' : '',
+          theme === 'dark' && 'theme-dark tone-cream',
+        )}
+      >
+        <Loader />
       </main>
     </div>
   )

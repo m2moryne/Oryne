@@ -37,7 +37,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 export function LiveDevShell() {
   const live = useLive()
   const [menuOpen, setMenuOpen] = useState(false)
-  const { mode, change: setMode, dialog: modeDialog } = useModeChange()
+  const { mode, pending, change: setMode, dialog: modeDialog } = useModeChange()
   const [theme, setTheme] = useTheme('dark')
 
   // A teammate is shown as themselves, not as the account's owner.
@@ -73,7 +73,7 @@ export function LiveDevShell() {
 
       <main className={cn('tone-cream flex min-h-[calc(100svh-4rem)] flex-col p-3 md:p-4 lg:min-h-svh', theme === 'dark' && 'theme-dark')}>
         <DevTopBar
-          mode={mode}
+          mode={pending ?? mode}
           onMode={setMode}
           extra={<ThemeToggle theme={theme} onChange={setTheme} />}
           account={{ name, email, base: DEV_BASE, signOutLabel: 'Sign out', onSignOut: live.signOut }}

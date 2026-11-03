@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Dialog } from '../app/ui'
 import { Button } from '../components/Button'
 import { cn } from '../lib/cn'
-import { LIVE_API_URL, MODE, switchMode, type Mode } from './api'
+import { LIVE_API_URL, MODE, switchMode, TEST_API_URL, type Mode } from './api'
 
 /**
  * Changing between test (testnet) and live (mainnet). Each mode has its own
@@ -13,15 +13,36 @@ import { LIVE_API_URL, MODE, switchMode, type Mode } from './api'
 export function useModeChange() {
   const { pathname } = useLocation()
   const [notOpen, setNotOpen] = useState(false)
+  /** The mode being switched to, while its API wakes up. */
+  const [pending, setPending] = useState<Mode | null>(null)
   const change = (next: Mode) => {
-    if (next === MODE) return
+    if (next === MODE || pending) return
     if (next === 'live' && !LIVE_API_URL) return setNotOpen(true)
     // Agent detail pages hold keys that don't exist on the other network.
     const path = pathname.replace(/\/agents\/[^/]+$/, '/agents')
-    switchMode(next, path)
+    setPending(next)
+    // Wake the other network's API first (a sleeping server can take a while),
+    // keeping this page on screen; the reload then loads in a moment.
+    const target = next === 'live' ? LIVE_API_URL : TEST_API_URL
+    fetch(`${target}/v1/info`, { signal: AbortSignal.timeout(60_000) })
+      .catch(() => undefined)
+      .finally(() => switchMode(next, path))
   }
-  const dialog = <LiveNotOpen open={notOpen} onClose={() => setNotOpen(false)} />
-  return { mode: MODE, change, dialog }
+  const dialog = (
+    <>
+      <LiveNotOpen open={notOpen} onClose={() => setNotOpen(false)} />
+      {pending && (
+        <p
+          role="status"
+          className="tone-charcoal fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2.5 text-sm shadow-lg"
+        >
+          <span className={cn('size-2 animate-pulse rounded-full', pending === 'live' ? 'bg-green' : 'bg-taupe')} />
+          Switching to {pending === 'live' ? 'live' : 'test'} mode…
+        </p>
+      )}
+    </>
+  )
+  return { mode: MODE, pending, change, dialog }
 }
 
 function LiveNotOpen({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -50,7 +71,8 @@ function LiveNotOpen({ open, onClose }: { open: boolean; onClose: () => void }) 
 
 /** Test / Live for the dark sidebar of the agent dashboard. */
 export function SidebarModeToggle() {
-  const { mode, change, dialog } = useModeChange()
+  const { mode: current, pending, change, dialog } = useModeChange()
+  const mode = pending ?? current
   return (
     <>
       <div role="group" aria-label="Mode" className="grid grid-cols-2 border border-cream/15 p-1 text-xs">

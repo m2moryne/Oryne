@@ -78,8 +78,11 @@ function AddMoney({
   top: ReactNode
 }) {
   const live = useLive()
-  const [method, setMethod] = useState<Method>(card ? 'card' : faucet ? 'test' : 'stellar')
   const testnet = live.info?.network !== 'stellar-mainnet'
+  // Testnet: test USDC only, so nobody sends real money to a test wallet.
+  // Mainnet: card or USDC on Stellar.
+  const methods: Method[] = testnet ? [faucet ? 'test' : 'stellar'] : ['card', 'stellar']
+  const [method, setMethod] = useState<Method>(testnet ? methods[0] : card ? 'card' : 'stellar')
 
   return (
     // The whole screen: the wallet panel runs top to bottom on the left, the form fills the rest.
@@ -93,7 +96,7 @@ function AddMoney({
         <div className="w-full max-w-xl">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl tracking-[-0.02em]">Add money</h1>
-          {method !== 'stellar' && (
+          {methods.includes('stellar') && method !== 'stellar' && (
             <button
               type="button"
               onClick={() => setMethod('stellar')}
@@ -104,21 +107,15 @@ function AddMoney({
           )}
         </div>
 
-        <div role="tablist" aria-label="How to add money" className="mt-7 grid grid-cols-3 gap-2">
-          <MethodPill active={method === 'card'} icon={CreditCard} onClick={() => setMethod('card')}>
-            Card
-          </MethodPill>
-          {faucet ? (
-            <MethodPill active={method === 'test'} icon={FlaskConical} onClick={() => setMethod('test')}>
-              Test USDC
-            </MethodPill>
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          <MethodPill active={method === 'stellar'} icon={Landmark} onClick={() => setMethod('stellar')}>
-            Stellar
-          </MethodPill>
-        </div>
+        {methods.length > 1 && (
+          <div role="tablist" aria-label="How to add money" className="mt-7 grid grid-cols-2 gap-2">
+            {methods.map((option) => (
+              <MethodPill key={option} active={method === option} icon={methodIcon[option]} onClick={() => setMethod(option)}>
+                {methodLabel[option]}
+              </MethodPill>
+            ))}
+          </div>
+        )}
 
         <div className="mt-8">
           {method === 'card' && <CardForm card={card} testnet={testnet} />}
@@ -211,6 +208,9 @@ function Total({ label, value, note }: { label: string; value: ReactNode; note?:
     </div>
   )
 }
+
+const methodLabel: Record<Method, string> = { card: 'Card', test: 'Test USDC', stellar: 'Stellar' }
+const methodIcon = { card: CreditCard, test: FlaskConical, stellar: Landmark }
 
 function CardForm({ card, testnet }: { card: CardInfo | null; testnet: boolean }) {
   const live = useLive()
