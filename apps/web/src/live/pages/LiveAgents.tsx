@@ -7,7 +7,7 @@ import { Dialog, EmptyState, Field, inputClasses, Meter, Panel, StatusPill } fro
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { shortKey } from '../../lib/network'
-import { api, API_URL, type Intent } from '../api'
+import { api, API_URL, type Intent, type WalletDetail } from '../api'
 import { useLive } from '../LiveContext'
 import { ErrorNote, RefreshButton, TxLink, useAction, usd, useBase } from '../shared'
 
@@ -38,13 +38,23 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const keypair = Keypair.random()
+    const walletId = live.wallet!.id
     void action.run(async () => {
-      const hash = await live.sign((token) =>
-        api<Intent>(`/v1/wallets/${live.wallet!.id}/agents`, {
-          body: { publicKey: keypair.publicKey(), name, kind, perTx, budget, windowDays: Number(windowDays) },
-          token,
-        }),
-      )
+      let hash = ''
+      try {
+        hash = await live.sign((token) =>
+          api<Intent>(`/v1/wallets/${walletId}/agents`, {
+            body: { publicKey: keypair.publicKey(), name, kind, perTx, budget, windowDays: Number(windowDays) },
+            token,
+          }),
+        )
+      } catch (error) {
+        // The secret exists only here. If the agent was added even though the
+        // reply failed, still show it, or nobody could ever use that agent.
+        const detail = await api<WalletDetail>(`/v1/wallets/${walletId}`, { token: live.token }).catch(() => null)
+        if (!detail?.agents.some((agent) => agent.publicKey === keypair.publicKey())) throw error
+        await live.refresh()
+      }
       setResult({ secret: keypair.secret(), publicKey: keypair.publicKey(), hash })
     })
   }
@@ -99,7 +109,7 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
       ) : (
         <div className="space-y-5">
           <p className="text-sm text-muted">
-            Registered on your wallet in <TxLink hash={result.hash} />.
+            Registered on your wallet{result.hash ? <> in <TxLink hash={result.hash} /></> : null}.
           </p>
           <div className="flex gap-3 rounded-lg border border-burgundy/30 px-4 py-3 text-sm">
             <Icon icon={TriangleAlert} size={18} className="mt-0.5 shrink-0 text-burgundy" />
