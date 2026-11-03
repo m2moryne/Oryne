@@ -242,6 +242,7 @@ export function adminApi(config: Config, db: Db, chain: Chain) {
         provider: row.provider ?? (row.subject && String(row.subject).startsWith('G') ? 'freighter' : null),
         note: row.note,
         status: row.status,
+        noDeposit: Number(row.no_deposit ?? 0) === 1,
         wallets: Number(row.wallets ?? 0),
         createdAt: row.created_at,
         decidedAt: row.decided_at,
@@ -251,27 +252,47 @@ export function adminApi(config: Config, db: Db, chain: Chain) {
 
   /** Lets an email in before they ask: any sign-in with that email may create a wallet. */
   admin.post('/access', async (c) => {
-    const input = (await c.req.json().catch(() => ({}))) as { email?: unknown }
+    const input = (await c.req.json().catch(() => ({}))) as { email?: unknown; noDeposit?: unknown }
     const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+    const noDeposit = input.noDeposit === true ? 1 : 0
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HTTPException(400, { message: 'A valid email is needed' })
     const existing = await db.prepare('select id from access where email = ? and subject is null').get<{ id: string }>(email)
     if (existing) {
-      await db.prepare("update access set status = 'approved', decided_at = ? where id = ?").run(now(), existing.id)
+      await db
+        .prepare("update access set status = 'approved', no_deposit = ?, decided_at = ? where id = ?")
+        .run(noDeposit, now(), existing.id)
     } else {
       await db
-        .prepare("insert into access (id, email, status, created_at, decided_at) values (?, ?, 'approved', ?, ?)")
-        .run(newId('acc'), email, now(), now())
+        .prepare("insert into access (id, email, status, no_deposit, created_at, decided_at) values (?, ?, 'approved', ?, ?, ?)")
+        .run(newId('acc'), email, noDeposit, now(), now())
     }
     return c.json({ ok: true }, 201)
   })
 
+  /**
+   * approve, decline, or deposit. Approving with { noDeposit: true } lets them
+   * create a wallet without the activation top-up; `deposit` with
+   * { required: boolean } changes that later.
+   */
   admin.post('/access/:id/:decision', async (c) => {
     const decision = c.req.param('decision')
-    const status = decision === 'approve' ? 'approved' : decision === 'decline' ? 'declined' : null
-    if (!status) throw new HTTPException(404, { message: 'Not found' })
+    const input = (await c.req.json().catch(() => ({}))) as { noDeposit?: unknown; required?: unknown }
     const row = await db.prepare('select id from access where id = ?').get(c.req.param('id'))
     if (!row) throw new HTTPException(404, { message: 'No such entry' })
-    await db.prepare('update access set status = ?, decided_at = ? where id = ?').run(status, now(), c.req.param('id'))
+    if (decision === 'deposit') {
+      if (typeof input.required !== 'boolean') throw new HTTPException(400, { message: 'required must be true or false' })
+      await db.prepare('update access set no_deposit = ? where id = ?').run(input.required ? 0 : 1, c.req.param('id'))
+      return c.json({ ok: true, noDeposit: !input.required })
+    }
+    const status = decision === 'approve' ? 'approved' : decision === 'decline' ? 'declined' : null
+    if (!status) throw new HTTPException(404, { message: 'Not found' })
+    if (status === 'approved') {
+      await db
+        .prepare('update access set status = ?, no_deposit = ?, decided_at = ? where id = ?')
+        .run(status, input.noDeposit === true ? 1 : 0, now(), c.req.param('id'))
+    } else {
+      await db.prepare('update access set status = ?, decided_at = ? where id = ?').run(status, now(), c.req.param('id'))
+    }
     return c.json({ ok: true, status })
   })
 

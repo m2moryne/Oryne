@@ -17,7 +17,12 @@ const kindOptions: Array<{ kind: AccountKind; title: string; note: string }> = [
   { kind: 'developer', title: 'Build with Oryne', note: 'API keys, SDKs, logs and webhooks for agents or a paid API.' },
 ]
 
-type Access = { mode: 'open' | 'invite'; status: 'approved' | 'requested' | 'declined' | 'none' }
+type Access = {
+  mode: 'open' | 'invite'
+  status: 'approved' | 'requested' | 'declined' | 'none'
+  /** False when the admin approved this account without the activation top-up. Missing on older API builds. */
+  deposit?: boolean
+}
 type Activation = {
   reference: string
   status: 'pending' | 'completed' | 'failed' | 'review'
@@ -54,7 +59,8 @@ export function CreateWallet() {
 
   const info = live.info
   const inviteOnly = info?.access === 'invite'
-  const activationNeeded = info?.activation ?? null
+  // Approved without a deposit: the wallet is created straight away, like on testnet.
+  const activationNeeded = access?.deposit === false ? null : (info?.activation ?? null)
   const passkeyOwner = !!live.session && !isAccount(live.session.address)
   const knownEmail = live.user?.email ?? (live.session?.address.startsWith('email:') ? live.session.address.slice(6) : null)
 
@@ -75,8 +81,8 @@ export function CreateWallet() {
     if (!token || !info) return
     let current = true
     Promise.all([
-      inviteOnly ? api<Access>('/v1/access', { token }) : Promise.resolve(null),
-      activationNeeded ? api<{ activation: Activation | null }>('/v1/activation', { token }).then((r) => r.activation) : Promise.resolve(null),
+      inviteOnly || info.activation ? api<Access>('/v1/access', { token }) : Promise.resolve(null),
+      info.activation ? api<{ activation: Activation | null }>('/v1/activation', { token }).then((r) => r.activation) : Promise.resolve(null),
     ])
       .then(([nextAccess, nextActivation]) => {
         if (!current) return
@@ -88,7 +94,7 @@ export function CreateWallet() {
     return () => {
       current = false
     }
-  }, [token, info, inviteOnly, activationNeeded])
+  }, [token, info, inviteOnly])
 
   // Back from checkout (?reference=…), or an activation paid earlier: confirm it until the wallet exists.
   const returned = params.get('reference') ?? params.get('trxref')
@@ -171,7 +177,7 @@ export function CreateWallet() {
     </>
   )
 
-  if (!checked && (inviteOnly || activationNeeded)) return <Loader className="py-10" />
+  if (!checked && (inviteOnly || info?.activation)) return <Loader className="py-10" />
 
   // Paid: the wallet is being made, or needs a person.
   if (activation && activation.paid && activation.status !== 'completed') {

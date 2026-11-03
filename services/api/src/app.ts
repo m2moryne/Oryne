@@ -557,8 +557,9 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     accountOwnerOnly(c)
     const input = await body<WalletRequest>(c).catch(() => ({}) as WalletRequest)
     await wallets.assertCanCreate(c.var.owner)
-    // On mainnet the first wallet is paid for by card first: see /v1/activation.
-    if (funding.activation) {
+    // On mainnet the first wallet is paid for by card first (see /v1/activation),
+    // unless the admin approved this account without a deposit.
+    if (funding.activation && !(await wallets.depositWaived(c.var.owner))) {
       throw new HTTPException(402, {
         message: `Activate your wallet with a ${funding.activation.usdc} USDC card top-up first. It goes into your wallet.`,
       })
@@ -569,12 +570,16 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   // ------------------------------------------------------------ live access
   // While LIVE_ACCESS is invite, accounts ask here and an admin approves them.
 
+  /** Whether this account must pay the activation top-up before its wallet is created. */
+  const depositRequired = async (owner: string) => !!funding.activation && !(await wallets.depositWaived(owner))
+
   owner.get('/access', async (c) => {
-    if (await wallets.hasAccess(c.var.owner)) return c.json({ mode: config.access, status: 'approved' })
+    const deposit = await depositRequired(c.var.owner)
+    if (await wallets.hasAccess(c.var.owner)) return c.json({ mode: config.access, status: 'approved', deposit })
     const row = await db
       .prepare('select status, created_at from access where subject = ? order by created_at desc limit 1')
       .get<{ status: string; created_at: number }>(c.var.owner)
-    return c.json({ mode: config.access, status: row?.status ?? 'none', requestedAt: row?.created_at ?? null })
+    return c.json({ mode: config.access, status: row?.status ?? 'none', requestedAt: row?.created_at ?? null, deposit })
   })
 
   owner.post('/access', async (c) => {

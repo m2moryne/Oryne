@@ -169,6 +169,7 @@ create table if not exists access (
   email text,                     -- lower-cased; matches any sign-in with this email
   note text,                      -- what they plan to build, from the request
   status text not null,           -- requested | approved | declined
+  no_deposit integer not null default 0,  -- 1: may create a wallet without the activation top-up
   created_at ${int} not null, decided_at ${int}
 );
 create index if not exists access_subject on access(subject);
@@ -205,6 +206,12 @@ const sqliteAdditions = [
   "alter table intents add column mode text not null default 'envelope'",
   'alter table intents add column auth_entry text',
   'alter table intents add column valid_until integer',
+  'alter table access add column no_deposit integer not null default 0',
+]
+
+/** Columns added after a table first shipped, for Postgres databases that already have it. */
+const postgresAdditions = [
+  'alter table access add column if not exists no_deposit integer not null default 0',
 ]
 
 type Param = string | number | bigint | null | undefined | Uint8Array
@@ -273,6 +280,7 @@ async function openPostgres(url: string): Promise<Db> {
   })
   pool.on('error', (error) => console.error('Postgres connection error:', error.message))
   await pool.query(schema('bigint'))
+  for (const statement of postgresAdditions) await pool.query(statement)
 
   const query = async (sql: string, params: Param[]) =>
     (await pool.query(numbered(sql), clean(params))).rows

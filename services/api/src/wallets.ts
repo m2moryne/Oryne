@@ -63,6 +63,16 @@ export function createWallets(config: Config, db: Db, chain: Chain) {
     return !!approved
   }
 
+  /** Whether an approval for this account waives the activation top-up. */
+  async function depositWaived(owner: string) {
+    const row = await db
+      .prepare(
+        "select 1 as one from access where status = 'approved' and no_deposit = 1 and (subject = ? or (email is not null and email = ?))",
+      )
+      .get(owner, (await emailOf(db, owner)) ?? null)
+    return !!row
+  }
+
   /**
    * Everything that must hold before a wallet is deployed for `owner`:
    * access, one wallet per account (unless MULTIPLE_WALLETS), and the
@@ -122,7 +132,7 @@ export function createWallets(config: Config, db: Db, chain: Chain) {
     return { id, hash: result.hash, ledger: result.ledger }
   }
 
-  return { hasAccess, assertCanCreate, deploy }
+  return { hasAccess, depositWaived, assertCanCreate, deploy }
 }
 
 export type Wallets = ReturnType<typeof createWallets>
