@@ -8,6 +8,5 @@ export type SocialId = 'x' | 'linkedin' | 'github'
  */
 export const socials: Array<{ id: SocialId; label: string; href: string; soonPath: string }> = [
   { id: 'x', label: 'X', href: 'https://x.com/oryneorg', soonPath: '/x' },
-  { id: 'linkedin', label: 'LinkedIn', href: '', soonPath: '/linkedin' },
-  { id: 'github', label: 'GitHub', href: '', soonPath: '/github' },
+  { id: 'github', label: 'GitHub', href: 'https://github.com/m2moryne/Oryne', soonPath: '/github' },
 ]

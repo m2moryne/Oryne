@@ -162,6 +162,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 export type Info = {
   network: string
   networkPassphrase: string
+  /** Soroban RPC the API uses. */
+  rpcUrl?: string
   token: string
   sponsor: string
   /** Hash of the agent-wallet code new wallets are deployed from. */

@@ -58,6 +58,11 @@ import Contact from './pages/Contact'
 import Home from './pages/Home'
 import HowItWorks from './pages/HowItWorks'
 import Docs from './pages/Docs'
+import About from './pages/About'
+import Privacy from './pages/Privacy'
+import Security from './pages/Security'
+import Status from './pages/Status'
+import Terms from './pages/Terms'
 import Product from './pages/Product'
 import Vision from './pages/Vision'
 
@@ -92,6 +97,11 @@ export default function App() {
           <Route path="/docs" element={<Docs />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/status" element={<Status />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           {soonPages.map((page) => (
             <Route key={page.path} path={page.path} element={<ComingSoon name={page.name} />} />
           ))}

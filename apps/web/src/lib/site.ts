@@ -33,18 +33,16 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
   {
     title: 'Company',
     links: [
-      { label: 'Vision', to: '/vision' },
       { label: 'About', to: '/about' },
-      { label: 'Careers', to: '/careers' },
-      { label: 'Press', to: '/press' },
+      { label: 'Vision', to: '/vision' },
+      { label: 'Security', to: '/security' },
     ],
   },
   {
-    title: 'Resources',
+    title: 'Open source',
     links: [
-      { label: 'Journal', to: '/journal' },
-      { label: 'Research', to: '/research' },
-      { label: 'Security', to: '/security' },
+      { label: 'GitHub', href: 'https://github.com/m2moryne/Oryne' },
+      { label: 'npm packages', href: 'https://www.npmjs.com/org/oryne' },
     ],
   },
   {
@@ -66,15 +64,6 @@ export const legalLinks: FooterLink[] = [
  * page. To launch one, remove it here and add a real <Route> in App.tsx.
  */
 export const soonPages: Array<{ path: string; name: string }> = [
-  { path: '/status', name: 'The status page' },
-  { path: '/about', name: 'The about page' },
-  { path: '/careers', name: 'The careers page' },
-  { path: '/press', name: 'The press room' },
-  { path: '/journal', name: 'The journal' },
-  { path: '/research', name: 'The research library' },
-  { path: '/security', name: 'The security page' },
-  { path: '/privacy', name: 'The privacy policy' },
-  { path: '/terms', name: 'The terms page' },
   ...socials
     .filter((social) => !social.href)
     .map((social) => ({ path: social.soonPath, name: `Oryne on ${social.label}` })),

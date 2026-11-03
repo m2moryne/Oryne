@@ -56,6 +56,33 @@ export const publicPages = {
     description:
       'Talk to Oryne about agent wallets, accepting payments from AI agents, partnerships or research. Builders, researchers and companies welcome.',
   },
+  about: {
+    path: '/about',
+    title: 'About Oryne — Wallets for software that pays',
+    description:
+      'Why Oryne gives AI agents wallets with limits enforced by a smart contract on Stellar, how we work, and where the project is today.',
+  },
+  status: {
+    path: '/status',
+    title: 'Status — Is Oryne working? | Oryne',
+    description: 'Live checks of the Oryne API, x402 facilitator, Stellar network, sign-in, faucet and card top-ups.',
+  },
+  security: {
+    path: '/security',
+    title: 'Security — How Oryne keeps agent wallets safe | Oryne',
+    description:
+      'Who can move money, how agent limits are enforced on Stellar, how keys and secrets are handled, and how to report a vulnerability.',
+  },
+  privacy: {
+    path: '/privacy',
+    title: 'Privacy policy | Oryne',
+    description: 'What Oryne collects, why, who else sees it, what is public on Stellar and the choices you have.',
+  },
+  terms: {
+    path: '/terms',
+    title: 'Terms of use | Oryne',
+    description: 'The terms for using the Oryne website, dashboard, API and packages while Oryne runs on Stellar testnet.',
+  },
 } satisfies Record<string, PageMeta & { path: string }>
 
 /** Pages that exist but should not be indexed. */

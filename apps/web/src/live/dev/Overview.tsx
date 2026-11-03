@@ -118,7 +118,8 @@ console.log(await response.json())`}
             {info && <Value label="Network passphrase" value={info.networkPassphrase} />}
           </Panel>
 
-          <Panel title="In development">
+          {comingSoon.length > 0 && (
+            <Panel title="In development">
             <ul className="space-y-2.5 text-sm">
               {comingSoon.map((page) => (
                 <li key={page.slug}>
@@ -129,7 +130,8 @@ console.log(await response.json())`}
                 </li>
               ))}
             </ul>
-          </Panel>
+            </Panel>
+          )}
         </div>
       </div>
     </div>
