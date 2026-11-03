@@ -7,7 +7,7 @@ import {
   server,
   type NetworkConfig,
 } from '@oryne/core'
-import { Asset, hash, Keypair, Operation, rpc } from '@stellar/stellar-sdk'
+import { Asset, hash, Keypair, Operation, rpc, xdr } from '@stellar/stellar-sdk'
 import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.ts'
 import { getKv, setKv, type Db } from './db.ts'
@@ -119,6 +119,24 @@ async function loadWasm(source: string) {
   return readFile(source)
 }
 
+/** A plain explanation when the sponsor can't cover the one-time wasm upload. */
+function insufficientForUpload(error: unknown, sponsor: string, networkName: string) {
+  const detail = (error as { detail?: unknown })?.detail
+  if (typeof detail !== 'string') return null
+  try {
+    const result = xdr.TransactionResult.fromXDR(detail, 'base64')
+    if (result.result.type !== 'txInsufficientBalance') return null
+    const needed = Number(result.feeCharged) / 1e7
+    return new Error(
+      `The sponsor account ${sponsor} doesn't hold enough XLM to upload the wallet contract to ${networkName}. ` +
+        `This happens once and can cost up to ${needed.toFixed(1)} XLM; top the account up to at least ` +
+        `${Math.ceil(needed + 5)} XLM and restart. Later wallets cost about 0.003 XLM each.`,
+    )
+  } catch {
+    return null
+  }
+}
+
 export async function connect(config: Config, db: Db): Promise<Chain> {
   const { network } = config
   const rpcServer = server(network)
@@ -167,12 +185,13 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
       const wasm = await loadWasm(config.walletWasm)
       const latest = Buffer.from(hash(wasm)).toString('hex')
       if (latest !== known) {
-        const uploaded = await prepareSignSubmit(
-          rpcServer,
-          await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm })),
-          sponsor,
-        )
-        await budget.spent(uploaded.feeCharged)
+        const tx = await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm }))
+        const uploaded = await prepareSignSubmit(rpcServer, tx, sponsor).catch((error) => {
+          throw insufficientForUpload(error, sponsor.publicKey(), network.name) ?? error
+        })
+        // A one-time setup cost, so it isn't counted against SPONSOR_DAILY_XLM:
+        // it would use up the day's allowance before the first wallet.
+        console.log(`Uploaded the wallet wasm ${latest} for ${Number(uploaded.feeCharged) / 1e7} XLM`)
         await setKv(db, 'wallet_wasm_hash', latest)
       }
       wasmHashHex = latest
