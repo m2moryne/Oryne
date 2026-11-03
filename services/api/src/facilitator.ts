@@ -1,5 +1,6 @@
 import {
   addressCredentialsOf,
+  inclusionFee,
   readAuthorization,
   StellarError,
   submitSigned,
@@ -8,7 +9,7 @@ import {
   type PaymentRequirements,
   type SettleResponse,
 } from '@oryne/core'
-import { BASE_FEE, Operation, scValToNative, StrKey, TransactionBuilder } from '@stellar/stellar-sdk'
+import { Operation, scValToNative, StrKey, TransactionBuilder } from '@stellar/stellar-sdk'
 import { newId, now, type Db } from './db.ts'
 import type { Chain } from './stellar.ts'
 
@@ -48,8 +49,8 @@ function check(chain: Chain, payload: PaymentPayload, requirements: PaymentRequi
 }
 
 async function buildSettlement(chain: Chain, auth: Checked) {
-  const account = await chain.rpc.getAccount(chain.sponsor.publicKey())
-  const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: chain.network.networkPassphrase })
+  const [account, fee] = await Promise.all([chain.rpc.getAccount(chain.sponsor.publicKey()), inclusionFee(chain.rpc)])
+  const tx = new TransactionBuilder(account, { fee, networkPassphrase: chain.network.networkPassphrase })
     .addOperation(
       Operation.invokeContractFunction({
         contract: auth.asset,

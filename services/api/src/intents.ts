@@ -3,6 +3,7 @@ import {
   base64url,
   buildTx,
   compactSignature,
+  inclusionFee,
   passkeySignatureScVal,
   StellarError,
   submitSigned,
@@ -10,7 +11,6 @@ import {
 import {
   Address,
   authorizeEntry,
-  BASE_FEE,
   Operation,
   TransactionBuilder,
   xdr,
@@ -202,8 +202,8 @@ export async function submitIntent(
     await chain.budget.check()
     return chain.serial(async () => {
       try {
-        const account = await chain.rpc.getAccount(chain.sponsor.publicKey())
-        const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: chain.network.networkPassphrase })
+        const [account, fee] = await Promise.all([chain.rpc.getAccount(chain.sponsor.publicKey()), inclusionFee(chain.rpc)])
+        const tx = new TransactionBuilder(account, { fee, networkPassphrase: chain.network.networkPassphrase })
           .addOperation(
             Operation.invokeContractFunction({
               contract: Address.fromScAddress(call.contractAddress).toString(),

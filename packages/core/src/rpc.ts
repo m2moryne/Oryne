@@ -25,6 +25,30 @@ export class StellarError extends Error {
 export const server = (network: NetworkConfig) =>
   new rpc.Server(network.rpcUrl, { allowHttp: network.rpcUrl.startsWith('http://') })
 
+/** Most we bid per transaction to get into a ledger: 0.01 XLM. */
+const MAX_INCLUSION_FEE = 100_000
+const feeCache = new WeakMap<rpc.Server, { fee: string; at: number }>()
+
+/**
+ * The inclusion fee to bid, in stroops: what recent ledgers needed for smart
+ * contract calls (the 90th percentile), never below the network minimum. A
+ * busy mainnet drops transactions that bid the minimum, so they never land.
+ */
+export async function inclusionFee(rpcServer: rpc.Server): Promise<string> {
+  const cached = feeCache.get(rpcServer)
+  if (cached && Date.now() - cached.at < 30_000) return cached.fee
+  let fee = Number(BASE_FEE)
+  try {
+    const stats = await rpcServer.getFeeStats()
+    fee = Math.max(fee, Number(stats.sorobanInclusionFee.p90) || 0, Number(stats.inclusionFee.p90) || 0)
+  } catch {
+    // Fee stats are a nicety: fall back to the minimum.
+  }
+  const result = String(Math.min(fee, MAX_INCLUSION_FEE))
+  feeCache.set(rpcServer, { fee: result, at: Date.now() })
+  return result
+}
+
 /** One operation in a fresh transaction from `source`. */
 export async function buildTx(
   rpcServer: rpc.Server,
@@ -33,8 +57,8 @@ export async function buildTx(
   operation: xdr.Operation,
   timeoutSecs = 120,
 ): Promise<Transaction> {
-  const account = await rpcServer.getAccount(source)
-  return new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: network.networkPassphrase })
+  const [account, fee] = await Promise.all([rpcServer.getAccount(source), inclusionFee(rpcServer)])
+  return new TransactionBuilder(account, { fee, networkPassphrase: network.networkPassphrase })
     .addOperation(operation)
     .setTimeout(timeoutSecs)
     .build()
