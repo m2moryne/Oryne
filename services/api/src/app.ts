@@ -299,7 +299,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     return value as Provider
   }
 
-  app.get('/v1/auth/oauth/:provider/start', async (c) => c.redirect(await startUrl(config, db, providerOf(c.req.param('provider')))))
+  app.get('/v1/auth/oauth/:provider/start', async (c) => c.redirect(await startUrl(config, db, providerOf(c.req.param('provider')), c.req.query('next'))))
 
   app.get('/v1/auth/oauth/:provider/callback', async (c) =>
     c.redirect(await finish(config, db, providerOf(c.req.param('provider')), c.req.query('code'), c.req.query('state'))),
@@ -528,6 +528,8 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
       wallets,
       member,
       kind: await accountKind(c.var.owner),
+      /** False until the owner picks a kind, so the dashboard can take it from where they arrived. */
+      kindChosen: !!(await db.prepare('select 1 as one from profiles where owner = ?').get(c.var.owner)),
     })
   })
 

@@ -2,7 +2,9 @@ import { Check, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
-import type { LogEntry, Mode } from './devData'
+import type { Mode } from '../../live/api'
+
+type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 /** Copies `value` and confirms for a moment. Falls back silently if the clipboard is blocked. */
 export function CopyButton({
@@ -147,14 +149,14 @@ function Highlighted({ line }: { line: string }) {
   )
 }
 
-const methodClasses: Record<LogEntry['method'], string> = {
+const methodClasses: Record<Method, string> = {
   GET: 'border-taupe text-muted',
   POST: 'border-charcoal/40 text-charcoal',
   PATCH: 'border-purple/50 text-purple',
   DELETE: 'border-burgundy/50 text-burgundy',
 }
 
-export function MethodBadge({ method }: { method: LogEntry['method'] }) {
+export function MethodBadge({ method }: { method: Method }) {
   return (
     <span
       className={cn(

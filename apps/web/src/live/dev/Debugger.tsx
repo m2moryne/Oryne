@@ -1,10 +1,7 @@
-import { Eye } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { DebugChat, type ChatMessage } from '../../app/dev/DebugChat'
-import { PREVIEW_ON, useEnterPreview } from '../../app/preview'
 import { Panel } from '../../app/ui'
-import { Button } from '../../components/Button'
 import { askDebugger, type DebugTurn } from '../api'
 import { useLive } from '../LiveContext'
 import { usd, when } from '../shared'
@@ -19,7 +16,6 @@ const starters = ['Why was my last payment refused?', 'Which agent is closest to
 /** The AI debugger for a real account: DeepSeek, grounded in this wallet's own data. */
 export default function Debugger() {
   const live = useLive()
-  const enterPreview = useEnterPreview()
   const [messages, setMessages] = useState<ChatMessage[]>([intro])
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
@@ -92,13 +88,7 @@ export default function Debugger() {
           <div className="flex flex-col items-start gap-5 py-4 md:flex-row md:items-center">
             <div className="min-w-0 flex-1">
               <p className="text-sm">The AI debugger isn’t switched on for this server yet.</p>
-              {PREVIEW_ON && <p className="mt-1 text-sm text-muted">See how it works with sample data in the preview account.</p>}
             </div>
-            {PREVIEW_ON && (
-              <Button variant="outline" size="sm" leadingIcon={Eye} onClick={() => enterPreview('/dev/debugger')}>
-                Preview it
-              </Button>
-            )}
           </div>
         </Panel>
       ) : (

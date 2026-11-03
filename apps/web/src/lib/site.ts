@@ -1,4 +1,3 @@
-import { PREVIEW_ON } from './flags'
 import { EMAIL, socials } from './social'
 
 type FooterLink = { label: string; to?: string; href?: string }
@@ -24,7 +23,6 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
       { label: 'Overview', to: '/product' },
       { label: 'How it works', to: '/how-it-works' },
       { label: 'Dashboard', to: '/app' },
-      ...(PREVIEW_ON ? [{ label: 'Preview', to: '/demo' }] : []),
       { label: 'Developers', to: '/app/developers' },
       { label: 'Documentation', to: '/docs' },
       { label: 'Pricing', to: '/pricing' },

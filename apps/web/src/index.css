@@ -229,3 +229,47 @@ body,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The system loader: two orbiting dots in the brand blue and orange (components/Loader.tsx,
+   and inline in index.html for the moment before the app starts). */
+.loader {
+  --loader-1: #0576fe;
+  --loader-2: #fc771f;
+  --loader-size: 1px;
+  position: relative;
+  display: block;
+  transform: rotateZ(45deg);
+  perspective: calc(1000 * var(--loader-size));
+  border-radius: 50%;
+  width: calc(48 * var(--loader-size));
+  height: calc(48 * var(--loader-size));
+  color: var(--loader-1);
+}
+.loader::before,
+.loader::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: inherit;
+  height: inherit;
+  border-radius: 50%;
+  transform: rotateX(70deg);
+  animation: 1s oryne-loader-orbit linear infinite;
+}
+.loader::after {
+  color: var(--loader-2);
+  transform: rotateY(70deg);
+  animation-delay: 0.4s;
+}
+@keyframes oryne-loader-orbit {
+  0%, 100% { box-shadow: 0.2em 0 0 0 currentcolor; }
+  12% { box-shadow: 0.2em 0.2em 0 0 currentcolor; }
+  25% { box-shadow: 0 0.2em 0 0 currentcolor; }
+  37% { box-shadow: -0.2em 0.2em 0 0 currentcolor; }
+  50% { box-shadow: -0.2em 0 0 0 currentcolor; }
+  62% { box-shadow: -0.2em -0.2em 0 0 currentcolor; }
+  75% { box-shadow: 0 -0.2em 0 0 currentcolor; }
+  87% { box-shadow: 0.2em -0.2em 0 0 currentcolor; }
+}

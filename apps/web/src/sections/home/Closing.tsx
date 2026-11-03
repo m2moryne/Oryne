@@ -3,7 +3,6 @@ import { Button } from '../../components/Button'
 import { Reveal } from '../../components/Reveal'
 import { Section } from '../../components/Section'
 import { TextLink } from '../../components/TextLink'
-import { PREVIEW_ON } from '../../lib/flags'
 
 export function Closing() {
   return (
@@ -16,12 +15,10 @@ export function Closing() {
         </Reveal>
         <Reveal delay={120} className="lg:col-span-4 lg:self-end">
           <p className="type-lede text-muted">
-            {PREVIEW_ON
-              ? 'The preview runs on simulated data, end to end: connect an agent, set its mandate, watch it pay, approve what it asks for.'
-              : 'Create a wallet on Stellar testnet: connect an agent, set its mandate, watch it pay, approve what it asks for.'}
+            {'Create a wallet on Stellar testnet: connect an agent, set its mandate, watch it pay, approve what it asks for.'}
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
-            <Button to={PREVIEW_ON ? '/demo/agents?connect=1' : '/app/agents?connect=1'} variant="light" icon={ArrowRight}>
+            <Button to="/app/agents?connect=1" variant="light" icon={ArrowRight}>
               Try the dashboard
             </Button>
             <TextLink to="/contact" className="type-label">

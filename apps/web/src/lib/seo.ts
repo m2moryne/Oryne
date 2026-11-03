@@ -98,16 +98,6 @@ export const privatePages = {
     description: 'Your agents, their mandates, approvals and every payment they make.',
     noindex: true,
   },
-  demo: {
-    title: 'Demo dashboard — Oryne',
-    description: 'A clickable tour of the Oryne dashboard on sample data.',
-    noindex: true,
-  },
-  developers: {
-    title: 'Developer console — Oryne',
-    description: 'A preview of the Oryne developer console on sample data.',
-    noindex: true,
-  },
 } satisfies Record<string, PageMeta>
 
 /** Areas robots.txt asks crawlers to skip. */

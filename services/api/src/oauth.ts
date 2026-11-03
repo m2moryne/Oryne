@@ -41,15 +41,19 @@ function credentials(config: Config, provider: Provider) {
   return app
 }
 
-/** Where to send the browser to start signing in. */
-export async function startUrl(config: Config, db: Db, provider: Provider) {
+/** A dashboard path to return to after sign-in, e.g. /app/developers. Anything else falls back to /app. */
+const dashboardPath = (value: unknown) =>
+  typeof value === 'string' && /^\/app(\/[A-Za-z0-9/_-]*)?$/.test(value) ? value : '/app'
+
+/** Where to send the browser to start signing in. `next` is where to come back to. */
+export async function startUrl(config: Config, db: Db, provider: Provider, next?: string) {
   const app = credentials(config, provider)
   const state = randomBytes(16).toString('hex')
-  // Reuse the challenges table: nonce = state, address = provider.
+  // Reuse the challenges table: nonce = state, address = provider, message = where to return.
   await db.prepare('insert into challenges (nonce, address, message, expires_at) values (?, ?, ?, ?)').run(
     state,
     provider,
-    'oauth',
+    `oauth:${dashboardPath(next)}`,
     now() + STATE_TTL,
   )
   const url = new URL(endpoints[provider].authorize)
@@ -122,12 +126,14 @@ export async function createSession(db: Db, subject: string, provider: string, d
 
 /** Finishes sign-in and returns where to send the browser: the dashboard, with the session in the URL fragment. */
 export async function finish(config: Config, db: Db, provider: Provider, code?: string, state?: string) {
-  const back = (params: Record<string, string>) => `${config.webUrl}/app#${new URLSearchParams(params)}`
   const row = state
-    ? (await db.prepare('select address, expires_at from challenges where nonce = ?').get(state) as
-        | { address: string; expires_at: number }
+    ? (await db.prepare('select address, message, expires_at from challenges where nonce = ?').get(state) as
+        | { address: string; message: string; expires_at: number }
         | undefined)
     : undefined
+  // Back to the page sign-in started from, so Developers sign-ins land in the developer console.
+  const path = dashboardPath(row?.message.startsWith('oauth:') ? row.message.slice(6) : undefined)
+  const back = (params: Record<string, string>) => `${config.webUrl}${path}#${new URLSearchParams(params)}`
   if (state) await db.prepare('delete from challenges where nonce = ?').run(state)
   if (!code || !row || row.address !== provider || row.expires_at < now()) {
     return back({ error: 'Sign-in expired or was cancelled. Try again.' })

@@ -1,47 +1,11 @@
-import { BookOpen, ChevronDown, LayoutDashboard, LogOut } from 'lucide-react'
+import { BookOpen, ChevronDown, LogOut } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
 import { initials } from '../format'
 import { accountPages, devGroups, devPath } from './devNav'
-import type { Mode } from './devData'
-
-const segment = 'flex-1 py-1.5 text-center text-xs font-medium transition-colors duration-200'
-
-/** "Agents | Developers": the two halves of the dashboard, for the top of the sidebar. */
-export function AreaSwitch({
-  current,
-  agents,
-  developers,
-  onNavigate,
-}: {
-  current: 'agents' | 'developers'
-  agents: string
-  developers: string
-  onNavigate?: () => void
-}) {
-  return (
-    <nav aria-label="Dashboard area" className="flex border border-cream/20 p-1">
-      {(
-        [
-          ['agents', 'Agents', agents],
-          ['developers', 'Developers', developers],
-        ] as const
-      ).map(([key, label, to]) => (
-        <Link
-          key={key}
-          to={to}
-          onClick={onNavigate}
-          aria-current={key === current ? 'page' : undefined}
-          className={cn(segment, key === current ? 'bg-cream text-charcoal' : 'text-cream/65 hover:text-cream')}
-        >
-          {label}
-        </Link>
-      ))}
-    </nav>
-  )
-}
+import type { Mode } from '../../live/api'
 
 /** The developer console's grouped page list, for a dark sidebar. */
 export function DevSidebarNav({ base, onNavigate }: { base: string; onNavigate?: () => void }) {
@@ -115,7 +79,6 @@ export function AccountMenu({
   name,
   email,
   base,
-  ownerDashboard,
   signOutLabel,
   onSignOut,
 }: {
@@ -123,8 +86,6 @@ export function AccountMenu({
   email: string
   /** Developer console base path, for Settings, Team and Billing. */
   base: string
-  /** The agent dashboard, in the preview. Real developer accounts don't have one. */
-  ownerDashboard?: string
   signOutLabel: string
   onSignOut: () => void
 }) {
@@ -181,12 +142,6 @@ export function AccountMenu({
             ))}
           </div>
           <div className="border-t border-taupe/40 py-1.5">
-            {ownerDashboard && (
-              <Link role="menuitem" to={ownerDashboard} onClick={close} className={menuItem}>
-                <Icon icon={LayoutDashboard} size={16} className="text-muted" />
-                Owner dashboard
-              </Link>
-            )}
             <Link role="menuitem" to="/docs" onClick={close} className={menuItem}>
               <Icon icon={BookOpen} size={16} className="text-muted" />
               Documentation
@@ -212,7 +167,7 @@ export function AccountMenu({
   )
 }
 
-/** The console's top bar: what you're looking at on the left, mode and account on the right. */
+/** The console's top bar: theme, mode and account, on the right. */
 export function DevTopBar({
   mode,
   onMode,
@@ -228,14 +183,7 @@ export function DevTopBar({
   return (
     // Sticks under the mobile header (h-16) or to the top on desktop; bleeds over main's padding.
     <div className="sticky top-16 z-20 -mx-3 -mt-3 mb-3 flex items-center justify-between gap-3 border-b border-taupe/40 bg-cream/90 px-3 py-3 backdrop-blur-md md:-mx-4 md:-mt-4 md:mb-4 md:px-4 lg:top-0">
-      <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
-        <span
-          aria-hidden="true"
-          className={cn('size-2 shrink-0 rounded-full', mode === 'live' ? 'bg-green' : 'bg-taupe')}
-        />
-        <span className="truncate">{mode === 'live' ? 'Viewing live data' : 'Viewing test data'}</span>
-      </p>
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2">
         {extra}
         <ModeSwitch mode={mode} onChange={onMode} />
         <AccountMenu {...account} />

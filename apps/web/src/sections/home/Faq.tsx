@@ -33,12 +33,12 @@ const faqs = [
   {
     question: 'I run an API. How do I get paid by agents?',
     answer:
-      'Add the Oryne middleware to the routes you want to charge for and set a price. Agents get a 402 Payment Required, pay in USDC, and you are paid within seconds. You are listed in the directory automatically.',
+      'Add the Oryne middleware to the routes you want to charge for and set a price. Agents get a 402 Payment Required, pay in USDC, and you are paid within seconds. List your API in the services directory so agents can find it.',
   },
   {
     question: 'Can I use Oryne today?',
     answer:
-      'The dashboard and developer console on this site are a working preview on simulated data. The agent-wallet contract is open source and runs on Stellar testnet. Write to us to join the pilot.',
+      'Yes, on Stellar testnet with test USDC, free. Sign in, create a wallet, connect an agent and watch it pay. Live mode with real USDC opens on mainnet after the contract audit.',
   },
 ]
 

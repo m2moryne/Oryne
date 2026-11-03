@@ -11,14 +11,13 @@ import {
   Receipt,
   Settings,
   ShieldCheck,
-  Sparkles,
   Store,
   Users,
   Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import githubLogo from '../assets/github.svg'
 import googleLogo from '../assets/google.svg'
@@ -30,15 +29,14 @@ import { shortKey } from '../lib/network'
 import { cn } from '../lib/cn'
 import { privatePages } from '../lib/seo'
 import { ThemeToggle, useTheme } from '../app/theme'
-import { PREVIEW_ON, useEnterPreview } from '../app/preview'
 import { Field, inputClasses } from '../app/ui'
 import { SignInField } from '../components/SignInField'
 import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
 import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
-import { soonPages } from './pages/ComingSoon'
 import { AccountSwitcher, GateTeams, TeamNotice } from './TeamBar'
 import { LiveBanner, SidebarModeToggle } from './ModeControl'
+import { Loader } from '../components/Loader'
 import type { AccountKind } from './api'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -48,7 +46,6 @@ const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
   { to: '/app/wallet', label: 'Wallet', icon: ShieldCheck },
   { to: '/app/funds', label: 'Funds', icon: Coins },
   { to: '/app/services', label: 'Services', icon: Store },
-  ...soonPages.map((page) => ({ to: `/app/${page.slug}`, label: page.label, icon: page.icon })),
   { to: '/app/activity', label: 'Activity', icon: Receipt },
   { to: '/app/team', label: 'Team', icon: Users },
   { to: '/app/billing', label: 'Billing', icon: CreditCard },
@@ -186,9 +183,6 @@ const kindOptions: Array<{ kind: AccountKind; title: string; note: string }> = [
 /** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
-  const enterPreview = useEnterPreview()
-  // The preview (/demo, /dev) sends visitors here; "Explore a preview account" takes them back.
-  const from = (useLocation().state as { from?: string } | null)?.from
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('My agent wallet')
@@ -301,7 +295,7 @@ function Gate() {
               return (
                 <a
                   key={provider}
-                  href={off ? undefined : oauthStart(provider)}
+                  href={off ? undefined : oauthStart(provider, pathname)}
                   aria-disabled={off}
                   title={off ? `${provider === 'google' ? 'Google' : 'GitHub'} sign-in is not set up on this server yet` : undefined}
                   className={cn(providerButton, off && 'pointer-events-none opacity-45')}
@@ -341,23 +335,6 @@ function Gate() {
             )}
           </div>
 
-          {PREVIEW_ON && (
-            <>
-              <p className="mt-6 flex items-center gap-4 text-xs text-muted">
-                <span className="h-px flex-1 bg-taupe/60" />
-                or
-                <span className="h-px flex-1 bg-taupe/60" />
-              </p>
-              <button
-                type="button"
-                className={cn(providerButton, 'mt-6')}
-                onClick={() => enterPreview(from && /^\/(demo|dev)(\/|$)/.test(from) ? from : '/demo')}
-              >
-                <Icon icon={Sparkles} size={18} />
-                Explore a preview account
-              </button>
-            </>
-          )}
 
           <Link to="/" className={backLink}>
             Cancel
@@ -427,6 +404,57 @@ function Gate() {
   )
 }
 
+/** Sets a not-yet-chosen account to developer, then the console opens. */
+function BecomeDeveloper() {
+  const live = useLive()
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    live.setKind('developer').catch(() => setFailed(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return failed ? <Navigate to="/app" replace /> : <Loader screen />
+}
+
+/** An agent-wallet account opened the developer console: explain, and offer to switch. */
+function ConsolePrompt() {
+  const live = useLive()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const open = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await live.setKind('developer')
+    } catch (reason) {
+      setError((reason as Error).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <AuthFrame>
+      <h1 className="text-2xl tracking-[-0.02em]">Open the developer console?</h1>
+      <p className="mt-3 text-sm leading-relaxed text-muted">
+        Your account is set up to give your agents a wallet, so it opens the agent dashboard. The developer console has API
+        keys, SDKs, logs and webhooks for building agents or a paid API.
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-muted">
+        Switching keeps your wallet, agents and payments. You can switch back any time in Settings.
+      </p>
+      <Button className="mt-8 w-full" onClick={open} disabled={busy}>
+        {busy ? 'Switching…' : 'Switch to the developer console'}
+      </Button>
+      <Link to="/app" className={cn(backLink, 'block text-center')}>
+        Go to my agent dashboard
+      </Link>
+      {error && (
+        <p role="alert" className="mt-5 rounded-lg border border-burgundy/30 px-4 py-3 text-sm text-burgundy">
+          {error}
+        </p>
+      )}
+    </AuthFrame>
+  )
+}
+
 function Shell() {
   const live = useLive()
   const { pathname } = useLocation()
@@ -435,14 +463,18 @@ function Shell() {
 
   usePageMeta(privatePages.dashboard)
 
-  if (live.loading) {
-    return <div className="tone-white flex min-h-svh items-center justify-center text-sm text-muted">Loading…</div>
-  }
+  if (live.loading) return <Loader screen />
   if (!live.session || !live.wallet) return <Gate />
   // Each kind of account sees only its own side: owners the agent dashboard, developers the console.
   const inConsole = pathname === DEV_BASE || pathname.startsWith(`${DEV_BASE}/`)
   if (live.kind === 'developer' && !inConsole) return <Navigate to={sidePath(pathname, 'developer')} replace />
-  if (live.kind === 'owner' && inConsole) return <Navigate to={sidePath(pathname, 'owner')} replace />
+  if (live.kind === 'owner' && inConsole) {
+    // A teammate can't change the account's kind: back to the side the account uses.
+    if (live.member) return <Navigate to={sidePath(pathname, 'owner')} replace />
+    // Arrived through Developers and never picked a kind: that's the pick.
+    if (!live.kindChosen) return <BecomeDeveloper />
+    return <ConsolePrompt />
+  }
   if (inConsole) return <LiveDevShell />
 
   return (

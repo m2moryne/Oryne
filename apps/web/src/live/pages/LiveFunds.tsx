@@ -9,6 +9,7 @@ import { cn } from '../../lib/cn'
 import { api, type CardInfo, type FundMovement, type Intent } from '../api'
 import { useLive } from '../LiveContext'
 import { AddressLink, ErrorNote, TxLink, useAction, usd, when } from '../shared'
+import { Loader } from '../../components/Loader'
 
 type Method = 'card' | 'test' | 'stellar'
 
@@ -163,7 +164,7 @@ export default function LiveFunds() {
 
       <Panel title="History" flush>
         {funds === null ? (
-          <p className="px-6 py-10 text-sm text-muted">Loading…</p>
+          <Loader />
         ) : funds.length === 0 ? (
           <EmptyState icon={Coins} title="No money in or out yet">
             Top-ups and withdrawals will show here, each with its Stellar transaction.

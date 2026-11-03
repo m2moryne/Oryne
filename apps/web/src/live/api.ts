@@ -275,7 +275,9 @@ export type User = { provider: string; email?: string | null; name?: string | nu
 /** Freighter users are their G… address; others are "google:…" / "github:…". */
 export const isAccount = (subject: string) => /^G[A-Z2-7]{55}$/.test(subject)
 
-export const oauthStart = (provider: 'google' | 'github') => `${API_URL}/v1/auth/oauth/${provider}/start`
+/** Starts Google or GitHub sign-in; it comes back to `next` (the page it started from). */
+export const oauthStart = (provider: 'google' | 'github', next = '/app') =>
+  `${API_URL}/v1/auth/oauth/${provider}/start?next=${encodeURIComponent(next)}`
 
 export type WalletSummary = {
   id: string

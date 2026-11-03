@@ -19,8 +19,8 @@ import {
 } from 'lucide-react'
 
 /**
- * The developer console's pages, shared by the preview account (/dev, sample
- * data) and real accounts (/app/developers). `slug` is the path under the base.
+ * The developer console's pages, under /app/developers.
+ * `slug` is the path under the base.
  */
 export type DevPage = { slug: string; label: string; icon: LucideIcon; summary: string }
 

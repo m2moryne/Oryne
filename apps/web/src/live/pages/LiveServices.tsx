@@ -9,6 +9,7 @@ import { shortKey } from '../../lib/network'
 import { api, type Intent, type LiveAgent, type ServiceListing } from '../api'
 import { useLive } from '../LiveContext'
 import { ErrorNote, useAction, when } from '../shared'
+import { Loader } from '../../components/Loader'
 
 const defaultCategories = ['Search', 'Data', 'AI models', 'Media', 'Finance', 'Developer tools', 'Other']
 
@@ -114,7 +115,7 @@ export default function LiveServices() {
       <ErrorNote error={error} />
 
       {services === null ? (
-        <p className="py-10 text-sm text-muted">Loading…</p>
+        <Loader />
       ) : shown.length === 0 ? (
         <Panel>
           <EmptyState

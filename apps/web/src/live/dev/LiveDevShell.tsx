@@ -4,7 +4,7 @@ import { Link, Outlet, useOutletContext } from 'react-router-dom'
 import { DevSidebarNav, DevTopBar } from '../../app/dev/DevChrome'
 import { useModeChange } from '../ModeControl'
 import { ThemeToggle, useTheme } from '../../app/theme'
-import type { Mode } from '../../app/dev/devData'
+import type { Mode } from '../api'
 import { Icon } from '../../components/Icon'
 import { Wordmark } from '../../components/Wordmark'
 import { cn } from '../../lib/cn'
@@ -33,7 +33,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** The developer console for a signed-in account: same pages as the preview, real data where it exists. */
+/** The developer console for a signed-in developer account. */
 export function LiveDevShell() {
   const live = useLive()
   const [menuOpen, setMenuOpen] = useState(false)

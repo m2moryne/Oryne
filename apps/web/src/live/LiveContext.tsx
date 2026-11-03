@@ -68,6 +68,8 @@ type Live = {
   createWallet: (name: string, kind?: AccountKind) => Promise<void>
   /** owner: the agent dashboard only. developer: the developer console only. Null until known. */
   kind: AccountKind | null
+  /** False while the kind is only a guess, before the owner has picked one. */
+  kindChosen: boolean
   /** Switches the account between the two. Owner only. */
   setKind: (kind: AccountKind) => Promise<void>
   refresh: () => Promise<void>
@@ -91,6 +93,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Live['member']>(null)
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [kind, setKindState] = useState<AccountKind | null>(null)
+  const [kindChosen, setKindChosen] = useState(false)
   const [error, setError] = useState<string | null>(redirect.error ?? null)
 
   useEffect(() => {
@@ -111,7 +114,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
-      let me: { wallets: WalletSummary[]; user: User; member?: Live['member']; kind?: AccountKind }
+      let me: { wallets: WalletSummary[]; user: User; member?: Live['member']; kind?: AccountKind; kindChosen?: boolean }
       try {
         me = await api('/v1/me', { token: session.token })
       } catch (reason) {
@@ -124,6 +127,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setUser(me.user)
       setMember(me.member ?? null)
       setKindState(me.kind ?? 'owner')
+      setKindChosen(me.kindChosen ?? true)
       const current = me.wallets[0]
       if (current) {
         const [detail, history, pending] = await Promise.all([
@@ -214,10 +218,12 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setKindState(null)
       },
       kind,
+      kindChosen,
       async setKind(next: AccountKind) {
         if (!session) return
         await api('/v1/account', { method: 'PUT', body: { kind: next }, token: session.token })
         setKindState(next)
+        setKindChosen(true)
       },
       async createWallet(name: string, chosen?: AccountKind) {
         if (!session) return
@@ -229,7 +235,10 @@ export function LiveProvider({ children }: { children: ReactNode }) {
               displayName: user?.name ?? user?.email ?? 'Oryne wallet owner',
             })
         await api('/v1/wallets', { body: { name, passkey, kind: chosen }, token: session.token })
-        if (chosen) setKindState(chosen)
+        if (chosen) {
+          setKindState(chosen)
+          setKindChosen(true)
+        }
         await refresh()
       },
       refresh,
@@ -247,7 +256,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         return result.hash
       },
     }),
-    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh, member, memberships, reloadMemberships, kind],
+    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh, member, memberships, reloadMemberships, kind, kindChosen],
   )
 
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>

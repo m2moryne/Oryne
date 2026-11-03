@@ -75,9 +75,22 @@
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- The loader shown before the app starts; React replaces it. Same design as .loader in index.css. -->
+    <style>
+      .boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      .boot .loader { position: relative; display: block; transform: rotateZ(45deg); perspective: 1000px; border-radius: 50%; width: 48px; height: 48px; color: #0576fe; }
+      .boot .loader::before, .boot .loader::after { content: ''; display: block; position: absolute; top: 0; left: 0; width: inherit; height: inherit; border-radius: 50%; transform: rotateX(70deg); animation: 1s boot-orbit linear infinite; }
+      .boot .loader::after { color: #fc771f; transform: rotateY(70deg); animation-delay: 0.4s; }
+      @keyframes boot-orbit {
+        0%, 100% { box-shadow: 0.2em 0 0 0 currentcolor; } 12% { box-shadow: 0.2em 0.2em 0 0 currentcolor; }
+        25% { box-shadow: 0 0.2em 0 0 currentcolor; } 37% { box-shadow: -0.2em 0.2em 0 0 currentcolor; }
+        50% { box-shadow: -0.2em 0 0 0 currentcolor; } 62% { box-shadow: -0.2em -0.2em 0 0 currentcolor; }
+        75% { box-shadow: 0 -0.2em 0 0 currentcolor; } 87% { box-shadow: 0.2em -0.2em 0 0 currentcolor; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><span class="loader"></span></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
