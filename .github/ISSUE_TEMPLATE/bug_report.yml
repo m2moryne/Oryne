@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problem?** Don't file it here: see [SECURITY.md](https://github.com/m2moryne/Oryne/blob/master/SECURITY.md).
+        Never paste secret keys (S…), API keys or passwords. Error messages and transaction hashes are fine.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Dashboard or website
+        - Agent SDK (@oryne/agent)
+        - Merchant SDK (@oryne/merchant)
+        - MCP server (@oryne/mcp)
+        - API
+        - Wallet contract
+        - An example
+        - Docs
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - Testnet (Test mode)
+        - Mainnet (Live mode)
+        - Running locally
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      placeholder: |
+        1. Connect an agent with a 1 USDC limit
+        2. Run `npm start` in examples/research-agent
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message, logs or transaction hash
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Package version or commit, Node.js version, browser
+      placeholder: "@oryne/agent 0.1.0, Node 22.18, Chrome 141"

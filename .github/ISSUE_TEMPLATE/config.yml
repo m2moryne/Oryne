@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/m2moryne/Oryne/security/advisories/new
+    about: Privately, so it can be fixed before anyone else knows. Please don't open a public issue.
+  - name: Questions and pilot access
+    url: https://oryne.org/contact
+    about: Joining the mainnet pilot, listing your API, or anything else.

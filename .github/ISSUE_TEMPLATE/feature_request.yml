@@ -1,0 +1,23 @@
+name: Idea or feature request
+description: Something Oryne should do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem first, before the solution. Who is it for, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+  - type: dropdown
+    id: build
+    attributes:
+      label: Would you like to build it?
+      options:
+        - "Yes, with some guidance"
+        - "Yes, I know what to do"
+        - "No, just suggesting"
