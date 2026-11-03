@@ -1,5 +1,6 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import { HTTPException } from 'hono/http-exception'
+import { sendEmail } from './mail.ts'
 import type { Config } from './config.ts'
 import { now, type Db } from './db.ts'
 import { createSession } from './oauth.ts'
@@ -31,25 +32,14 @@ export function createEmailCodes(config: Config, db: Db) {
       console.log(`sign-in code for ${email}: ${code}`)
       return
     }
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${config.email.resendApiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        from: config.email.from,
-        to: [email],
-        subject: `${code} is your Oryne sign-in code`,
-        text: `Your Oryne sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.`,
-        html: `<div style="font-family:system-ui,sans-serif;font-size:15px;color:#222">
-<p>Your Oryne sign-in code is</p>
-<p style="font-size:28px;letter-spacing:6px;font-weight:600;margin:16px 0">${code}</p>
-<p style="color:#777">It expires in 10 minutes. If you didn't ask for it, you can ignore this email.</p></div>`,
-      }),
-      signal: AbortSignal.timeout(10_000),
+    await sendEmail(config, email, {
+      subject: `${code} is your Oryne sign-in code`,
+      preview: 'It expires in 10 minutes.',
+      heading: 'Your sign-in code',
+      paragraphs: [['Enter this code on the Oryne sign-in page to continue as ', { strong: email }, '.']],
+      code,
+      note: 'The code expires in 10 minutes and works once. If you didn’t try to sign in, you can ignore this email; nobody can get in without it.',
     })
-    if (!response.ok) {
-      console.error('resend', response.status, await response.text().catch(() => ''))
-      throw new HTTPException(502, { message: "Couldn't send the email. Try again in a minute." })
-    }
   }
 
   return {

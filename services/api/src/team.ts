@@ -1,7 +1,7 @@
 import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
-import { escapeHtml, sendEmail } from './mail.ts'
+import { sendEmail } from './mail.ts'
 
 /**
  * Teams: an account owner invites people by email to work in their account.
@@ -31,6 +31,13 @@ export type MemberRow = {
   invited_by: string
   created_at: number
   accepted_at: number | null
+}
+
+const ROLE_NAME: Record<Role, string> = { admin: 'an admin', developer: 'a developer', viewer: 'a viewer' }
+const ROLE_NOTE: Record<Role, string> = {
+  admin: 'As an admin you can manage API keys, webhooks and services, and invite or remove teammates.',
+  developer: 'As a developer you can manage API keys, webhooks and services, and use the AI debugger.',
+  viewer: 'As a viewer you can see agents, payments, funds and logs.',
 }
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,63}$/
@@ -107,14 +114,17 @@ export function createTeam(config: Config, db: Db) {
     if (row.status === 'invited') {
       const label = await accountLabel(account)
       const link = `${config.webUrl}/app`
-      await sendEmail(config, {
-        to: email,
+      await sendEmail(config, email, {
         subject: `You’re invited to ${label.name} on Oryne`,
-        text: `${label.owner} invited you to their Oryne account "${label.name}" as ${role}.\n\nSign in at ${link} with this email address (${email}) to accept.\n\nIf you weren't expecting this, you can ignore it.`,
-        html: `<div style="font-family:system-ui,sans-serif;font-size:15px;color:#222;line-height:1.5">
-<p>${escapeHtml(label.owner)} invited you to their Oryne account <strong>${escapeHtml(label.name)}</strong> as ${role}.</p>
-<p><a href="${link}" style="display:inline-block;background:#202020;color:#fff;padding:10px 18px;text-decoration:none">Sign in to accept</a></p>
-<p style="color:#777">Sign in with this email address (${escapeHtml(email)}). If you weren't expecting this, you can ignore it.</p></div>`,
+        preview: `${label.owner} invited you as ${role}.`,
+        heading: `Join ${label.name} on Oryne`,
+        paragraphs: [
+          [{ strong: label.owner }, ' invited you to their Oryne account ', { strong: label.name }, ` as ${ROLE_NAME[role]}.`],
+          [ROLE_NOTE[role]],
+          ['Sign in with this email address, ', { strong: email }, ', and accept the invitation from your dashboard.'],
+        ],
+        button: { label: 'Accept invitation', url: link },
+        note: 'If you weren’t expecting this, you can ignore it. Nothing changes until you accept.',
       })
     }
     return memberView(row)
