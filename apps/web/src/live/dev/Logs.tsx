@@ -78,11 +78,8 @@ export default function Logs() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl tracking-[-0.02em]">Logs</h1>
-          <p className="mt-1 text-sm text-muted">API calls from your dashboard, your code and your agents. Kept for 30 days.</p>
-        </div>
+      <h1 className="sr-only">Logs</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div role="group" aria-label="Show" className="flex rounded-full border border-taupe/60 p-1">
           {(
             [

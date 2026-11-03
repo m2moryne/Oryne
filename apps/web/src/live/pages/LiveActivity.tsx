@@ -11,7 +11,7 @@ export default function LiveActivity() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl tracking-[-0.02em]">Activity</h1>
+      <h1 className="sr-only">Activity</h1>
       <Panel flush>
         {live.payments.length === 0 ? (
           <EmptyState icon={Receipt} title="No payments yet">

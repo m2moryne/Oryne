@@ -38,17 +38,7 @@ const packages = [
 export function Sdks() {
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">SDKs & tools</h1>
-        <p className="mt-1 text-sm text-muted">
-          On npm, with TypeScript types included. They need Node 20 or later and are MIT licensed. Guides and the
-          full API reference are in the{' '}
-          <a href="/docs" className="underline underline-offset-4">
-            documentation
-          </a>
-          .
-        </p>
-      </div>
+      <h1 className="sr-only">SDKs & tools</h1>
       <div className="grid gap-4 md:grid-cols-2">
         {packages.map((pkg) => (
           <Panel key={pkg.name}>
@@ -88,13 +78,7 @@ export function Merchant() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">Accept payments</h1>
-        <p className="mt-1 text-sm text-muted">
-          Charge agents per request. They pay in USDC on Stellar, and Oryne’s facilitator verifies and settles each
-          payment before your handler runs.
-        </p>
-      </div>
+      <h1 className="sr-only">Accept payments</h1>
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
         <Panel title="Put a price on a route">
           <p className="text-sm leading-relaxed text-muted">
@@ -141,13 +125,7 @@ export function Contracts() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">Contracts</h1>
-        <p className="mt-1 text-sm text-muted">
-          Your wallet is a Soroban smart contract you own. It holds the USDC and checks every agent payment against
-          its mandate in <span className="font-mono">__check_auth</span>.
-        </p>
-      </div>
+      <h1 className="sr-only">Contracts</h1>
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Your agent wallet">
           {wallet ? (

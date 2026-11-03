@@ -1,6 +1,5 @@
 import { Receipt } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { EmptyState, Panel, Stat } from '../../app/ui'
 import { dollars, feePercent, pricing } from '../../lib/pricing'
 import { api, MODE } from '../api'
@@ -56,15 +55,7 @@ export default function Billing() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">Billing</h1>
-        <p className="mt-1 text-sm text-muted">
-          No subscription. You pay only on what your agents spend past {dollars(pricing.freeMonthly)} a month.{' '}
-          <Link to="/pricing" className="underline underline-offset-4">
-            How pricing works
-          </Link>
-        </p>
-      </div>
+      <h1 className="sr-only">Billing</h1>
 
       {error && <p className="border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy">{error}</p>}
 

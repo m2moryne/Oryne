@@ -156,8 +156,8 @@ export default function LiveAgents() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl tracking-[-0.02em]">Agents</h1>
+      <h1 className="sr-only">Agents</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Button size="sm" leadingIcon={Plus} onClick={openDialog}>
           Connect agent
         </Button>

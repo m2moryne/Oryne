@@ -70,30 +70,37 @@ function Answer({ text }: { text: string }) {
 }
 
 /**
- * The debugger's conversation: messages scroll inside a fixed-height panel and
- * the input sits at its bottom, as a pill.
+ * The debugger's conversation: messages scroll behind a floating glass input.
+ * It fills its parent's height, so the parent decides how tall it is.
  */
 export function DebugChat({
   messages,
   onSend,
   busy,
   placeholder,
-  footnote,
+  empty,
 }: {
   messages: ChatMessage[]
   onSend: (question: string) => void
   busy?: boolean
   placeholder: string
-  footnote?: ReactNode
+  /** Shown in place of the conversation before the first question. */
+  empty?: ReactNode
 }) {
   const [draft, setDraft] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
 
   // Follow the conversation as it grows, including while an answer streams in.
   useEffect(() => {
     const element = scroller.current
     if (element) element.scrollTop = element.scrollHeight
   }, [messages])
+
+  // A new or different chat starts with the cursor in the input.
+  useEffect(() => {
+    if (messages.length === 0) input.current?.focus({ preventScroll: true })
+  }, [messages.length === 0])
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -103,38 +110,45 @@ export function DebugChat({
   }
 
   return (
-    // Its own surface rather than <Panel>, whose inner wrapper would break the fixed-height column.
-    <section className="tone-white flex h-[calc(100svh-15rem)] min-h-[30rem] flex-col border border-taupe/50">
-      <div ref={scroller} className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 md:p-6">
-        {messages.map((message, index) => (
-          <div key={index} className={cn('flex gap-3', message.from === 'you' && 'justify-end')}>
-            {message.from === 'ai' && (
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-charcoal text-cream">
-                <Icon icon={Sparkles} size={15} />
-              </span>
-            )}
-            <div
-              className={cn(
-                'min-w-0 max-w-[44rem] space-y-3 text-sm leading-relaxed',
-                message.from === 'you' && 'rounded-2xl bg-charcoal px-4 py-2.5 text-cream',
-                message.failed && 'text-burgundy',
-              )}
-            >
-              {message.from === 'ai' ? <Answer text={message.text} /> : <p className="whitespace-pre-line">{message.text}</p>}
-              {message.pending && !message.text && <p className="animate-pulse text-muted">Reading your account…</p>}
-              {message.note && <p className="text-xs text-muted">{message.note}</p>}
-              {message.code && <CodeBlock label="Suggested change" code={message.code} />}
-            </div>
+    <section className="tone-white relative h-full min-h-0 overflow-hidden rounded-t-2xl border border-b-0 border-taupe/50">
+      <div ref={scroller} className="h-full overflow-y-auto px-5 pb-36 pt-6 md:px-8">
+        {messages.length === 0 && empty ? (
+          <div className="flex min-h-full items-center justify-center pb-10">{empty}</div>
+        ) : (
+          <div className="mx-auto max-w-3xl space-y-6">
+            {messages.map((message, index) => (
+              <div key={index} className={cn('flex gap-3', message.from === 'you' && 'justify-end')}>
+                {message.from === 'ai' && (
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-charcoal text-cream">
+                    <Icon icon={Sparkles} size={15} />
+                  </span>
+                )}
+                <div
+                  className={cn(
+                    'min-w-0 max-w-[44rem] space-y-3 text-sm leading-relaxed',
+                    message.from === 'you' && 'rounded-2xl bg-charcoal px-4 py-2.5 text-cream',
+                    message.failed && 'text-burgundy',
+                  )}
+                >
+                  {message.from === 'ai' ? <Answer text={message.text} /> : <p className="whitespace-pre-line">{message.text}</p>}
+                  {message.pending && !message.text && <p className="animate-pulse text-muted">Reading your account…</p>}
+                  {message.note && <p className="text-xs text-muted">{message.note}</p>}
+                  {message.code && <CodeBlock label="Suggested change" code={message.code} />}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
-      <div className="border-t border-taupe/40 p-3 md:p-4">
+      {/* Floats over the end of the conversation, which shows through the glass as it scrolls. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-5 md:px-8 md:pb-6">
         <form
           onSubmit={submit}
-          className="flex items-center gap-2 rounded-full border border-taupe/60 bg-white py-1.5 pl-5 pr-1.5 transition-colors focus-within:border-charcoal"
+          className="pointer-events-auto mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-taupe/40 bg-white/35 py-1.5 pl-5 pr-1.5 shadow-[0_10px_40px_-12px_rgba(10,16,26,0.25),inset_0_1px_0_rgba(255,255,255,0.45)] ring-1 ring-inset ring-white/30 backdrop-blur-xl backdrop-saturate-150 transition-colors focus-within:border-charcoal/50"
         >
           <input
+            ref={input}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder={placeholder}
@@ -150,7 +164,6 @@ export function DebugChat({
             <Icon icon={ArrowUp} size={18} />
           </button>
         </form>
-        {footnote && <p className="mt-2 px-4 text-xs text-muted">{footnote}</p>}
       </div>
     </section>
   )

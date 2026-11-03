@@ -73,8 +73,8 @@ export default function Webhooks() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl tracking-[-0.02em]">Webhooks</h1>
+      <h1 className="sr-only">Webhooks</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Button size="sm" leadingIcon={Plus} onClick={() => setAdding(true)}>
           Add endpoint
         </Button>

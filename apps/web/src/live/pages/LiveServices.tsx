@@ -71,13 +71,8 @@ export default function LiveServices() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl tracking-[-0.02em]">Services</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Paid APIs your agents can use, charged per request in USDC. Choose which ones each agent may pay.
-          </p>
-        </div>
+      <h1 className="sr-only">Services</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <Button size="sm" variant="outline" leadingIcon={Plus} onClick={() => setEditing('new')}>
           List your service
         </Button>

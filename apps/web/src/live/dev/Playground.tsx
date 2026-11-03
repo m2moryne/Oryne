@@ -65,7 +65,7 @@ export default function Playground() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl tracking-[-0.02em]">Playground</h1>
+      <h1 className="sr-only">Playground</h1>
 
       <Panel>
         <form onSubmit={send} className="space-y-4">

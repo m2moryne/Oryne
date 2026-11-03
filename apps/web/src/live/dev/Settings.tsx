@@ -54,7 +54,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl tracking-[-0.02em]">Settings</h1>
+      <h1 className="sr-only">Settings</h1>
 
       {error && <p className="border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy">{error}</p>}
 

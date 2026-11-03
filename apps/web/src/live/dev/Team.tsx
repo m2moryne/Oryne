@@ -68,17 +68,14 @@ export default function Team() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl tracking-[-0.02em]">Team</h1>
-          <p className="mt-1 text-sm text-muted">People who can work in this account. Each signs in as themselves.</p>
-        </div>
-        {manage && (
+      <h1 className="sr-only">Team</h1>
+      {manage && (
+        <div className="flex justify-end">
           <Button size="sm" leadingIcon={Plus} onClick={() => setInviting(true)}>
             Invite
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && <p className="border border-burgundy/40 px-4 py-2.5 text-sm text-burgundy">{error}</p>}
 

@@ -44,8 +44,8 @@ export default function Usage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl tracking-[-0.02em]">Usage</h1>
+      <h1 className="sr-only">Usage</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="bg-white">
           <RangeSwitch ranges={ranges} value={range} onChange={setRange} />
         </div>

@@ -71,7 +71,7 @@ export function LiveDevShell() {
         </div>
       )}
 
-      <main className={cn('tone-cream min-h-svh p-3 md:p-4', theme === 'dark' && 'theme-dark')}>
+      <main className={cn('tone-cream flex min-h-[calc(100svh-4rem)] flex-col p-3 md:p-4 lg:min-h-svh', theme === 'dark' && 'theme-dark')}>
         <DevTopBar
           mode={mode}
           onMode={setMode}

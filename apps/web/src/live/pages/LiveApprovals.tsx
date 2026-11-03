@@ -35,7 +35,7 @@ export default function LiveApprovals() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl tracking-[-0.02em]">Approvals</h1>
+      <h1 className="sr-only">Approvals</h1>
       <ErrorNote error={error} />
 
       <Panel title={`Waiting for you${pending.length ? ` (${pending.length})` : ''}`} flush>

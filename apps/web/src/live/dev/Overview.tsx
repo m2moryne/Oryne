@@ -25,12 +25,7 @@ export default function Overview() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">Overview</h1>
-        <p className="mt-1 text-sm text-muted">
-          Pay from your own code or an MCP client. On Stellar {info?.network.replace('stellar-', '') ?? 'testnet'}.
-        </p>
-      </div>
+      <h1 className="sr-only">Overview</h1>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
         <div className="space-y-4">

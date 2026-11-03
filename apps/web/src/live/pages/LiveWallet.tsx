@@ -73,13 +73,7 @@ export default function LiveWallet() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">{wallet.name}</h1>
-        <p className="mt-1 text-sm text-muted">
-          A smart contract on Stellar {network.replace('stellar-', '')} that you own. It holds your USDC and checks every
-          agent payment against that agent's rules.
-        </p>
-      </div>
+      <h1 className="sr-only">{wallet.name}</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Balance" value={usd(wallet.balance)} note={<Link to="/app" className="underline underline-offset-4">Add or withdraw</Link>} />

@@ -124,10 +124,7 @@ export default function LiveFunds() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl tracking-[-0.02em]">Funds</h1>
-        <p className="mt-1 text-sm text-muted">Top up the wallet your agents spend from, and move money back out.</p>
-      </div>
+      <h1 className="sr-only">Funds</h1>
 
       {(returned || returnError) && <ReturnBanner movement={returned} error={returnError} onClose={() => { setReturned(null); setReturnError(null) }} />}
 
