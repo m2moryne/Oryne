@@ -315,7 +315,13 @@ export type LiveAgent = {
   createdAt: number
 }
 
-export type WalletDetail = WalletSummary & { token: string; balance: string; agents: LiveAgent[] }
+export type WalletDetail = WalletSummary & {
+  token: string
+  balance: string
+  /** XLM the wallet holds (sent by mistake: agents spend USDC only). Missing on older API builds. */
+  xlmBalance?: string
+  agents: LiveAgent[]
+}
 
 export type LivePayment = {
   id: string

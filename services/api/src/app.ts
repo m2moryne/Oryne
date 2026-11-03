@@ -10,7 +10,7 @@ import {
   type PaymentRequirements,
   type Policy,
 } from '@oryne/core'
-import { StrKey } from '@stellar/stellar-sdk'
+import { Asset, StrKey } from '@stellar/stellar-sdk'
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
@@ -223,9 +223,12 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     }
   }
 
-  const balanceOf = async (address: string) => {
+  /** XLM as a token contract: what a wallet holds when someone sends it XLM instead of USDC. */
+  const xlmToken = Asset.native().contractId(chain.network.networkPassphrase)
+
+  const balanceOf = async (address: string, token = chain.network.token) => {
     try {
-      return BigInt(await readContract<bigint>(chain, balanceOp(chain.network.token, address)))
+      return BigInt(await readContract<bigint>(chain, balanceOp(token, address)))
     } catch {
       return 0n
     }
@@ -628,11 +631,17 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     const agents = await db
       .prepare("select * from agents where wallet_id = ? and status != 'removed' order by created_at")
       .all(wallet.id) as AgentDbRow[]
-    const [balance, remaining] = await Promise.all([balanceOf(wallet.id), Promise.all(agents.map(remainingOf))])
+    const [balance, xlm, remaining] = await Promise.all([
+      balanceOf(wallet.id),
+      balanceOf(wallet.id, xlmToken),
+      Promise.all(agents.map(remainingOf)),
+    ])
     return c.json({
       ...wallet,
       token: chain.network.token,
       balance: money(balance),
+      // XLM sent by mistake: agents can't spend it, the owner can withdraw it. Both have 7 decimals.
+      xlmBalance: fromBaseUnits(xlm, 7),
       agents: agents.map((agent, i) => agentView(agent, remaining[i])),
     })
   })
@@ -779,17 +788,22 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
 
   owner.post('/wallets/:id/withdraw', async (c) => {
     const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
-    const input = await body<{ to?: string; amount: string }>(c)
+    const input = await body<{ to?: string; amount: string; asset?: 'usdc' | 'xlm' }>(c)
     const fallback = StrKey.isValidEd25519PublicKey(c.var.owner) ? c.var.owner : undefined
     const to = addressOf(input.to ?? fallback, 'to')
-    const units = amountOf(input.amount, 'amount', decimals)
+    const xlm = input.asset === 'xlm'
+    const units = amountOf(input.amount, 'amount', xlm ? 7 : decimals)
     return c.json(
-      await createIntent(db, chain, c.var.owner, wallet, 'withdraw', walletOps.withdraw(wallet.id, chain.network.token, to, units), {
-        to,
-        amount: units,
-        wallet: wallet.id,
-        owner: wallet.owner,
-      }),
+      await createIntent(
+        db,
+        chain,
+        c.var.owner,
+        wallet,
+        'withdraw',
+        walletOps.withdraw(wallet.id, xlm ? xlmToken : chain.network.token, to, units),
+        // Funds history is in USDC, so an XLM withdrawal isn't listed there (no wallet on the intent).
+        xlm ? { to, amount: units, asset: 'xlm' } : { to, amount: units, wallet: wallet.id, owner: wallet.owner },
+      ),
     )
   })
 

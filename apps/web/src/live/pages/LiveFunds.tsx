@@ -105,6 +105,13 @@ export default function LiveFunds() {
         <Stat label="Withdrawn" value={usd(totalOut.toFixed(2).replace(/\.00$/, ''))} note="Moved out by you" />
       </div>
 
+      {Number(wallet.xlmBalance ?? 0) > 0 && (
+        <p className="border border-taupe/60 px-4 py-3 text-sm leading-relaxed">
+          This wallet also holds <span className="font-medium">{trim(wallet.xlmBalance!)} XLM</span>.{' '}
+          <span className="text-muted">Agents can only spend USDC, so it isn’t in the balance. Withdraw it below, or swap it for USDC and send that.</span>
+        </p>
+      )}
+
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_24rem]">
       <Panel title="History" flush>
         {funds === null ? (
@@ -204,6 +211,9 @@ function ReturnBanner({ movement, error, onClose }: { movement: FundMovement | n
   )
 }
 
+/** 10.6145176 → 10.6145176, 10.5000000 → 10.5 */
+const trim = (value: string) => value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
+
 function Withdraw({ onDone }: { onDone: () => Promise<void> }) {
   const live = useLive()
   const wallet = live.wallet!
@@ -211,15 +221,44 @@ function Withdraw({ onDone }: { onDone: () => Promise<void> }) {
   const passkey = wallet.owner_kind === 'passkey'
   const [amount, setAmount] = useState('')
   const [to, setTo] = useState('')
+  const hasXlm = Number(wallet.xlmBalance ?? 0) > 0
+  const [asset, setAsset] = useState<'usdc' | 'xlm'>('usdc')
+  const xlm = hasXlm && asset === 'xlm'
+  const unit = xlm ? 'XLM' : 'USDC'
+  const tooMuch = Number(amount) > Number(xlm ? wallet.xlmBalance : wallet.balance)
 
   return (
     <Panel title="Withdraw">
-      <Field label="Amount, USDC" hint={passkey ? undefined : 'Sent to your Freighter account. It needs a USDC trustline.'}>
+      {hasXlm && (
+        <div role="group" aria-label="What to withdraw" className="mb-4 grid grid-cols-2 gap-2 text-sm">
+          {(['usdc', 'xlm'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={asset === option}
+              onClick={() => {
+                setAsset(option)
+                setAmount('')
+              }}
+              className={cn(
+                'rounded-full border py-2 transition-colors',
+                asset === option ? 'border-charcoal' : 'border-taupe/60 text-muted hover:text-charcoal',
+              )}
+            >
+              {option === 'usdc' ? 'USDC' : `XLM · ${trim(wallet.xlmBalance!)}`}
+            </button>
+          ))}
+        </div>
+      )}
+      <Field
+        label={`Amount, ${unit}`}
+        hint={passkey ? undefined : xlm ? 'Sent to your Freighter account.' : 'Sent to your Freighter account. It needs a USDC trustline.'}
+      >
         {(id) => <input id={id} value={amount} inputMode="decimal" onChange={(event) => setAmount(event.target.value)} className={`${inputClasses} py-2`} />}
       </Field>
       {passkey && (
         <div className="mt-3">
-          <Field label="To" hint="A Stellar address with a USDC trustline, or a contract.">
+          <Field label="To" hint={xlm ? 'Any Stellar address (G…), or a contract (C…).' : 'A Stellar address with a USDC trustline, or a contract.'}>
             {(id) => (
               <input id={id} value={to} onChange={(event) => setTo(event.target.value.trim())} placeholder="G… or C…" className={`${inputClasses} py-2 font-mono text-xs`} />
             )}
@@ -230,11 +269,11 @@ function Withdraw({ onDone }: { onDone: () => Promise<void> }) {
         size="sm"
         variant="outline"
         className="mt-4"
-        disabled={withdraw.busy || !amount || (passkey && !to)}
+        disabled={withdraw.busy || !amount || (passkey && !to) || tooMuch}
         onClick={() =>
           withdraw.run(async () => {
             const hash = await live.sign((token) =>
-              api<Intent>(`/v1/wallets/${wallet.id}/withdraw`, { body: { amount, to: to || undefined }, token }),
+              api<Intent>(`/v1/wallets/${wallet.id}/withdraw`, { body: { amount, to: to || undefined, asset: xlm ? 'xlm' : undefined }, token }),
             )
             setAmount('')
             await onDone()
@@ -249,6 +288,7 @@ function Withdraw({ onDone }: { onDone: () => Promise<void> }) {
           Sent. <TxLink hash={withdraw.done} />
         </p>
       )}
+      {tooMuch && <p className="mt-3 text-sm text-burgundy">More than the wallet holds.</p>}
       <ErrorNote error={withdraw.error} />
       <p className="mt-5 border-t border-taupe/40 pt-4 text-xs leading-relaxed text-muted">
         {live.member ? 'Only the owner' : 'Only you'} can withdraw, with {live.member ? 'their' : 'your'}{' '}
