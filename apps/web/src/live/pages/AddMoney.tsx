@@ -179,15 +179,17 @@ function AmountInput({ value, onChange, choices }: { value: string; onChange: (v
         />
         <span className="pointer-events-none absolute right-4 top-1/2 mt-1 -translate-y-1/2 text-sm text-muted">USDC</span>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* Quick amounts: plain numbers, nothing boxed. */}
+      <div className="mt-2.5 flex items-center gap-4 text-sm tabular-nums">
         {choices.map((choice) => (
           <button
             key={choice}
             type="button"
             onClick={() => onChange(choice)}
+            aria-pressed={value === choice}
             className={cn(
-              'rounded-full border px-3.5 py-1.5 text-sm tabular-nums transition-colors',
-              value === choice ? 'border-charcoal bg-charcoal text-cream' : 'border-taupe/60 text-muted hover:border-charcoal hover:text-charcoal',
+              'underline-offset-4 transition-colors',
+              value === choice ? 'text-charcoal underline' : 'text-muted hover:text-charcoal',
             )}
           >
             {choice}
