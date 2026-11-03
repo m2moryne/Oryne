@@ -260,6 +260,11 @@ async function applyEffect(db: Db, kind: IntentKind, data: Record<string, any>, 
         JSON.stringify(data.payees),
         now(),
       )
+      // A new key for an existing agent: its payments and approvals follow it.
+      if (data.replaces) {
+        await db.prepare('update payments set agent = ? where agent = ?').run(data.agent, data.replaces)
+        await db.prepare('update approvals set agent = ? where agent = ?').run(data.agent, data.replaces)
+      }
       break
     case 'set_policy':
       await db.prepare(

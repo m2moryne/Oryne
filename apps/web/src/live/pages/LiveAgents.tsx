@@ -111,35 +111,7 @@ function ConnectDialog({ open, onClose }: { open: boolean; onClose: () => void }
           <p className="text-sm text-muted">
             Registered on your wallet{result.hash ? <> in <TxLink hash={result.hash} /></> : null}.
           </p>
-          <div className="flex gap-3 rounded-lg border border-burgundy/30 px-4 py-3 text-sm">
-            <Icon icon={TriangleAlert} size={18} className="mt-0.5 shrink-0 text-burgundy" />
-            <p>
-              <strong>Copy the agent&rsquo;s secret now.</strong> It was made in your browser and is
-              shown only once. Anyone with it can spend inside this agent&rsquo;s limits, and no more.
-            </p>
-          </div>
-          <CodeBlock
-            samples={{
-              'Claude / MCP': JSON.stringify(
-                {
-                  mcpServers: {
-                    oryne: {
-                      command: 'npx',
-                      args: ['-y', '@oryne/mcp'],
-                      env: { ORYNE_AGENT_SECRET: result.secret, ORYNE_API_URL: API_URL },
-                    },
-                  },
-                },
-                null,
-                2,
-              ),
-              TypeScript: `import { OryneAgent } from '@oryne/agent'
-
-const agent = new OryneAgent({ secret: '${result.secret}', apiUrl: '${API_URL}' })
-const res = await agent.fetch(url) // pays 402s inside the mandate`,
-              Secret: result.secret,
-            }}
-          />
+          <AgentSecret secret={result.secret} />
           <div className="flex justify-end">
             <Button size="sm" onClick={close}>
               Done
@@ -148,6 +120,43 @@ const res = await agent.fetch(url) // pays 402s inside the mandate`,
         </div>
       )}
     </Dialog>
+  )
+}
+
+/** An agent's secret, shown once, with ready-to-paste config for Claude (MCP) and the SDK. */
+export function AgentSecret({ secret }: { secret: string }) {
+  return (
+    <>
+      <div className="flex gap-3 rounded-lg border border-burgundy/30 px-4 py-3 text-sm">
+        <Icon icon={TriangleAlert} size={18} className="mt-0.5 shrink-0 text-burgundy" />
+        <p>
+          <strong>Copy the agent&rsquo;s secret now.</strong> It was made in your browser and is shown only once.
+          Anyone with it can spend inside this agent&rsquo;s limits, and no more.
+        </p>
+      </div>
+      <CodeBlock
+        samples={{
+          'Claude / MCP': JSON.stringify(
+            {
+              mcpServers: {
+                oryne: {
+                  command: 'npx',
+                  args: ['-y', '@oryne/mcp'],
+                  env: { ORYNE_AGENT_SECRET: secret, ORYNE_API_URL: API_URL },
+                },
+              },
+            },
+            null,
+            2,
+          ),
+          TypeScript: `import { OryneAgent } from '@oryne/agent'
+
+const agent = new OryneAgent({ secret: '${secret}', apiUrl: '${API_URL}' })
+const res = await agent.fetch(url) // pays 402s inside the mandate`,
+          Secret: secret,
+        }}
+      />
+    </>
   )
 }
 

@@ -752,6 +752,50 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     )
   })
 
+  /**
+   * Lost an agent's secret: the agent gets a new key with the same name and
+   * mandate, shown once, after an email code. Oryne never stores agent
+   * secrets, so it can't show the old one. Step 1 (this) adds the new key and
+   * moves the agent's history to it; step 2 removes the old key (DELETE).
+   * Accounts with no email (Freighter) confirm with their signature alone.
+   */
+  owner.post('/wallets/:id/agents/:key/replace', async (c) => {
+    const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
+    const current = await walletAgent(wallet.id, c.req.param('key'))
+    const input = await body<{ publicKey?: string; code?: string }>(c)
+    const next = String(input.publicKey ?? '')
+    if (!StrKey.isValidEd25519PublicKey(next)) throw new HTTPException(400, { message: 'publicKey must be a G… key' })
+    if (await db.prepare('select 1 from agents where public_key = ?').get(next)) {
+      throw new HTTPException(409, { message: 'This agent key is already registered' })
+    }
+    const email = await emailOf(db, c.var.owner)
+    if (email) {
+      if (!input.code) throw new HTTPException(400, { message: 'Enter the code we emailed you' })
+      await emailCodes.confirm(email, input.code)
+    }
+    const policy = policyFrom({}, current)
+    return c.json(
+      await createIntent(db, chain, c.var.owner, wallet, 'add_agent', walletOps.addAgent(wallet.id, next, policy), {
+        wallet: wallet.id,
+        agent: next,
+        name: current.name,
+        kind: current.kind,
+        replaces: current.public_key,
+        ...policy,
+      }),
+    )
+  })
+
+  /** Emails the account a code that confirms a sensitive action. No email on the account: { sent: false }. */
+  owner.post('/confirm/email', async (c) => {
+    const email = await emailOf(db, c.var.owner)
+    if (!email) return c.json({ sent: false, email: null })
+    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    await emailCodes.start(email, ip, 'confirm', 'give an agent a new key')
+    const [name, domain] = email.split('@')
+    return c.json({ sent: true, email: `${name.slice(0, 2)}${'•'.repeat(Math.max(name.length - 2, 1))}@${domain}` })
+  })
+
   owner.patch('/wallets/:id/agents/:key', async (c) => {
     const wallet = await ownedWallet(c.var.owner, c.req.param('id'))
     const current = await walletAgent(wallet.id, c.req.param('key'))
