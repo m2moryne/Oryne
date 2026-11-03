@@ -1,6 +1,6 @@
 # Render Blueprint: the Oryne API on Stellar MAINNET (live mode, real USDC).
 #
-# Kept apart from render.yaml so a Blueprint sync never starts a paid service by
+# Kept apart from render.yaml so the testnet Blueprint never starts a mainnet service by
 # surprise. When you're ready: Render → New → Blueprint → this repo, and set the
 # blueprint file to render.mainnet.yaml. Then set VITE_ORYNE_LIVE_API_URL in
 # Vercel to this service's URL and redeploy the website: the dashboard's Live
