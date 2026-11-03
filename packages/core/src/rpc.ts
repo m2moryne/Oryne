@@ -88,6 +88,8 @@ export async function submitSigned(rpcServer: rpc.Server, tx: Transaction) {
     hash: sent.hash,
     ledger: result.ledger,
     returnValue: result.returnValue ? scValToNative(result.returnValue) : undefined,
+    /** What the source account paid in fees, in stroops. */
+    feeCharged: BigInt(result.resultXdr?.feeCharged ?? 0n),
   }
 }
 

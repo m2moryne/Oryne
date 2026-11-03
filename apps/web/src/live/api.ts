@@ -209,6 +209,12 @@ export type Info = {
   features?: { aiDebugger: boolean }
   /** Card top-ups with Paystack; null when off, missing on older API builds. */
   card?: CardInfo | null
+  /** Who may create a wallet: anyone, or accounts let in from the admin site. Missing on older API builds. */
+  access?: 'open' | 'invite'
+  /** A first wallet is paid for by card before it's created; null when not. `available` is false until card payments are set up. */
+  activation?: { usdc: string; available: boolean } | null
+  /** False: one wallet per account. */
+  multipleWallets?: boolean
 }
 
 export type CardInfo = { currency: string; rate: number; min: string; max: string }

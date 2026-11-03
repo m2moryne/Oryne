@@ -161,6 +161,32 @@ create table if not exists funds (
 );
 create index if not exists funds_wallet on funds(wallet_id, created_at desc);
 
+-- Who may create a wallet while LIVE_ACCESS is invite (see wallets.ts). A row is
+-- either an account asking for access (subject) or an email the admin let in.
+create table if not exists access (
+  id text primary key,
+  subject text,                   -- the account's sign-in subject, when they asked themselves
+  email text,                     -- lower-cased; matches any sign-in with this email
+  note text,                      -- what they plan to build, from the request
+  status text not null,           -- requested | approved | declined
+  created_at ${int} not null, decided_at ${int}
+);
+create index if not exists access_subject on access(subject);
+create index if not exists access_email on access(email);
+
+-- A first wallet paid for by card before it is deployed (ACTIVATION_USDC, see funding.ts).
+create table if not exists activations (
+  reference text primary key,     -- the Paystack reference
+  owner text not null, email text not null,
+  request text not null,          -- the wallet request (name, kind, passkey) as JSON
+  amount text not null,           -- USDC base units sent to the new wallet
+  charge_amount ${int} not null, charge_currency text not null,
+  status text not null,           -- pending | deploying | completed | failed | review
+  wallet_id text, error text, claim text,
+  created_at ${int} not null, completed_at ${int}
+);
+create index if not exists activations_owner on activations(owner, created_at desc);
+
 create table if not exists services (
   id text primary key, name text not null, description text not null default '',
   category text not null default 'Other', url text not null, pay_to text not null,

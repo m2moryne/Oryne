@@ -1,14 +1,8 @@
-import { randomBytes } from 'node:crypto'
 import {
   balanceOp,
-  base64url,
-  buildTx,
-  deployWalletOp,
   fromBaseUnits,
   isAddress,
-  publicKeyFromSpki,
   networkId,
-  prepareSignSubmit,
   toBaseUnits,
   walletOps,
   walletReads,
@@ -16,7 +10,7 @@ import {
   type PaymentRequirements,
   type Policy,
 } from '@oryne/core'
-import { hash, StrKey } from '@stellar/stellar-sdk'
+import { StrKey } from '@stellar/stellar-sdk'
 import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { HTTPException } from 'hono/http-exception'
@@ -24,6 +18,7 @@ import { createKey, listKeys, revokeKey, scopes as keyScopes } from './api-keys.
 import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, type OwnerVariables } from './auth.ts'
 import { createEmailCodes } from './email-codes.ts'
 import { createFunding } from './funding.ts'
+import { createWallets, emailOf, type WalletRequest } from './wallets.ts'
 import { createTeam } from './team.ts'
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
@@ -122,7 +117,8 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.deepseekApiKey, config.deepseekModel)
   const emailCodes = createEmailCodes(config, db)
-  const funding = createFunding(config, db, chain)
+  const wallets = createWallets(config, db, chain)
+  const funding = createFunding(config, db, chain, wallets)
   const team = createTeam(config, db)
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
   const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
@@ -275,6 +271,12 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
       features: { aiDebugger: aiDebugger.enabled },
       /** Card top-ups with Paystack: the currency and how much one USDC costs in it. Null when off. */
       card: funding.card,
+      /** Who may create a wallet: anyone (open) or approved accounts (invite). */
+      access: config.access,
+      /** A first wallet must be paid for by card before it's deployed: the USDC that goes into it. Null when not. */
+      activation: funding.activation,
+      /** One wallet per account unless true. */
+      multipleWallets: config.multipleWallets,
       /** Where records live: postgres (survives restarts) or sqlite (a local file). */
       storage: config.databaseUrl ? 'postgres' : 'sqlite',
       /** Classic asset behind the token, so G… accounts can add a trustline. */
@@ -545,61 +547,75 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     c.json(await billing(db, c.var.owner, now(), money, config.network.name === 'mainnet')),
   )
 
+  /** Only the account owner, signed in: never a teammate or an API key. */
+  const accountOwnerOnly = (c: Context<{ Variables: OwnerVariables }>) => {
+    sessionOnly(c)
+    if (c.var.member) throw new HTTPException(403, { message: 'Only the account owner can do this' })
+  }
+
   owner.post('/wallets', async (c) => {
-    type WalletInput = { name?: string; kind?: string; passkey?: { publicKey: string; credentialId: string } }
-    const input = await body<WalletInput>(c).catch(() => ({}) as WalletInput)
-    const { name } = input
-    // Chosen when the first wallet is made; checked before anything is deployed.
-    if (input.kind !== undefined && !accountKinds.includes(input.kind as AccountKind)) {
-      throw new HTTPException(400, { message: `kind must be one of: ${accountKinds.join(', ')}` })
+    accountOwnerOnly(c)
+    const input = await body<WalletRequest>(c).catch(() => ({}) as WalletRequest)
+    await wallets.assertCanCreate(c.var.owner)
+    // On mainnet the first wallet is paid for by card first: see /v1/activation.
+    if (funding.activation) {
+      throw new HTTPException(402, {
+        message: `Activate your wallet with a ${funding.activation.usdc} USDC card top-up first. It goes into your wallet.`,
+      })
     }
-    // Freighter users own their wallet with their account; everyone else with a passkey.
-    let walletOwner: { address: string } | { passkey: Uint8Array }
-    if (input.passkey) {
-      let key: Uint8Array
-      try {
-        const raw = base64url.decode(input.passkey.publicKey)
-        key = raw.length === 65 ? raw : publicKeyFromSpki(raw)
-      } catch {
-        throw new HTTPException(400, { message: 'passkey.publicKey must be a P-256 key (SPKI or 65-byte raw), base64url' })
-      }
-      if (!input.passkey.credentialId) throw new HTTPException(400, { message: 'passkey.credentialId is required' })
-      walletOwner = { passkey: key }
-    } else if (StrKey.isValidEd25519PublicKey(c.var.owner)) {
-      walletOwner = { address: c.var.owner }
+    return c.json(await wallets.deploy(c.var.owner, input), 201)
+  })
+
+  // ------------------------------------------------------------ live access
+  // While LIVE_ACCESS is invite, accounts ask here and an admin approves them.
+
+  owner.get('/access', async (c) => {
+    if (await wallets.hasAccess(c.var.owner)) return c.json({ mode: config.access, status: 'approved' })
+    const row = await db
+      .prepare('select status, created_at from access where subject = ? order by created_at desc limit 1')
+      .get<{ status: string; created_at: number }>(c.var.owner)
+    return c.json({ mode: config.access, status: row?.status ?? 'none', requestedAt: row?.created_at ?? null })
+  })
+
+  owner.post('/access', async (c) => {
+    accountOwnerOnly(c)
+    if (await wallets.hasAccess(c.var.owner)) return c.json({ mode: config.access, status: 'approved' })
+    const input = await body<{ note?: unknown; email?: unknown }>(c).catch(() => ({}) as { note?: unknown; email?: unknown })
+    const note = typeof input.note === 'string' ? input.note.trim().slice(0, 500) : ''
+    const given = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+    const email = (await emailOf(db, c.var.owner)) ?? (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(given) ? given : null)
+    const existing = await db
+      .prepare("select id from access where subject = ? and status = 'requested'")
+      .get<{ id: string }>(c.var.owner)
+    if (existing) {
+      await db.prepare('update access set note = ?, email = coalesce(?, email) where id = ?').run(note, email, existing.id)
     } else {
-      throw new HTTPException(400, { message: 'Create a passkey to own your wallet' })
+      await db
+        .prepare("insert into access (id, subject, email, note, status, created_at) values (?, ?, ?, ?, 'requested', ?)")
+        .run(newId('acc'), c.var.owner, email, note, now())
     }
-    const salt = hash(Buffer.concat([Buffer.from(c.var.owner), randomBytes(16)]))
-    const result = await chain.serial(async () =>
-      prepareSignSubmit(
-        chain.rpc,
-        await buildTx(
-          chain.rpc,
-          chain.network,
-          chain.sponsor.publicKey(),
-          deployWalletOp(chain.sponsor.publicKey(), chain.walletWasmHash, walletOwner, salt),
-        ),
-        chain.sponsor,
-      ),
-    )
-    const id = String(result.returnValue)
-    const ownerKind = 'passkey' in walletOwner ? 'passkey' : 'account'
-    await db.prepare('insert into wallets (id, owner, owner_kind, name, tx_hash, created_at) values (?, ?, ?, ?, ?, ?)').run(
-      id,
-      c.var.owner,
-      ownerKind,
-      name?.trim() || 'My wallet',
-      result.hash,
-      now(),
-    )
-    if ('passkey' in walletOwner) {
-      await db.prepare(
-        'insert into passkeys (credential_id, subject, wallet_id, public_key, created_at) values (?, ?, ?, ?, ?)',
-      ).run(input.passkey!.credentialId, c.var.owner, id, Buffer.from(walletOwner.passkey).toString('hex'), now())
-    }
-    if (input.kind) await setAccountKind(c.var.owner, input.kind)
-    return c.json({ id, hash: result.hash, ledger: result.ledger }, 201)
+    return c.json({ mode: config.access, status: 'requested' }, 201)
+  })
+
+  // ------------------------------------------------------------- activation
+
+  owner.get('/activation', async (c) => c.json({ activation: await funding.latestActivation(c.var.owner) }))
+
+  /** Starts the card checkout that pays for, and funds, the first wallet. */
+  owner.post('/activation', async (c) => {
+    accountOwnerOnly(c)
+    const input = await body<{ wallet?: WalletRequest; email?: string }>(c)
+    const email = (input.email ?? (await emailOf(db, c.var.owner)) ?? '').trim()
+    return c.json(await funding.startActivation({ owner: c.var.owner, email, request: input.wallet ?? {} }), 201)
+  })
+
+  /** Called when the owner returns from checkout: confirms with Paystack, then deploys and funds the wallet once. */
+  owner.post('/activation/:reference/confirm', async (c) => {
+    const row = await db
+      .prepare('select owner from activations where reference = ?')
+      .get<{ owner: string }>(c.req.param('reference'))
+    if (!row || row.owner !== c.var.owner) throw new HTTPException(404, { message: 'No such activation' })
+    return c.json(await funding.confirmActivation(c.req.param('reference')))
   })
 
   owner.get('/wallets/:id', async (c) => {

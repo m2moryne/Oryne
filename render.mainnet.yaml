@@ -40,6 +40,22 @@ services:
       # Pays network fees and deploys wallets. A mainnet account you fund with XLM.
       - key: SPONSOR_SECRET
         sync: false
+      # Most XLM the sponsor may spend on fees in a UTC day; past it, sponsored
+      # actions are refused until midnight. A wallet deploy is ~0.003 XLM.
+      - key: SPONSOR_DAILY_XLM
+        value: "5"
+      # invite: only accounts approved in the admin site (Access) can create a
+      # wallet. Switch to open at launch.
+      - key: LIVE_ACCESS
+        value: invite
+      # A first wallet is paid for by card before it's deployed; the USDC goes
+      # into it. Needs Paystack and the treasury. 0 turns it off.
+      - key: ACTIVATION_USDC
+        value: "5"
+      # Set after the first start (Admin -> System -> Wallet wasm) so the
+      # contract is never re-uploaded or changed by a deploy.
+      - key: WALLET_WASM_HASH
+        sync: false
       # Sends real USDC for card top-ups. Fund it with USDC (and a little XLM).
       - key: TREASURY_SECRET
         sync: false

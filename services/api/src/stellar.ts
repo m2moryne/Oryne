@@ -8,6 +8,7 @@ import {
   type NetworkConfig,
 } from '@oryne/core'
 import { Asset, hash, Keypair, Operation, rpc } from '@stellar/stellar-sdk'
+import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.ts'
 import { getKv, setKv, type Db } from './db.ts'
 
@@ -25,6 +26,43 @@ export type Chain = {
   walletWasmHash: Buffer
   /** Runs sponsor-signed submissions one at a time, so sequence numbers never clash. */
   serial: <T>(task: () => Promise<T>) => Promise<T>
+  /** The sponsor's daily fee allowance (SPONSOR_DAILY_XLM). */
+  budget: SponsorBudget
+}
+
+export type SponsorBudget = {
+  /** Throws 503 when today's sponsored fees have reached the cap. Call before a sponsor-paid transaction. */
+  check(): Promise<void>
+  /** Adds a landed transaction's fee (stroops) to today's total. */
+  spent(stroops: bigint | undefined): Promise<void>
+  /** Today's total and the cap, in XLM; cap is null when there is none. */
+  today(): Promise<{ day: string; spent: string; cap: string | null }>
+}
+
+const STROOPS = 10_000_000n
+const xlm = (stroops: bigint) => (Number(stroops) / Number(STROOPS)).toFixed(7).replace(/\.?0+$/, '')
+
+function sponsorBudget(db: Db, capXlm: number): SponsorBudget {
+  const cap = capXlm > 0 ? BigInt(Math.round(capXlm * Number(STROOPS))) : null
+  const day = () => new Date().toISOString().slice(0, 10)
+  const key = () => `sponsor_fees:${day()}`
+  const total = async () => BigInt((await getKv(db, key())) ?? '0')
+  return {
+    async check() {
+      if (cap !== null && (await total()) >= cap) {
+        throw new HTTPException(503, {
+          message: 'Oryne has reached today’s limit for network fees it pays. Try again after midnight UTC.',
+        })
+      }
+    },
+    async spent(stroops) {
+      if (!stroops) return
+      await setKv(db, key(), ((await total()) + stroops).toString())
+    },
+    async today() {
+      return { day: day(), spent: xlm(await total()), cap: cap === null ? null : xlm(cap) }
+    },
+  }
 }
 
 function queue() {
@@ -36,13 +74,25 @@ function queue() {
   }
 }
 
+/**
+ * Whether an account exists. Only a clear "not found" from the RPC counts as
+ * missing: a timeout or an RPC hiccup is retried and then thrown, so a slow
+ * network never looks like a missing account (which would ask friendbot for
+ * XLM on testnet and stop the server on mainnet).
+ */
 async function exists(rpcServer: rpc.Server, publicKey: string) {
-  try {
-    await rpcServer.getAccount(publicKey)
-    return true
-  } catch {
-    return false
+  let lastError: unknown
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      await rpcServer.getAccount(publicKey)
+      return true
+    } catch (error) {
+      if (/not found/i.test(String((error as Error)?.message ?? error))) return false
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
+    }
   }
+  throw new Error(`Couldn’t reach Stellar RPC to check ${publicKey}: ${(lastError as Error)?.message ?? lastError}`)
 }
 
 async function ensureFunded(network: NetworkConfig, rpcServer: rpc.Server, keypair: Keypair) {
@@ -76,6 +126,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
   if (!testnet && !config.sponsorSecret) throw new Error('SPONSOR_SECRET is required outside testnet')
 
   const sponsor = await storedKeypair(db, 'sponsor_secret', config.sponsorSecret)
+  const budget = sponsorBudget(db, config.sponsorDailyXlm)
   await ensureFunded(network, rpcServer, sponsor)
 
   // The token agents spend.
@@ -104,18 +155,24 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
 
   // The agent-wallet code every new wallet is deployed from. Unless pinned with
   // WALLET_WASM_HASH, fetch the latest build and upload it when it has changed.
+  // Outside testnet uploading costs real XLM and changes the code new wallets
+  // run, so it happens once: later builds are only used once pinned.
   let wasmHashHex = config.walletWasmHash
-  if (!wasmHashHex) {
-    const known = await getKv(db, 'wallet_wasm_hash')
+  const knownWasm = wasmHashHex ? undefined : await getKv(db, 'wallet_wasm_hash')
+  if (!wasmHashHex && knownWasm && !testnet) {
+    wasmHashHex = knownWasm
+  } else if (!wasmHashHex) {
+    const known = knownWasm
     try {
       const wasm = await loadWasm(config.walletWasm)
       const latest = Buffer.from(hash(wasm)).toString('hex')
       if (latest !== known) {
-        await prepareSignSubmit(
+        const uploaded = await prepareSignSubmit(
           rpcServer,
           await buildTx(rpcServer, network, sponsor.publicKey(), Operation.uploadContractWasm({ wasm })),
           sponsor,
         )
+        await budget.spent(uploaded.feeCharged)
         await setKv(db, 'wallet_wasm_hash', latest)
       }
       wasmHashHex = latest
@@ -133,6 +190,7 @@ export async function connect(config: Config, db: Db): Promise<Chain> {
     issuer,
     walletWasmHash: Buffer.from(wasmHashHex, 'hex'),
     serial: queue(),
+    budget,
   }
 }
 

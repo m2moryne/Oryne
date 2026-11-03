@@ -31,10 +31,11 @@ import { privatePages } from '../lib/seo'
 import { ThemeToggle, useTheme } from '../app/theme'
 import { Field, inputClasses } from '../app/ui'
 import { SignInField } from '../components/SignInField'
-import { api, explorerAccount, isAccount, oauthStart, type Session } from './api'
+import { api, explorerAccount, oauthStart, type Session } from './api'
 import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
-import { AccountSwitcher, GateTeams, TeamNotice } from './TeamBar'
+import { CreateWallet } from './CreateWallet'
+import { AccountSwitcher, TeamNotice } from './TeamBar'
 import { LiveBanner, SidebarModeToggle } from './ModeControl'
 import { Loader } from '../components/Loader'
 import type { AccountKind } from './api'
@@ -114,7 +115,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <AccountSwitcher />
         {live.wallet && (
           <div className="border border-cream/15 p-4">
-            <p className="type-label text-cream/60">Wallet · USDC</p>
+            <p className="type-label text-cream/60">{live.info?.network === 'stellar-mainnet' ? 'Live wallet · Mainnet' : 'Test wallet · Testnet'}</p>
             <p className="mt-3 text-2xl tracking-[-0.02em] tabular-nums">{live.wallet.balance}</p>
             <a
               href={explorerAccount(live.info?.network ?? '', live.wallet.id)}
@@ -175,20 +176,12 @@ function AuthFrame({ children }: { children: ReactNode }) {
   )
 }
 
-const kindOptions: Array<{ kind: AccountKind; title: string; note: string }> = [
-  { kind: 'owner', title: 'Give my AI agents a wallet', note: 'Set limits, approve payments and see what they spend.' },
-  { kind: 'developer', title: 'Build with Oryne', note: 'API keys, SDKs, logs and webhooks for agents or a paid API.' },
-]
-
 /** Shown until the owner signs in, or while they have no wallet yet. */
 function Gate() {
   const live = useLive()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [name, setName] = useState('My agent wallet')
-  // Coming from the developer console (or the website's Developers link) suggests a developer account.
   const { pathname } = useLocation()
-  const [kind, setKind] = useState<AccountKind>(pathname.startsWith(DEV_BASE) ? 'developer' : 'owner')
   // Continue with email: enter the address, then the code sent to it.
   const [emailStep, setEmailStep] = useState<'address' | 'code' | null>(null)
   const [email, setEmail] = useState('')
@@ -220,7 +213,6 @@ function Gate() {
   }
 
   const auth = live.info?.auth
-  const passkeyOwner = !!live.session && !isAccount(live.session.address)
   const shownError = error ?? live.error
 
   return (
@@ -341,59 +333,7 @@ function Gate() {
           </Link>
         </>
       ) : (
-        <>
-          <GateTeams />
-          <h1 className="text-2xl tracking-[-0.02em]">Create your agent wallet</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            {passkeyOwner
-              ? 'Your device will create a passkey that owns this wallet. You use it to approve changes; the key never leaves your device.'
-              : 'Oryne deploys a wallet contract on Stellar owned by your Freighter account.'}{' '}
-            Oryne pays the network fee.
-          </p>
-          <fieldset className="mt-6">
-            <legend className="text-sm font-medium">How will you use Oryne?</legend>
-            <div className="mt-2 grid gap-2">
-              {kindOptions.map((option) => (
-                <label
-                  key={option.kind}
-                  className={cn(
-                    'flex cursor-pointer gap-3 rounded-lg border px-4 py-3 text-sm',
-                    kind === option.kind ? 'border-charcoal' : 'border-taupe/60 hover:border-charcoal/50',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="kind"
-                    checked={kind === option.kind}
-                    onChange={() => setKind(option.kind)}
-                    className="mt-1 accent-charcoal"
-                  />
-                  <span>
-                    <span className="font-medium">{option.title}</span>
-                    <span className="mt-0.5 block text-muted">{option.note}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <div className="mt-6">
-            <Field label="Name">
-              {(id) => <input id={id} value={name} onChange={(event) => setName(event.target.value)} className={inputClasses} />}
-            </Field>
-          </div>
-          <Button className="mt-6 w-full" onClick={run('create', () => live.createWallet(name, kind))} disabled={!!busy}>
-            {busy
-              ? passkeyOwner
-                ? 'Creating passkey and wallet…'
-                : 'Deploying on Stellar…'
-              : passkeyOwner
-                ? 'Create passkey and wallet'
-                : 'Create wallet'}
-          </Button>
-          <button type="button" onClick={live.signOut} className="mt-4 text-xs text-muted underline underline-offset-4">
-            Use a different account
-          </button>
-        </>
+        <CreateWallet />
       )}
       {shownError && (
         <p role="alert" className="mt-5 rounded-lg border border-burgundy/30 px-4 py-3 text-sm text-burgundy">

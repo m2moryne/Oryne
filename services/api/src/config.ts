@@ -51,6 +51,26 @@ export type Config = {
    * (mainnet). On testnet, test USDC is minted instead and this isn't needed.
    */
   treasurySecret?: string
+  /**
+   * Who may create a wallet. `invite`: only accounts approved in the admin
+   * site (they can ask from the dashboard). `open`: anyone who signs in.
+   * Defaults to invite on mainnet and open on testnet.
+   */
+  access: 'invite' | 'open'
+  /**
+   * USDC a new mainnet wallet must be topped up with by card before it is
+   * deployed, so every wallet Oryne pays to deploy belongs to someone who paid.
+   * The money goes into their wallet. 0 turns it off. Mainnet only; default 5.
+   */
+  activationUsdc: string
+  /**
+   * Most XLM the sponsor may spend on fees in one UTC day. Past it, sponsored
+   * actions are refused until midnight. 0 means no cap. Default 5 on mainnet,
+   * no cap on testnet.
+   */
+  sponsorDailyXlm: number
+  /** More than one wallet per account. Default: allowed on testnet only. */
+  multipleWallets: boolean
 }
 
 const pair = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : undefined)
@@ -127,7 +147,23 @@ export function loadConfig(): Config {
     adminToken: env('ADMIN_TOKEN'),
     paystack: paystackConfig(),
     treasurySecret: secret('TREASURY_SECRET'),
+    access: accessMode(env('LIVE_ACCESS') ?? (networkName === 'mainnet' ? 'invite' : 'open')),
+    activationUsdc: amount('ACTIVATION_USDC', networkName === 'mainnet' ? '5' : '0'),
+    sponsorDailyXlm: Number(amount('SPONSOR_DAILY_XLM', networkName === 'mainnet' ? '5' : '0')),
+    multipleWallets: (env('MULTIPLE_WALLETS') ?? (networkName === 'mainnet' ? '0' : '1')) === '1',
   }
+}
+
+function accessMode(value: string): Config['access'] {
+  if (value !== 'invite' && value !== 'open') throw new Error('LIVE_ACCESS must be invite or open')
+  return value
+}
+
+/** A non-negative decimal from the environment, e.g. "5" or "2.5". */
+function amount(name: string, fallback: string) {
+  const value = env(name) ?? fallback
+  if (!/^\d+(\.\d{1,7})?$/.test(value)) throw new Error(`${name} must be a number like 5 or 2.5`)
+  return value
 }
 
 function paystackConfig(): Config['paystack'] {

@@ -151,11 +151,17 @@ export async function settle(
     })
   }
 
+  try {
+    await chain.budget.check()
+  } catch (error) {
+    return { success: false, errorReason: (error as Error).message, payer: auth.from }
+  }
   return chain.serial(async () => {
     try {
       const prepared = await buildSettlement(chain, auth)
       prepared.sign(chain.sponsor)
       const result = await submitSigned(chain.rpc, prepared)
+      await chain.budget.spent(result.feeCharged)
       await record('settled', { hash: result.hash, ledger: result.ledger })
       return { success: true, transaction: result.hash, ledger: result.ledger, payer: auth.from }
     } catch (error) {

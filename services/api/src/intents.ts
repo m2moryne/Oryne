@@ -199,6 +199,7 @@ export async function submitIntent(
     const root = signedEntry.rootInvocation.function
     if (root.type !== 'sorobanAuthorizedFunctionTypeContractFn') throw new HTTPException(500, { message: 'Unexpected intent' })
     const call = root.contractFn
+    await chain.budget.check()
     return chain.serial(async () => {
       try {
         const account = await chain.rpc.getAccount(chain.sponsor.publicKey())
@@ -216,7 +217,9 @@ export async function submitIntent(
         // Simulating with the signed entry runs the wallet's passkey check.
         const prepared = await chain.rpc.prepareTransaction(tx)
         prepared.sign(chain.sponsor)
-        return await finish(await submitSigned(chain.rpc, prepared))
+        const result = await submitSigned(chain.rpc, prepared)
+        await chain.budget.spent(result.feeCharged)
+        return await finish(result)
       } catch (error) {
         return fail(new StellarError('Passkey transaction failed', String((error as Error).message ?? error)))
       }

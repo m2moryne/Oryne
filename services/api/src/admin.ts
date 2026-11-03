@@ -3,13 +3,14 @@ import { fromBaseUnits, networkId } from '@oryne/core'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.ts'
-import { now, type Db } from './db.ts'
+import { newId, now, type Db } from './db.ts'
 import type { Chain } from './stellar.ts'
 
 /**
  * The admin API behind the separate admin site: read-only views across every
- * account. It exists only when ADMIN_TOKEN is set; callers send it as a bearer
- * token. Failed attempts are limited per address so the token can't be guessed.
+ * account, plus deciding who may create a wallet while LIVE_ACCESS is invite.
+ * It exists only when ADMIN_TOKEN is set; callers send it as a bearer token.
+ * Failed attempts are limited per address so the token can't be guessed.
  */
 
 const MIN_TOKEN = 32
@@ -217,7 +218,85 @@ export function adminApi(config: Config, db: Db, chain: Chain) {
     })
   })
 
-  admin.get('/system', (c) =>
+  // ---------------------------------------------------------------- access
+
+  admin.get('/access', async (c) => {
+    const status = c.req.query('status')
+    const rows = await db
+      .prepare(
+        `select a.*, u.name, u.provider,
+           (select count(*) from wallets w where w.owner = a.subject) as wallets
+         from access a left join users u on u.subject = a.subject
+         ${status ? 'where a.status = ?' : ''}
+         order by case a.status when 'requested' then 0 else 1 end, a.created_at desc
+         limit ${limitOf(c.req.query('limit'), 200)}`,
+      )
+      .all(...(status ? [status] : []))
+    return c.json({
+      mode: config.access,
+      entries: rows.map((row) => ({
+        id: row.id,
+        subject: row.subject,
+        email: row.email,
+        name: row.name ?? null,
+        provider: row.provider ?? (row.subject && String(row.subject).startsWith('G') ? 'freighter' : null),
+        note: row.note,
+        status: row.status,
+        wallets: Number(row.wallets ?? 0),
+        createdAt: row.created_at,
+        decidedAt: row.decided_at,
+      })),
+    })
+  })
+
+  /** Lets an email in before they ask: any sign-in with that email may create a wallet. */
+  admin.post('/access', async (c) => {
+    const input = (await c.req.json().catch(() => ({}))) as { email?: unknown }
+    const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HTTPException(400, { message: 'A valid email is needed' })
+    const existing = await db.prepare('select id from access where email = ? and subject is null').get<{ id: string }>(email)
+    if (existing) {
+      await db.prepare("update access set status = 'approved', decided_at = ? where id = ?").run(now(), existing.id)
+    } else {
+      await db
+        .prepare("insert into access (id, email, status, created_at, decided_at) values (?, ?, 'approved', ?, ?)")
+        .run(newId('acc'), email, now(), now())
+    }
+    return c.json({ ok: true }, 201)
+  })
+
+  admin.post('/access/:id/:decision', async (c) => {
+    const decision = c.req.param('decision')
+    const status = decision === 'approve' ? 'approved' : decision === 'decline' ? 'declined' : null
+    if (!status) throw new HTTPException(404, { message: 'Not found' })
+    const row = await db.prepare('select id from access where id = ?').get(c.req.param('id'))
+    if (!row) throw new HTTPException(404, { message: 'No such entry' })
+    await db.prepare('update access set status = ?, decided_at = ? where id = ?').run(status, now(), c.req.param('id'))
+    return c.json({ ok: true, status })
+  })
+
+  /** Paid first wallets, newest first; `review` ones need a person. */
+  admin.get('/activations', async (c) => {
+    const rows = await db
+      .prepare(`select * from activations order by created_at desc limit ${limitOf(c.req.query('limit'), 200)}`)
+      .all()
+    return c.json({
+      activations: rows.map((row) => ({
+        reference: row.reference,
+        owner: row.owner,
+        email: row.email,
+        amount: money(row.amount),
+        charge: { amount: (Number(row.charge_amount) / 100).toFixed(2), currency: row.charge_currency },
+        status: row.status,
+        walletId: row.wallet_id,
+        error: row.error,
+        createdAt: row.created_at,
+        completedAt: row.completed_at,
+      })),
+    })
+  })
+
+  admin.get('/system', async (c) =>
     c.json({
       network: networkId(chain.network),
       rpcUrl: chain.network.rpcUrl,
@@ -234,6 +313,11 @@ export function adminApi(config: Config, db: Db, chain: Chain) {
         devLogin: config.devLogin,
         aiDebugger: !!config.deepseekApiKey,
       },
+      access: config.access,
+      activationUsdc: config.activationUsdc === '0' ? null : config.activationUsdc,
+      multipleWallets: config.multipleWallets,
+      /** Network fees the sponsor has paid today (UTC) and the daily cap, in XLM. */
+      sponsorFees: await chain.budget.today(),
       startedAt,
     }),
   )

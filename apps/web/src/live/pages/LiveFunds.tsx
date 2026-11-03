@@ -378,6 +378,12 @@ function StellarDeposit() {
         <span className="break-all font-mono text-xs">{wallet.id}</span>
         <CopyButton value={wallet.id} className="shrink-0 text-muted hover:text-charcoal" />
       </div>
+      {live.info?.network === 'stellar-testnet' && (
+        <p className="mt-4 border border-burgundy/40 px-4 py-2.5 text-xs leading-relaxed text-burgundy">
+          This is your test wallet. It only exists on Stellar testnet: never send real USDC to it. Your live wallet has its
+          own address, shown here when you switch to Live.
+        </p>
+      )}
       <p className="mt-4 text-xs leading-relaxed text-muted">
         Only USDC counts toward what your agents can spend. Deposits sent this way show in your balance, and on Stellar
         Expert, but aren’t listed in the history below yet.

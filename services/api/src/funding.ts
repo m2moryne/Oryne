@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
 import type { Chain } from './stellar.ts'
+import { checkRequest, type WalletRequest, type Wallets } from './wallets.ts'
 
 /**
  * Money into and out of wallets.
@@ -18,6 +19,12 @@ import type { Chain } from './stellar.ts'
  *
  * Test USDC from the faucet and withdrawals are recorded here too, so the
  * owner sees every movement in one place.
+ *
+ * Activation (mainnet, ACTIVATION_USDC): a new account's first wallet is paid
+ * for before it exists. The owner pays a small top-up by card; once Paystack
+ * confirms it, the wallet is deployed and the USDC sent into it. So Oryne only
+ * spends XLM deploying wallets for people who have paid, and the money is
+ * theirs, not a fee.
  */
 
 export type FundRow = {
@@ -44,9 +51,25 @@ const CARD_MIN = '1'
 const CARD_MAX = '500'
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,63}$/
 
+export type ActivationRow = {
+  reference: string
+  owner: string
+  email: string
+  request: string
+  amount: string
+  charge_amount: number
+  charge_currency: string
+  status: 'pending' | 'paid' | 'deploying' | 'completed' | 'failed' | 'review'
+  wallet_id: string | null
+  error: string | null
+  claim: string | null
+  created_at: number
+  completed_at: number | null
+}
+
 type PaystackTransaction = { status: string; reference: string; amount: number; currency: string; gateway_response?: string }
 
-export function createFunding(config: Config, db: Db, chain: Chain) {
+export function createFunding(config: Config, db: Db, chain: Chain, wallets: Wallets) {
   const decimals = chain.network.decimals
   const paystack = config.paystack
   const treasury = config.treasurySecret ? Keypair.fromSecret(config.treasurySecret) : undefined
@@ -216,6 +239,156 @@ export function createFunding(config: Config, db: Db, chain: Chain) {
     return view((await byId(row.id))!)
   }
 
+  // ── Activation ──────────────────────────────────────────────────────────────
+
+  const activationUnits = toBaseUnits(config.activationUsdc, decimals)
+  /** Whether a first wallet must be paid for before it is deployed. */
+  const activationRequired = activationUnits > 0n
+
+  const activationView = (row: ActivationRow) => ({
+    reference: row.reference,
+    status: row.status === 'deploying' || row.status === 'paid' ? 'pending' : row.status,
+    paid: row.status !== 'pending' && row.status !== 'failed',
+    amount: fromBaseUnits(BigInt(row.amount), decimals),
+    charge: { amount: (Number(row.charge_amount) / 100).toFixed(2), currency: row.charge_currency },
+    walletId: row.wallet_id,
+    error: row.error,
+    createdAt: row.created_at,
+  })
+  const activationByRef = (reference: string) =>
+    db.prepare('select * from activations where reference = ?').get<ActivationRow>(reference)
+
+  /** Opens a Paystack checkout for the activation top-up. The wallet is deployed once it's paid. */
+  async function startActivation(input: { owner: string; email: string; request: WalletRequest }) {
+    if (!activationRequired) throw new HTTPException(400, { message: 'Wallets on this server don’t need activation' })
+    if (!cardEnabled) {
+      throw new HTTPException(503, {
+        message: 'Card payments aren’t set up yet, so live wallets can’t be activated. Try again soon.',
+      })
+    }
+    if (!EMAIL.test(input.email)) throw new HTTPException(400, { message: 'A valid email is needed for the card receipt' })
+    checkRequest(input.owner, input.request)
+    await wallets.assertCanCreate(input.owner)
+
+    const reference = `oryne-act-${randomBytes(12).toString('hex')}`
+    const charge = chargeFor(activationUnits)
+    const checkout = await paystackApi<{ authorization_url: string }>('/transaction/initialize', {
+      method: 'POST',
+      body: {
+        email: input.email,
+        amount: charge,
+        currency: paystack!.currency,
+        reference,
+        callback_url: `${config.webUrl}/app`,
+        metadata: {
+          activation: true,
+          usdc: config.activationUsdc,
+          custom_fields: [{ display_name: 'Oryne', variable_name: 'purpose', value: 'Wallet activation top-up' }],
+        },
+      },
+    })
+    await db.prepare(
+      `insert into activations (reference, owner, email, request, amount, charge_amount, charge_currency, status, created_at)
+       values (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+    ).run(
+      reference,
+      input.owner,
+      input.email,
+      JSON.stringify(input.request),
+      activationUnits.toString(),
+      charge,
+      paystack!.currency,
+      now(),
+    )
+    return { authorizationUrl: checkout.authorization_url, reference }
+  }
+
+  /** The owner's latest activation, so the dashboard can pick up where checkout left off. */
+  async function latestActivation(owner: string) {
+    const row = await db
+      .prepare('select * from activations where owner = ? order by created_at desc limit 1')
+      .get<ActivationRow>(owner)
+    return row ? activationView(row) : null
+  }
+
+  /**
+   * Checks an activation with Paystack and, once paid, deploys the wallet and
+   * sends the USDC into it. Safe to call any number of times.
+   */
+  async function confirmActivation(reference: string) {
+    const row = await activationByRef(reference)
+    if (!row) throw new HTTPException(404, { message: 'No such activation' })
+    if (row.status === 'pending') {
+      const payment = await paystackApi<PaystackTransaction>(`/transaction/verify/${encodeURIComponent(reference)}`)
+      if (payment.status !== 'success') {
+        if (['failed', 'abandoned', 'reversed'].includes(payment.status)) {
+          await db
+            .prepare("update activations set status = 'failed', error = ? where reference = ? and status = 'pending'")
+            .run(payment.gateway_response || `Card payment ${payment.status}`, reference)
+        }
+        return activationView((await activationByRef(reference))!)
+      }
+      if (payment.amount !== Number(row.charge_amount) || payment.currency !== row.charge_currency) {
+        await db.prepare("update activations set status = 'review', error = ? where reference = ?").run(
+          `Paystack reports ${payment.amount} ${payment.currency}, expected ${row.charge_amount} ${row.charge_currency}`,
+          reference,
+        )
+        return activationView((await activationByRef(reference))!)
+      }
+      await db.prepare("update activations set status = 'paid' where reference = ? and status = 'pending'").run(reference)
+    }
+    const paid = (await activationByRef(reference))!
+    if (paid.status !== 'paid') return activationView(paid)
+
+    // Claim it so only one caller deploys.
+    const claim = randomBytes(12).toString('hex')
+    await db
+      .prepare("update activations set status = 'deploying', claim = ? where reference = ? and status = 'paid'")
+      .run(claim, reference)
+    const claimed = (await activationByRef(reference))!
+    if (claimed.claim !== claim) return activationView(claimed)
+
+    let walletId: string
+    try {
+      walletId = (await wallets.deploy(row.owner, JSON.parse(row.request) as WalletRequest)).id
+    } catch (error) {
+      const message = String((error as Error).message ?? error)
+      if (error instanceof HTTPException && error.status === 503) {
+        // Refused before anything was sent (today's fee cap): still paid, safe to try again later.
+        await db
+          .prepare("update activations set status = 'paid', claim = null, error = ? where reference = ?")
+          .run(message, reference)
+      } else {
+        // It may or may not have landed: a person has to look, never an automatic retry.
+        console.error(`activation ${reference} was paid but deploying the wallet failed: ${message}`)
+        await db.prepare("update activations set status = 'review', error = ? where reference = ?").run(
+          `Paid, but creating the wallet failed. We'll sort it out: ${message}`.slice(0, 500),
+          reference,
+        )
+      }
+      return activationView((await activationByRef(reference))!)
+    }
+    await db.prepare('update activations set wallet_id = ?, error = null where reference = ?').run(walletId, reference)
+
+    try {
+      const txHash = await send(walletId, BigInt(row.amount))
+      const at = now()
+      await db.prepare(
+        `insert into funds (id, wallet_id, owner, kind, amount, status, reference, charge_amount, charge_currency, tx_hash, created_at, completed_at)
+         values (?, ?, ?, 'card', ?, 'completed', ?, ?, ?, ?, ?, ?)`,
+      ).run(newId('fund'), walletId, row.owner, row.amount, reference, row.charge_amount, row.charge_currency, txHash, at, at)
+      await db.prepare("update activations set status = 'completed', completed_at = ? where reference = ?").run(at, reference)
+    } catch (error) {
+      const message = String((error as Error).message ?? error)
+      console.error(`activation ${reference}: wallet ${walletId} created but sending USDC failed: ${message}`)
+      await db.prepare("update activations set status = 'review', error = ? where reference = ?").run(
+        `Your wallet is ready, but sending the USDC failed. We'll sort it out: ${message}`.slice(0, 500),
+        reference,
+      )
+    }
+    return activationView((await activationByRef(reference))!)
+  }
+
   /** Paystack's webhook: signed with the secret key (HMAC-SHA512 of the raw body). */
   async function webhook(rawBody: string, signature: string | undefined) {
     if (!paystack) throw new HTTPException(404, { message: 'Not found' })
@@ -225,8 +398,11 @@ export function createFunding(config: Config, db: Db, chain: Chain) {
       throw new HTTPException(401, { message: 'Bad signature' })
     }
     const event = JSON.parse(rawBody) as { event?: string; data?: { reference?: string } }
-    if (event.event === 'charge.success' && event.data?.reference?.startsWith('oryne-')) {
-      await confirm(event.data.reference).catch((error) => console.error('paystack webhook:', (error as Error).message))
+    const reference = event.data?.reference
+    if (event.event === 'charge.success' && reference?.startsWith('oryne-')) {
+      await (reference.startsWith('oryne-act-') ? confirmActivation(reference) : confirm(reference)).catch((error) =>
+        console.error('paystack webhook:', (error as Error).message),
+      )
     }
   }
 
@@ -239,6 +415,10 @@ export function createFunding(config: Config, db: Db, chain: Chain) {
     startCard,
     confirm,
     webhook,
+    activation: activationRequired ? { usdc: config.activationUsdc, available: cardEnabled } : null,
+    startActivation,
+    latestActivation,
+    confirmActivation,
   }
 }
 
