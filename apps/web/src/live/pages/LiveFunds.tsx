@@ -1,17 +1,15 @@
-import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, FlaskConical, Landmark } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { ArrowDownLeft, ArrowUpRight, Coins } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CopyButton } from '../../app/dev/devUi'
 import { EmptyState, Field, inputClasses, Panel, Stat } from '../../app/ui'
 import { Button } from '../../components/Button'
 import { Icon } from '../../components/Icon'
 import { cn } from '../../lib/cn'
 import { api, type CardInfo, type FundMovement, type Intent } from '../api'
+import { AddMoney, formatCharge } from './AddMoney'
 import { useLive } from '../LiveContext'
 import { AddressLink, ErrorNote, TxLink, useAction, usd, when } from '../shared'
 import { Loader } from '../../components/Loader'
-
-type Method = 'card' | 'test' | 'stellar'
 
 const kindLabel: Record<FundMovement['kind'], string> = {
   card: 'Card top-up',
@@ -24,32 +22,6 @@ const statusLabel: Record<FundMovement['status'], { label: string; classes: stri
   pending: { label: 'Pending', classes: 'border-taupe text-muted' },
   failed: { label: 'Failed', classes: 'border-burgundy/40 text-burgundy' },
   review: { label: 'Being checked', classes: 'border-burgundy/40 text-burgundy' },
-}
-
-const formatCharge = (amount: string, currency: string) => {
-  try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(amount))
-  } catch {
-    return `${currency} ${amount}`
-  }
-}
-
-function MethodTab({ active, icon, children, onClick }: { active: boolean; icon: typeof Coins; children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        '-mb-px inline-flex items-center gap-2 border-b px-1 pb-3 text-sm transition-colors',
-        active ? 'border-charcoal text-charcoal' : 'border-transparent text-muted hover:text-charcoal',
-      )}
-    >
-      <Icon icon={icon} size={15} />
-      {children}
-    </button>
-  )
 }
 
 /**
@@ -65,7 +37,6 @@ export default function LiveFunds() {
   const faucet = !!live.info?.faucet
   const [card, setCard] = useState<CardInfo | null>(live.info?.card ?? null)
   const [funds, setFunds] = useState<FundMovement[] | null>(null)
-  const [method, setMethod] = useState<Method>(live.info?.card ? 'card' : faucet ? 'test' : 'stellar')
   const [params, setParams] = useSearchParams()
 
   const load = useCallback(async () => {
@@ -78,12 +49,6 @@ export default function LiveFunds() {
   useEffect(() => {
     void load().catch(() => setFunds([]))
   }, [load])
-
-  useEffect(() => {
-    if (card && method === 'test' && !params.get('reference')) setMethod('card')
-    // Only when card top-ups first turn out to be available.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card])
 
   // Back from Paystack's checkout: confirm the payment, then keep checking briefly if it's still settling.
   const reference = params.get('reference') ?? params.get('trxref')
@@ -115,6 +80,8 @@ export default function LiveFunds() {
     void check()
   }, [reference, token, load, live, setParams])
 
+  const refreshAll = () => Promise.all([load(), live.refresh()]).then(() => undefined)
+
   const totalIn = (funds ?? [])
     .filter((row) => row.kind !== 'withdrawal' && row.status === 'completed')
     .reduce((total, row) => total + Number(row.amount), 0)
@@ -134,31 +101,9 @@ export default function LiveFunds() {
         <Stat label="Withdrawn" value={usd(totalOut.toFixed(2).replace(/\.00$/, ''))} note="Moved out by you" />
       </div>
 
+      <AddMoney card={card} faucet={faucet} onDone={refreshAll} />
+
       <div className="grid items-start gap-4 xl:grid-cols-[1fr_24rem]">
-        <Panel title="Add money">
-          <div role="tablist" aria-label="How to add money" className="flex flex-wrap gap-x-6 border-b border-taupe/40">
-            <MethodTab active={method === 'card'} icon={CreditCard} onClick={() => setMethod('card')}>
-              Card
-            </MethodTab>
-            {faucet && (
-              <MethodTab active={method === 'test'} icon={FlaskConical} onClick={() => setMethod('test')}>
-                Test USDC
-              </MethodTab>
-            )}
-            <MethodTab active={method === 'stellar'} icon={Landmark} onClick={() => setMethod('stellar')}>
-              From Stellar
-            </MethodTab>
-          </div>
-          <div className="pt-6">
-            {method === 'card' && <CardTopUp card={card} testnet={faucet} />}
-            {method === 'test' && <TestTopUp onDone={() => Promise.all([load(), live.refresh()]).then(() => undefined)} />}
-            {method === 'stellar' && <StellarDeposit />}
-          </div>
-        </Panel>
-
-        <Withdraw onDone={() => Promise.all([load(), live.refresh()]).then(() => undefined)} />
-      </div>
-
       <Panel title="History" flush>
         {funds === null ? (
           <Loader />
@@ -219,6 +164,9 @@ export default function LiveFunds() {
           </div>
         )}
       </Panel>
+
+        <Withdraw onDone={refreshAll} />
+      </div>
     </div>
   )
 }
@@ -250,144 +198,6 @@ function ReturnBanner({ movement, error, onClose }: { movement: FundMovement | n
           Dismiss
         </button>
       )}
-    </div>
-  )
-}
-
-function CardTopUp({ card, testnet }: { card: CardInfo | null; testnet: boolean }) {
-  const live = useLive()
-  const wallet = live.wallet!
-  const start = useAction()
-  const [amount, setAmount] = useState('20')
-  const knownEmail = live.user?.email ?? ''
-  const [email, setEmail] = useState(knownEmail)
-
-  if (!card) {
-    return (
-      <p className="text-sm leading-relaxed text-muted">
-        Card top-ups aren’t switched on yet.{testnet ? ' On testnet, use Test USDC in the meantime.' : ''}
-      </p>
-    )
-  }
-
-  const value = Number(amount)
-  const valid = value >= Number(card.min) && value <= Number(card.max)
-  const charge = valid ? formatCharge((value * card.rate).toFixed(2), card.currency) : null
-
-  return (
-    <div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Amount, USDC" hint={`Between ${card.min} and ${card.max}.`}>
-          {(id) => (
-            <input id={id} value={amount} inputMode="decimal" onChange={(event) => setAmount(event.target.value)} className={`${inputClasses} py-2`} />
-          )}
-        </Field>
-        {!knownEmail && (
-          <Field label="Email for the receipt">
-            {(id) => (
-              <input id={id} type="email" value={email} onChange={(event) => setEmail(event.target.value.trim())} className={`${inputClasses} py-2`} />
-            )}
-          </Field>
-        )}
-      </div>
-      <p className="mt-4 text-sm text-muted">
-        {charge ? (
-          <>
-            You pay <span className="text-charcoal">{charge}</span> by card, at {formatCharge(String(card.rate), card.currency)} per USDC.
-          </>
-        ) : (
-          'Enter an amount to see the price.'
-        )}
-      </p>
-      <Button
-        size="sm"
-        className="mt-5"
-        leadingIcon={CreditCard}
-        disabled={!valid || start.busy || (!knownEmail && !email)}
-        onClick={() =>
-          start.run(async () => {
-            const checkout = await api<{ authorizationUrl: string }>(`/v1/wallets/${wallet.id}/topups`, {
-              token: live.session!.token,
-              body: { amount, email: email || undefined },
-            })
-            window.location.assign(checkout.authorizationUrl)
-          })
-        }
-      >
-        {start.busy ? 'Opening checkout…' : 'Pay with card'}
-      </Button>
-      <ErrorNote error={start.error} />
-      <p className="mt-5 border-t border-taupe/40 pt-4 text-xs leading-relaxed text-muted">
-        Card payments are handled by Paystack; Oryne never sees your card details.
-        {testnet && (
-          <>
-            {' '}
-            Testnet uses Paystack’s test mode: pay with test card <span className="font-mono">4084 0840 8408 4081</span>, any
-            future expiry, CVV <span className="font-mono">408</span>. No real money moves.
-          </>
-        )}
-      </p>
-    </div>
-  )
-}
-
-function TestTopUp({ onDone }: { onDone: () => Promise<void> }) {
-  const live = useLive()
-  const wallet = live.wallet!
-  const fund = useAction()
-  const [amount, setAmount] = useState('100')
-  return (
-    <div>
-      <p className="text-sm text-muted">Testnet only: free test USDC, straight into your wallet. Up to 1000 at a time.</p>
-      <div className="mt-4 flex max-w-sm gap-2">
-        <input aria-label="Amount, USDC" value={amount} inputMode="decimal" onChange={(event) => setAmount(event.target.value)} className={`${inputClasses} py-2`} />
-        <Button
-          size="sm"
-          disabled={fund.busy}
-          onClick={() =>
-            fund.run(async () => {
-              const result = await api<{ hash: string }>('/v1/faucet', { body: { to: wallet.id, amount } })
-              await onDone()
-              return result.hash
-            })
-          }
-        >
-          {fund.busy ? 'Adding…' : 'Add'}
-        </Button>
-      </div>
-      {fund.done && (
-        <p className="mt-3 text-sm text-muted">
-          Added. <TxLink hash={fund.done} />
-        </p>
-      )}
-      <ErrorNote error={fund.error} />
-    </div>
-  )
-}
-
-function StellarDeposit() {
-  const live = useLive()
-  const wallet = live.wallet!
-  return (
-    <div className="text-sm">
-      <p className="leading-relaxed text-muted">
-        Send USDC on Stellar {live.info?.network === 'stellar-testnet' ? 'testnet ' : ''}straight to your wallet’s contract
-        address, from an exchange or another wallet that supports sending to contract addresses (C…).
-      </p>
-      <div className="mt-4 flex items-center justify-between gap-3 border border-taupe/50 bg-code px-4 py-3">
-        <span className="break-all font-mono text-xs">{wallet.id}</span>
-        <CopyButton value={wallet.id} className="shrink-0 text-muted hover:text-charcoal" />
-      </div>
-      {live.info?.network === 'stellar-testnet' && (
-        <p className="mt-4 border border-burgundy/40 px-4 py-2.5 text-xs leading-relaxed text-burgundy">
-          This is your test wallet. It only exists on Stellar testnet: never send real USDC to it. Your live wallet has its
-          own address, shown here when you switch to Live.
-        </p>
-      )}
-      <p className="mt-4 text-xs leading-relaxed text-muted">
-        Only USDC counts toward what your agents can spend. Deposits sent this way show in your balance, and on Stellar
-        Expert, but aren’t listed in the history below yet.
-      </p>
     </div>
   )
 }
