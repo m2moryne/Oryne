@@ -435,7 +435,8 @@ function Withdraw({ onDone }: { onDone: () => Promise<void> }) {
       )}
       <ErrorNote error={withdraw.error} />
       <p className="mt-5 border-t border-taupe/40 pt-4 text-xs leading-relaxed text-muted">
-        Only you can withdraw, with {passkey ? 'your passkey' : 'your Freighter signature'}. Agents can’t move money out.
+        {live.member ? 'Only the owner' : 'Only you'} can withdraw, with {live.member ? 'their' : 'your'}{' '}
+        {passkey ? 'passkey' : 'Freighter signature'}. Agents can’t move money out.
       </p>
     </Panel>
   )

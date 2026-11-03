@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { hash, Keypair, StrKey } from '@stellar/stellar-sdk'
 import type { Context, MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
+import { checkMemberAccess, type Role } from './team.ts'
 import { authenticateKey, checkKeyAccess, isApiKey, type KeyAccess, type KeyMode } from './api-keys.ts'
 import { now, type Db } from './db.ts'
 
@@ -54,7 +55,12 @@ export async function verifyChallenge(db: Db, nonce: string, signature: string) 
   return { token, address: row.address, expiresAt: now() + SESSION_TTL }
 }
 
-export type OwnerVariables = { owner: string; apiKey?: KeyAccess }
+/**
+ * owner: the account a request acts on. actor: who is signed in; the same as
+ * owner unless a teammate is working in someone else's account, in which case
+ * member says how.
+ */
+export type OwnerVariables = { owner: string; actor: string; apiKey?: KeyAccess; member?: { role: Role; email: string } }
 
 /**
  * Requires an owner session or one of the owner's API keys. Sets c.var.owner,
@@ -67,6 +73,7 @@ export const ownerAuth =
     if (token && isApiKey(token)) {
       const { owner, access } = await authenticateKey(db, token, keyMode)
       c.set('owner', owner)
+      c.set('actor', owner)
       c.set('apiKey', access)
       checkKeyAccess(access, c.req.method, c.req.path)
       return next()
@@ -77,7 +84,21 @@ export const ownerAuth =
           | undefined)
       : undefined
     if (!row || row.expires_at < now()) throw new HTTPException(401, { message: 'Sign in first' })
-    c.set('owner', row.address)
+    c.set('actor', row.address)
+
+    // A teammate acting in another account. /memberships is always about the person themselves.
+    const account = c.req.header('x-oryne-account')?.trim()
+    if (account && account !== row.address && !c.req.path.startsWith('/v1/memberships')) {
+      const member = await db
+        .prepare("select role, email from members where account = ? and subject = ? and status = 'active'")
+        .get<{ role: Role; email: string }>(account, row.address)
+      if (!member) throw new HTTPException(403, { message: 'You’re not a member of that account' })
+      checkMemberAccess(member.role, c.req.method, c.req.path)
+      c.set('owner', account)
+      c.set('member', member)
+    } else {
+      c.set('owner', row.address)
+    }
     await next()
   }
 

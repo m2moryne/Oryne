@@ -130,6 +130,17 @@ create table if not exists requests (
 );
 create index if not exists requests_owner on requests(owner, created_at desc);
 
+-- Teammates invited to an account (see team.ts). account is the owner's sign-in subject.
+create table if not exists members (
+  id text primary key, account text not null, email text not null,
+  role text not null,             -- admin | developer | viewer
+  status text not null,           -- invited | active
+  subject text,                   -- the teammate's own sign-in subject, once accepted
+  invited_by text not null, created_at ${int} not null, accepted_at ${int},
+  unique (account, email)
+);
+create index if not exists members_subject on members(subject);
+
 -- Money into and out of wallets: card top-ups, test USDC and withdrawals.
 create table if not exists funds (
   id text primary key, wallet_id text not null, owner text not null,

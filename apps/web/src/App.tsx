@@ -33,6 +33,8 @@ import RealWebhooks from './live/dev/Webhooks'
 import RealUsage from './live/dev/Usage'
 import RealSettings from './live/dev/Settings'
 import RealPlayground from './live/dev/Playground'
+import RealTeam from './live/dev/Team'
+import RealBilling from './live/dev/Billing'
 import DevOverview from './live/dev/Overview'
 import { Contracts as RealContracts, Merchant as RealMerchant, Sdks as RealSdks } from './live/dev/pages'
 import { realPages } from './live/dev/shared'
@@ -126,6 +128,8 @@ export default function App() {
             <Route path="usage" element={<RealUsage />} />
             <Route path="settings" element={<RealSettings />} />
             <Route path="playground" element={<RealPlayground />} />
+            <Route path="team" element={<RealTeam />} />
+            <Route path="billing" element={<RealBilling />} />
             {allDevPages
               .filter((page) => page.slug && !realPages.includes(page.slug))
               .map((page) => (

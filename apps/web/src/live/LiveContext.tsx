@@ -2,14 +2,18 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import {
   api,
   isAccount,
+  loadAccount,
   loadInfo,
   loadSession,
+  saveAccount,
   saveInfo,
   saveSession,
   type Info,
   type Intent,
   type LiveApproval,
   type LivePayment,
+  type Membership,
+  type Role,
   type Session,
   type User,
   type WalletDetail,
@@ -53,6 +57,13 @@ type Live = {
   /** Uses a session handed back by OAuth or the dev login. */
   adoptSession: (session: Session) => void
   signOut: () => void
+  /** Set when working in a teammate's account: the role and who is signed in. */
+  member: { role: Role; email: string; actor: string } | null
+  /** Invitations to, and teams of, the signed-in person. */
+  memberships: Membership[]
+  reloadMemberships: () => Promise<void>
+  /** Switches to a team account, or back to their own with null. Reloads the dashboard. */
+  switchAccount: (account: string | null) => void
   createWallet: (name: string) => Promise<void>
   refresh: () => Promise<void>
   /** Builds an intent with `create`, has Freighter or the passkey sign it, submits it, refreshes. Returns the tx hash. */
@@ -72,6 +83,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [payments, setPayments] = useState<LivePayment[]>([])
   const [approvals, setApprovals] = useState<LiveApproval[]>([])
   const [loading, setLoading] = useState(true)
+  const [member, setMember] = useState<Live['member']>(null)
+  const [memberships, setMemberships] = useState<Membership[]>([])
   const [error, setError] = useState<string | null>(redirect.error ?? null)
 
   useEffect(() => {
@@ -92,9 +105,18 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
-      const me = await api<{ wallets: WalletSummary[]; user: User }>('/v1/me', { token: session.token })
+      let me: { wallets: WalletSummary[]; user: User; member?: Live['member'] }
+      try {
+        me = await api('/v1/me', { token: session.token })
+      } catch (reason) {
+        // No longer on that team: back to their own account.
+        if ((reason as { status?: number }).status !== 403 || !loadAccount()) throw reason
+        saveAccount(null)
+        me = await api('/v1/me', { token: session.token })
+      }
       setWallets(me.wallets)
       setUser(me.user)
+      setMember(me.member ?? null)
       const current = me.wallets[0]
       if (current) {
         const [detail, history, pending] = await Promise.all([
@@ -121,6 +143,20 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     }
   }, [session])
+
+  const reloadMemberships = useCallback(async () => {
+    if (!session) return setMemberships([])
+    try {
+      const data = await api<{ memberships: Membership[] }>('/v1/memberships', { token: session.token })
+      setMemberships(data.memberships)
+    } catch {
+      // Older API, or offline: no team features.
+    }
+  }, [session])
+
+  useEffect(() => {
+    void reloadMemberships()
+  }, [reloadMemberships])
 
   useEffect(() => {
     void refresh()
@@ -154,7 +190,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setLoading(true)
         setSession(next)
       },
+      member,
+      memberships,
+      reloadMemberships,
+      switchAccount(account: string | null) {
+        saveAccount(account)
+        window.location.assign('/app')
+      },
       signOut() {
+        saveAccount(null)
         saveSession(null)
         setSession(null)
         setUser(null)
@@ -188,7 +232,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         return result.hash
       },
     }),
-    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh],
+    [info, session, user, wallets, wallet, payments, approvals, loading, error, refresh, member, memberships, reloadMemberships],
   )
 
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>

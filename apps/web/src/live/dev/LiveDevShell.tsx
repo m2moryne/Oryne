@@ -9,6 +9,7 @@ import { Wordmark } from '../../components/Wordmark'
 import { cn } from '../../lib/cn'
 import { shortKey } from '../../lib/network'
 import { useLive } from '../LiveContext'
+import { TeamNotice } from '../TeamBar'
 
 export const DEV_BASE = '/app/developers'
 const MODE_KEY = 'oryne.dev.mode'
@@ -64,8 +65,11 @@ export function LiveDevShell() {
   const [mode, setMode] = useStoredMode()
   const [theme, setTheme] = useTheme('dark')
 
-  const name = live.user?.name ?? live.user?.email ?? 'Your account'
-  const email = live.user?.email ?? (live.session ? shortKey(live.session.address, 6, 6) : '')
+  // A teammate is shown as themselves, not as the account's owner.
+  const name = live.member ? live.member.email : (live.user?.name ?? live.user?.email ?? 'Your account')
+  const email = live.member
+    ? `${live.member.role[0].toUpperCase()}${live.member.role.slice(1)} · team account`
+    : (live.user?.email ?? (live.session ? shortKey(live.session.address, 6, 6) : ''))
 
   return (
     <div className="tone-white min-h-svh lg:pl-64">
@@ -110,6 +114,7 @@ export function LiveDevShell() {
             {live.error}
           </p>
         )}
+        <TeamNotice className="mb-3 md:mb-4" />
         <Outlet context={{ mode }} />
       </main>
     </div>

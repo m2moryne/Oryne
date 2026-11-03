@@ -36,6 +36,7 @@ import { api, explorerAccount, isAccount, oauthStart, type Session } from './api
 import { DEV_BASE, LiveDevShell } from './dev/LiveDevShell'
 import { LiveProvider, useLive } from './LiveContext'
 import { soonPages } from './pages/ComingSoon'
+import { AccountSwitcher, GateTeams, TeamNotice } from './TeamBar'
 
 const items: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -97,6 +98,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3 pt-6">
+        <AccountSwitcher />
         {live.wallet && (
           <div className="border border-cream/15 p-4">
             <p className="type-label text-cream/60">Wallet · USDC</p>
@@ -114,10 +116,12 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex items-center gap-3 border-t border-cream/15 px-1 pt-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-cream/60">
-              Owner · {live.wallet?.owner_kind === 'passkey' ? 'passkey' : 'Freighter'}
+              {live.member
+                ? `${live.member.role[0].toUpperCase()}${live.member.role.slice(1)} · team account`
+                : `Owner · ${live.wallet?.owner_kind === 'passkey' ? 'passkey' : 'Freighter'}`}
             </p>
             <p className="truncate text-xs">
-              {live.user?.email ?? live.user?.name ?? (live.session ? shortKey(live.session.address, 6, 6) : '')}
+              {live.member?.email ?? live.user?.email ?? live.user?.name ?? (live.session ? shortKey(live.session.address, 6, 6) : '')}
             </p>
           </div>
           <ThemeToggle theme={theme} onChange={setTheme} onDark />
@@ -337,6 +341,7 @@ function Gate() {
         </>
       ) : (
         <>
+          <GateTeams />
           <h1 className="text-2xl tracking-[-0.02em]">Create your agent wallet</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted">
             {passkeyOwner
@@ -416,6 +421,7 @@ function Shell() {
             {live.error}
           </p>
         )}
+        <TeamNotice className="mb-3 md:mb-4" />
         <Outlet />
       </main>
     </div>

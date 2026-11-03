@@ -24,6 +24,7 @@ import { createKey, listKeys, revokeKey, scopes as keyScopes } from './api-keys.
 import { agentAuth, createChallenge, ownerAuth, verifyChallenge, type AgentRow, type OwnerVariables } from './auth.ts'
 import { createEmailCodes } from './email-codes.ts'
 import { createFunding } from './funding.ts'
+import { createTeam } from './team.ts'
 import { createSession, finish, providers, startUrl, type Provider } from './oauth.ts'
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
@@ -121,6 +122,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   const aiDebugger = createDebugger(config.deepseekApiKey, config.deepseekModel)
   const emailCodes = createEmailCodes(config, db)
   const funding = createFunding(config, db, chain)
+  const team = createTeam(config, db)
   /** API keys belong to one network: test keys on testnet, live keys on mainnet. */
   const keyMode = config.network.name === 'mainnet' ? 'live' : 'test'
   const money = (units: string | bigint) => fromBaseUnits(BigInt(units), decimals)
@@ -236,7 +238,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     '*',
     cors({
       origin: config.corsOrigins,
-      allowHeaders: ['content-type', 'authorization', 'x-oryne-agent'],
+      allowHeaders: ['content-type', 'authorization', 'x-oryne-agent', 'x-oryne-account'],
       exposeHeaders: ['x-request-id'],
     }),
   )
@@ -436,6 +438,40 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
     return c.json({ ok: true })
   })
 
+  // ---------------------------------------------------------------- team
+  owner.get('/members', async (c) => {
+    sessionOnly(c)
+    return c.json({ ...(await team.list(c.var.owner)), you: c.var.member?.role ?? 'owner' })
+  })
+  owner.post('/members', async (c) => {
+    sessionOnly(c)
+    return c.json(await team.invite(c.var.owner, c.var.actor, await body<{ email?: unknown; role?: unknown }>(c)), 201)
+  })
+  owner.patch('/members/:id', async (c) => {
+    sessionOnly(c)
+    return c.json(await team.setRole(c.var.owner, c.req.param('id'), (await body<{ role?: unknown }>(c)).role))
+  })
+  owner.delete('/members/:id', async (c) => {
+    sessionOnly(c)
+    await team.remove(c.var.owner, c.req.param('id'))
+    return c.json({ ok: true })
+  })
+  /** The signed-in person's invitations and teams, whichever account they're looking at. */
+  owner.get('/memberships', async (c) => {
+    sessionOnly(c)
+    return c.json(await team.memberships(c.var.actor))
+  })
+  owner.post('/memberships/:id/accept', async (c) => {
+    sessionOnly(c)
+    await team.accept(c.var.actor, c.req.param('id'))
+    return c.json({ ok: true })
+  })
+  owner.post('/memberships/:id/leave', async (c) => {
+    sessionOnly(c)
+    await team.leave(c.var.actor, c.req.param('id'))
+    return c.json({ ok: true })
+  })
+
   // ---------------------------------------------------------------- account
   owner.get('/sessions', async (c) => {
     sessionOnly(c)
@@ -460,7 +496,9 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   owner.get('/me', async (c) => {
     const wallets = await db.prepare('select * from wallets where owner = ? order by created_at').all(c.var.owner)
     const user = await db.prepare('select provider, email, name, avatar from users where subject = ?').get(c.var.owner)
-    return c.json({ address: c.var.owner, user: user ?? { provider: 'freighter' }, wallets })
+    // A teammate sees the account's wallets, and who they are in it.
+    const member = c.var.member ? { ...c.var.member, actor: c.var.actor } : null
+    return c.json({ address: c.var.owner, user: user ?? { provider: 'freighter' }, wallets, member })
   })
 
   owner.post('/wallets', async (c) => {

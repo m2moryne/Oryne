@@ -30,6 +30,26 @@ export function saveSession(session: Session | null) {
   }
 }
 
+const ACCOUNT_KEY = 'oryne.live.account'
+
+/** The team account this person is working in, when it isn't their own. Sent as X-Oryne-Account. */
+export function loadAccount(): string | null {
+  try {
+    return localStorage.getItem(ACCOUNT_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function saveAccount(account: string | null) {
+  try {
+    if (account) localStorage.setItem(ACCOUNT_KEY, account)
+    else localStorage.removeItem(ACCOUNT_KEY)
+  } catch {
+    // Storage blocked: back to their own account on reload.
+  }
+}
+
 const INFO_KEY = `oryne.live.info:${API_URL}`
 
 /** The last /v1/info seen, so the sign-in page is ready before the API answers. */
@@ -115,12 +135,14 @@ export async function askDebugger(
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
   let response: Response
+  const account = init.token ? loadAccount() : null
   try {
     response = await fetch(`${API_URL}${path}`, {
       method: init.method ?? (init.body !== undefined ? 'POST' : 'GET'),
       headers: {
         ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(init.token ? { authorization: `Bearer ${init.token}` } : {}),
+        ...(account ? { 'x-oryne-account': account } : {}),
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     })
@@ -185,6 +207,29 @@ export type FundMovement = {
   error: string | null
   createdAt: number
   completedAt: number | null
+}
+
+export type Role = 'admin' | 'developer' | 'viewer'
+
+/** How the signed-in person is working in someone else's account. */
+export type Membership = {
+  id: string
+  account: string
+  email: string
+  role: Role
+  status: 'invited' | 'active'
+  label: { name: string; owner: string }
+  createdAt: number
+  acceptedAt: number | null
+}
+
+export type TeamMember = {
+  id: string
+  email: string
+  role: Role
+  status: 'invited' | 'active'
+  createdAt: number
+  acceptedAt: number | null
 }
 
 export type User = { provider: string; email?: string | null; name?: string | null; avatar?: string | null }

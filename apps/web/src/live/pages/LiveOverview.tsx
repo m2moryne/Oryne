@@ -30,15 +30,15 @@ export default function LiveOverview() {
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-3">
-        <Panel title="Your wallet" className="xl:col-span-2">
+        <Panel title={live.member ? 'Wallet' : 'Your wallet'} className="xl:col-span-2">
           <dl className="space-y-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2">
               <dt className="text-muted">Contract</dt>
               <dd><AddressLink address={wallet.id} /></dd>
             </div>
             <div className="flex flex-wrap justify-between gap-2">
-              <dt className="text-muted">Owner (you)</dt>
-              <dd>{wallet.owner_kind === 'passkey' ? 'Passkey on your device' : <AddressLink address={wallet.owner} />}</dd>
+              <dt className="text-muted">{live.member ? 'Owner' : 'Owner (you)'}</dt>
+              <dd>{wallet.owner_kind === 'passkey' ? (live.member ? 'Passkey on the owner’s device' : 'Passkey on your device') : <AddressLink address={wallet.owner} />}</dd>
             </div>
             <div className="flex flex-wrap justify-between gap-2">
               <dt className="text-muted">Token</dt>
@@ -56,8 +56,8 @@ export default function LiveOverview() {
             </div>
           </dl>
           <p className="mt-5 border-t border-taupe/40 pt-4 text-sm leading-relaxed text-muted">
-            Only you can change agents&rsquo; limits or move money out
-            {wallet.owner_kind === 'passkey' ? ', with your passkey' : ', with your Freighter account'}.
+            {live.member ? 'Only the owner' : 'Only you'} can change agents&rsquo; limits or move money out
+            {wallet.owner_kind === 'passkey' ? `, with ${live.member ? 'their' : 'your'} passkey` : `, with ${live.member ? 'their' : 'your'} Freighter account`}.
             Agents can only send USDC inside their mandates; the contract refuses anything else.
           </p>
         </Panel>
