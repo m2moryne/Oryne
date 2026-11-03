@@ -34,22 +34,28 @@ export function AddMoneyPage() {
   const base = useBase()
   const [theme] = useTheme('light')
   return (
-    <div className={cn('tone-cream min-h-svh', theme === 'dark' && 'theme-dark')}>
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 md:py-7">
-        <Link
-          to={`${base}/funds`}
-          className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-charcoal"
-        >
-          <Icon icon={ArrowLeft} size={16} />
-          Back to Funds
-        </Link>
-        <Link to={base} aria-label="Oryne dashboard" className="text-[0.9375rem]">
-          <Wordmark />
-        </Link>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 md:pb-20">
-        <AddMoney card={live.info?.card ?? null} faucet={!!live.info?.faucet} onDone={live.refresh} />
-      </main>
+    <div className={cn(theme === 'dark' && 'theme-dark')}>
+      <AddMoney
+        card={live.info?.card ?? null}
+        faucet={!!live.info?.faucet}
+        onDone={live.refresh}
+        top={
+          <div className="flex items-center gap-4">
+            {/* Round glass button: frosted white over the dark panel. */}
+            <Link
+              to={`${base}/funds`}
+              aria-label="Back to Funds"
+              title="Back to Funds"
+              className="flex size-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.08)] text-[#ffffff] shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_24px_-10px_rgba(0,0,0,0.6)] backdrop-blur-md transition-colors hover:bg-[rgba(255,255,255,0.16)]"
+            >
+              <Icon icon={ArrowLeft} size={18} />
+            </Link>
+            <Link to={base} aria-label="Oryne dashboard" className="text-[0.9375rem] text-[#ffffff]">
+              <Wordmark />
+            </Link>
+          </div>
+        }
+      />
     </div>
   )
 }
@@ -59,16 +65,32 @@ export function AddMoneyPage() {
  * the payment on the right. Card details are never entered here: Paystack's
  * own checkout takes them, so they never reach Oryne.
  */
-function AddMoney({ card, faucet, onDone }: { card: CardInfo | null; faucet: boolean; onDone: () => Promise<void> }) {
+function AddMoney({
+  card,
+  faucet,
+  onDone,
+  top,
+}: {
+  card: CardInfo | null
+  faucet: boolean
+  onDone: () => Promise<void>
+  /** Shown over the top of the dark panel: the back button and logo. */
+  top: ReactNode
+}) {
   const live = useLive()
   const [method, setMethod] = useState<Method>(card ? 'card' : faucet ? 'test' : 'stellar')
   const testnet = live.info?.network !== 'stellar-mainnet'
 
   return (
-    <section className="tone-white grid overflow-hidden rounded-2xl border border-taupe/50 shadow-[0_30px_80px_-40px_rgba(10,16,26,0.35)] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <WalletArt balance={usd(live.wallet!.balance)} address={live.wallet!.id} testnet={testnet} />
+    // The whole screen: the wallet panel runs top to bottom on the left, the form fills the rest.
+    <section className="tone-white grid min-h-svh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <div className="relative lg:sticky lg:top-0 lg:h-svh">
+        <WalletArt balance={usd(live.wallet!.balance)} address={live.wallet!.id} testnet={testnet} />
+        <div className="absolute left-5 top-5 md:left-8 md:top-8">{top}</div>
+      </div>
 
-      <div className="px-5 py-7 sm:px-8 md:px-12 md:py-10">
+      <div className="flex items-center justify-center px-5 py-10 sm:px-8 md:px-12 lg:py-16">
+        <div className="w-full max-w-xl">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl tracking-[-0.02em]">Add money</h1>
           {method !== 'stellar' && (
@@ -102,6 +124,7 @@ function AddMoney({ card, faucet, onDone }: { card: CardInfo | null; faucet: boo
           {method === 'card' && <CardForm card={card} testnet={testnet} />}
           {method === 'test' && <TestForm onDone={onDone} />}
           {method === 'stellar' && <StellarForm testnet={testnet} />}
+        </div>
         </div>
       </div>
     </section>
@@ -347,9 +370,9 @@ function WalletArt({ balance, address, testnet }: { balance: string; address: st
   return (
     <div
       aria-hidden="true"
-      className="relative min-h-[23rem] overflow-hidden bg-[#141414] text-[#ffffff] lg:min-h-[34rem]"
+      className="relative h-full min-h-[24rem] overflow-hidden bg-[#141414] text-[#ffffff]"
     >
-      <div className="absolute inset-0 flex items-center justify-center [perspective:1400px]">
+      <div className="absolute inset-0 flex items-center justify-center pt-16 [perspective:1400px] lg:pt-0">
         <div
           className="relative h-[9.5rem] w-[15rem] sm:h-[11rem] sm:w-[17.5rem]"
           style={{ transformStyle: 'preserve-3d', transform: 'rotateX(56deg) rotateZ(-36deg) translateY(-2.25rem)' }}
