@@ -15,3 +15,6 @@ packages/*/npm/
 
 # TypeScript incremental build caches
 *.tsbuildinfo
+
+# Soroban test snapshots, written by every cargo test run
+test_snapshots/
