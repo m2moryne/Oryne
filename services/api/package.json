@@ -13,7 +13,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@oryne/core": "*",
-    "@stellar/stellar-sdk": "^17.2.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "hono": "^4.13.13",
     "pg": "^8.23.1"
   },

@@ -19,6 +19,26 @@ test('contract errors are named from host error text', () => {
   assert.equal(contractErrorName('something else'), undefined)
 })
 
+test("the token's errors are not mistaken for the wallet's", () => {
+  const token = 'CCQDLMN53S2PGRPXKXHQIOULX37XYYB2GJLPPHRURSPLABKEOBLZZY3R'
+  const wallet = 'CDQMO2CA23BQ7FDQ2N7LVYRPYZ6SCPFABRUOG2WUR5P7Z5KLJAXG7PPW'
+  // As testnet returns it when a wallet holds less than the transfer.
+  const insufficient = [
+    'HostError: Error(Contract, #10)',
+    '',
+    'Event log (newest first):',
+    `   0: [Diagnostic Event] contract:${token}, topics:[error, Error(Contract, #10)], data:["balance is not sufficient to spend", {amount: 49900000}, 300000000]`,
+    `   1: [Diagnostic Event] topics:[fn_call, ${token}, transfer], data:[${wallet}, GBVW, 300000000]`,
+  ].join('\n')
+  assert.equal(contractErrorName(insufficient), 'InsufficientBalance')
+  const overLimit = [
+    'HostError: Error(Contract, #7)',
+    `   0: [Diagnostic Event] contract:${wallet}, topics:[error, Error(Contract, #7)], data:"escalating error"`,
+    `   1: [Diagnostic Event] topics:[fn_call, ${token}, transfer], data:[${wallet}, GBVW, 300000000]`,
+  ].join('\n')
+  assert.equal(contractErrorName(overLimit), 'OverPerTxLimit')
+})
+
 test('structs encode as maps with sorted symbol keys, as #[contracttype] expects', () => {
   const value = scValToNative(struct({ zeta: i128(1n), alpha: i128(2n) }))
   assert.deepEqual(Object.keys(value), ['alpha', 'zeta'])

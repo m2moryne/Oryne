@@ -36,10 +36,33 @@ export const contractErrors: Record<number, string> = {
   13: 'InvalidPasskeySignature',
 }
 
-/** Finds "Error(Contract, #8)" in a simulation or submission error and names it. */
+/** Errors of the Stellar Asset Contract (the token, e.g. USDC) that a payment can hit. */
+export const tokenErrors: Record<number, string> = {
+  6: 'AccountMissing',
+  8: 'NegativeAmount',
+  10: 'InsufficientBalance',
+  11: 'BalanceDeauthorized',
+  12: 'Overflow',
+  13: 'TrustlineMissing',
+}
+
+/**
+ * Finds "Error(Contract, #8)" in a simulation or submission error and names it.
+ *
+ * The wallet and the token number their errors separately, so #10 is the
+ * wallet's AgentExists but the token's insufficient balance. When the
+ * diagnostic log says which contract raised the error, and that contract is
+ * the one `transfer` was called on, the error is the token's.
+ */
 export function contractErrorName(message: string): string | undefined {
   const match = /Error\(Contract, #(\d+)\)/.exec(message)
-  return match ? (contractErrors[Number(match[1])] ?? `ContractError${match[1]}`) : undefined
+  if (!match) return undefined
+  const code = Number(match[1])
+  const raisedBy = /contract:(C[A-Z2-7]{55}), topics:\[error, Error\(Contract, #\d+\)\]/.exec(message)?.[1]
+  if (raisedBy && message.includes(`topics:[fn_call, ${raisedBy}, transfer]`)) {
+    return tokenErrors[code] ?? `TokenError${code}`
+  }
+  return contractErrors[code] ?? `ContractError${code}`
 }
 
 const sym = (name: string) => xdr.ScVal.scvSymbol(name)
