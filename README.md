@@ -240,7 +240,7 @@ agent secrets or owner keys.
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
 | [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: oryne-demo-merchant.onrender.com |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
-| MCP server inside Claude Desktop | ⏳ Built on the agent SDK; not yet tried in Claude Desktop |
+| MCP server ([`@oryne/mcp`](packages/mcp)) | ✅ Every tool checked over stdio, as Claude Desktop runs it, on testnet: source and the npm package (`npm run mcp-check`) |
 | Card top-ups (Paystack) | ✅ On testnet. ⏳ Mainnet needs a live Paystack account and a funded treasury |
 | Audit, open mainnet, anchors for fiat in and out | ⏳ Roadmap |
 
@@ -263,7 +263,7 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   ├── demo-merchant/         A small paid API agents buy from (hosted on testnet)
 │   └── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
 ├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
-├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow), packages.ts (npm builds)
+├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow), mcp-check.ts (MCP server), packages.ts (npm builds)
 ├── render.yaml                Hosting: testnet API and demo merchant
 ├── render.mainnet.yaml        Hosting: mainnet API
 └── .github/                   CI (contract tests and wasm, web build, npm publish), issue and PR templates
@@ -289,6 +289,7 @@ npm run dev:merchant            # http://localhost:8788
 # 3. Check the whole flow without a browser
 npm run e2e                     # owner = Stellar account (as with Freighter)
 npm run e2e -- passkey          # owner = passkey (needs DEV_LOGIN=1 in services/api/.env)
+npm run mcp-check               # the MCP server over stdio, every tool, against hosted testnet
 
 # 4. The website and dashboard
 npm run dev:web                 # http://localhost:5173  →  /app

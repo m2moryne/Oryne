@@ -21,7 +21,8 @@
     "mcp": "npm start -w @oryne/mcp",
     "setup": "node scripts/setup.ts",
     "e2e": "node scripts/e2e.ts",
-    "packages": "node scripts/packages.ts"
+    "packages": "node scripts/packages.ts",
+    "mcp-check": "node scripts/mcp-check.ts"
   },
   "overrides": {
     "rolldown": "1.2.12",

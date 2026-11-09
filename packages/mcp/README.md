@@ -18,6 +18,15 @@ Connect an agent in the [Oryne dashboard](https://oryne.org/app) and copy its se
 }
 ```
 
+Restart Claude Desktop after editing the file. The config file is at `%APPDATA%\Claude\claude_desktop_config.json` on Windows and `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS. If the server doesn't start on Windows, run `npx` through `cmd`:
+
+```json
+"command": "cmd",
+"args": ["/c", "npx", "-y", "@oryne/mcp"]
+```
+
+Then ask Claude something like *"Check my Oryne wallet status"* or *"Fetch https://… and pay if it asks"*.
+
 | Variable | |
 |---|---|
 | `ORYNE_AGENT_SECRET` | The agent's secret key (`S…`). Required. |
