@@ -12,3 +12,6 @@ apps/admin/
 
 # SDK builds for npm (npm run packages)
 packages/*/npm/
+
+# TypeScript incremental build caches
+*.tsbuildinfo
