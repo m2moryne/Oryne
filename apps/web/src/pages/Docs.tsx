@@ -692,7 +692,11 @@ node -e "import('@oryne/agent').then(async ({ OryneAgent }) => {
               [<C>UnknownAgent</C>, 'The key isn\'t on this wallet, or was removed.', 'Check the secret; reconnect the agent.'],
               [<C>WrongToken</C>, 'The service asked for a token this agent may not spend.', 'Use a service that accepts USDC.'],
               [<C>InvalidAmount</C>, 'Zero, negative or malformed price.', 'A problem on the service\'s side.'],
+              [<C>InsufficientBalance</C>, 'The wallet holds less than the price.', 'The owner adds funds.'],
               [<>Asks …, above this client's maxPerRequest</>, <>Blocked by your own <C>maxPerRequest</C>, before signing.</>, 'Raise maxPerRequest if the price is expected.'],
+              [<>Asks …, above the … expected for this request</>, <>Blocked by the request's <C>maxPrice</C>, before signing.</>, 'Check the price; raise maxPrice if it\'s right.'],
+              [<>… is not listed in the Oryne directory</>, <>With <C>payees: 'directory'</C>, the service isn't listed. Nothing was signed.</>, 'List the service, or allow its address in payees.'],
+              [<>… asks to be paid at …, but its directory listing pays …</>, 'The service asked to be paid somewhere other than its listed address. Nothing was signed.', 'Treat it as suspicious; contact the service.'],
             ]}
           />
           <P>

@@ -8,7 +8,8 @@ use std::format;
 use ed25519_dalek::{Signer, SigningKey};
 use soroban_sdk::{
     auth::ContractContext,
-    testutils::{Address as _, BytesN as _, Ledger},
+    testutils::{Address as _, BytesN as _, Events as _, Ledger},
+    Event as _,
     vec, Address, BytesN, Env, IntoVal, Val,
 };
 
@@ -201,6 +202,146 @@ fn rejects_invalid_policy() {
         payees: vec![&s.env],
     };
     assert_eq!(s.client.try_add_agent(&other, &policy), Err(Ok(Error::InvalidPolicy)));
+}
+
+#[test]
+fn rejects_a_per_payment_limit_above_the_budget() {
+    let s = setup();
+    let policy = Policy {
+        token: s.token.clone(),
+        per_tx: 2 * USDC,
+        budget: USDC,
+        window_secs: DAY,
+        expires_at: 0,
+        payees: vec![&s.env],
+    };
+    let other = BytesN::<32>::random(&s.env);
+    assert_eq!(s.client.try_add_agent(&other, &policy), Err(Ok(Error::InvalidPolicy)));
+}
+
+// ---------------------------------------------------------------- hardening
+
+#[test]
+fn approval_is_not_used_up_by_a_payment_the_policy_allows() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    s.client.approve_once(&key, &s.merchant, &(30 * USDC), &0);
+
+    // A small payment to the same payee is within the policy: it uses the budget, not the approval.
+    assert_eq!(pay(&s, USDC), Ok(()));
+    assert_eq!(s.client.remaining(&key), 99 * USDC);
+    // So the approval is still there for the payment it was meant for.
+    assert_eq!(pay(&s, 30 * USDC), Ok(()));
+    assert_eq!(s.client.remaining(&key), 99 * USDC);
+}
+
+#[test]
+fn approval_cannot_already_be_expired_and_stops_working_when_it_expires() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    let now = s.env.ledger().timestamp();
+    assert_eq!(
+        s.client.try_approve_once(&key, &s.merchant, &(30 * USDC), &now),
+        Err(Ok(Error::InvalidExpiry))
+    );
+    assert_eq!(
+        s.client.try_approve_once(&key, &s.merchant, &(30 * USDC), &(now - 1)),
+        Err(Ok(Error::InvalidExpiry))
+    );
+
+    s.client.approve_once(&key, &s.merchant, &(30 * USDC), &(now + 60));
+    s.env.ledger().set_timestamp(now + 60);
+    assert_eq!(pay(&s, 30 * USDC), Err(Error::OverPerTxLimit));
+}
+
+#[test]
+fn approval_only_covers_its_amount_and_payee() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    s.client.approve_once(&key, &s.merchant, &(30 * USDC), &0);
+    assert_eq!(pay(&s, 31 * USDC), Err(Error::OverPerTxLimit));
+
+    let elsewhere = Address::generate(&s.env);
+    let ctx = vec![&s.env, transfer(&s.env, &s.token, &s.wallet, &elsewhere, 30 * USDC)];
+    assert_eq!(check(&s, &s.agent, ctx), Err(Error::OverPerTxLimit));
+}
+
+#[test]
+fn removed_agent_cannot_be_added_back() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    // An approval the agent never used...
+    s.client.approve_once(&key, &s.merchant, &(30 * USDC), &0);
+    s.client.remove_agent(&key);
+    // ...can't come back with the key.
+    let policy = Policy {
+        token: s.token.clone(),
+        per_tx: 25 * USDC,
+        budget: 100 * USDC,
+        window_secs: 30 * DAY,
+        expires_at: 0,
+        payees: vec![&s.env],
+    };
+    assert_eq!(s.client.try_add_agent(&key, &policy), Err(Ok(Error::AgentRemoved)));
+    assert_eq!(pay(&s, 30 * USDC), Err(Error::UnknownAgent));
+}
+
+#[test]
+fn refuses_a_transfer_from_another_address() {
+    let s = setup();
+    let someone = Address::generate(&s.env);
+    let ctx = vec![&s.env, transfer(&s.env, &s.token, &someone, &s.merchant, USDC)];
+    assert_eq!(check(&s, &s.agent, ctx), Err(Error::NotATransfer));
+}
+
+#[test]
+fn several_transfers_in_one_authorization_count_together() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    let t = |amount| transfer(&s.env, &s.token, &s.wallet, &s.merchant, amount);
+
+    // 5 x 25 is over the 100 budget, though each one is within the per-payment limit.
+    let over = vec![&s.env, t(25 * USDC), t(25 * USDC), t(25 * USDC), t(25 * USDC), t(25 * USDC)];
+    assert_eq!(check(&s, &s.agent, over), Err(Error::OverBudget));
+    // The refused authorization spent nothing.
+    assert_eq!(s.client.remaining(&key), 100 * USDC);
+
+    let within = vec![&s.env, t(25 * USDC), t(25 * USDC), t(10 * USDC)];
+    assert_eq!(check(&s, &s.agent, within), Ok(()));
+    assert_eq!(s.client.remaining(&key), 40 * USDC);
+}
+
+#[test]
+fn owner_actions_are_recorded_on_chain() {
+    let s = setup();
+    let key = public_key(&s.env, &s.agent);
+    let events = |s: &Setup| s.env.events().all().filter_by_contract(&s.wallet);
+
+    let mut policy = s.client.agent(&key).unwrap().policy;
+    policy.per_tx = 5 * USDC;
+    s.client.set_policy(&key, &policy);
+    assert_eq!(events(&s), [PolicyChanged { agent: key.clone(), policy }.to_xdr(&s.env, &s.wallet)]);
+
+    s.client.set_paused(&key, &true);
+    assert_eq!(events(&s), [PausedChanged { agent: key.clone(), paused: true }.to_xdr(&s.env, &s.wallet)]);
+
+    s.client.approve_once(&key, &s.merchant, &(30 * USDC), &0);
+    assert_eq!(
+        events(&s),
+        [ApprovalGranted { agent: key.clone(), payee: s.merchant.clone(), amount: 30 * USDC, expires_at: 0 }
+            .to_xdr(&s.env, &s.wallet)]
+    );
+
+    let to = Address::generate(&s.env);
+    s.client.withdraw(&s.token, &to, &USDC);
+    assert_eq!(
+        events(&s),
+        [Withdrawn { token: s.token.clone(), to, amount: USDC }.to_xdr(&s.env, &s.wallet)]
+    );
+
+    let new_owner = Address::generate(&s.env);
+    s.client.set_owner(&new_owner);
+    assert_eq!(events(&s), [OwnerChanged { owner: new_owner, passkey: None }.to_xdr(&s.env, &s.wallet)]);
 }
 
 // ---------------------------------------------------------------- passkey owners

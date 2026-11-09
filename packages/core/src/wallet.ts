@@ -34,6 +34,8 @@ export const contractErrors: Record<number, string> = {
   11: 'InvalidPolicy',
   12: 'NoPasskey',
   13: 'InvalidPasskeySignature',
+  14: 'InvalidExpiry',
+  15: 'AgentRemoved',
 }
 
 /** Errors of the Stellar Asset Contract (the token, e.g. USDC) that a payment can hit. */

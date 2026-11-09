@@ -116,6 +116,9 @@ enum DataKey {
     Agent(BytesN<32>),
     Spend(BytesN<32>),
     Allowance(BytesN<32>, Address),
+    /// An agent key that was removed. It can't be added again, so nothing
+    /// left behind for it, such as an unused approval, can come back.
+    Removed(BytesN<32>),
 }
 
 #[contracterror]
@@ -138,6 +141,10 @@ pub enum Error {
     NoPasskey = 12,
     /// The passkey assertion is malformed or not for this payload.
     InvalidPasskeySignature = 13,
+    /// An approval that would already have expired.
+    InvalidExpiry = 14,
+    /// This agent key was removed and can't be added again.
+    AgentRemoved = 15,
 }
 
 #[contractevent(topics = ["agent_added"])]
@@ -153,6 +160,52 @@ pub struct AgentAdded {
 pub struct AgentRemoved {
     #[topic]
     pub agent: BytesN<32>,
+}
+
+#[contractevent(topics = ["policy_changed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PolicyChanged {
+    #[topic]
+    pub agent: BytesN<32>,
+    pub policy: Policy,
+}
+
+#[contractevent(topics = ["agent_paused"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PausedChanged {
+    #[topic]
+    pub agent: BytesN<32>,
+    pub paused: bool,
+}
+
+/// The owner approved one payment beyond the agent's policy.
+#[contractevent(topics = ["approval_granted"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ApprovalGranted {
+    #[topic]
+    pub agent: BytesN<32>,
+    #[topic]
+    pub payee: Address,
+    pub amount: i128,
+    pub expires_at: u64,
+}
+
+/// The wallet changed hands: a new owner address, or a passkey (the wallet then owns itself).
+#[contractevent(topics = ["owner_changed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OwnerChanged {
+    pub owner: Address,
+    pub passkey: Option<BytesN<65>>,
+}
+
+#[contractevent(topics = ["withdrawn"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Withdrawn {
+    #[topic]
+    pub token: Address,
+    #[topic]
+    pub to: Address,
+    pub amount: i128,
 }
 
 /// Emitted for every transfer an agent authorizes, so each payment can be
@@ -198,6 +251,7 @@ impl AgentWallet {
         require_owner(&env);
         env.storage().instance().set(&DataKey::Owner, &env.current_contract_address());
         env.storage().instance().set(&DataKey::Passkey, &passkey);
+        OwnerChanged { owner: env.current_contract_address(), passkey: Some(passkey) }.publish(&env);
     }
 
     pub fn owner(env: Env) -> Address {
@@ -209,6 +263,7 @@ impl AgentWallet {
         require_owner(&env);
         env.storage().instance().set(&DataKey::Owner, &new_owner);
         env.storage().instance().remove(&DataKey::Passkey);
+        OwnerChanged { owner: new_owner, passkey: None }.publish(&env);
     }
 
     pub fn add_agent(env: Env, agent: BytesN<32>, policy: Policy) -> Result<(), Error> {
@@ -216,6 +271,9 @@ impl AgentWallet {
         let key = DataKey::Agent(agent.clone());
         if env.storage().persistent().has(&key) {
             return Err(Error::AgentExists);
+        }
+        if env.storage().persistent().has(&DataKey::Removed(agent.clone())) {
+            return Err(Error::AgentRemoved);
         }
         validate(&policy)?;
         env.storage().persistent().set(&key, &Agent { policy: policy.clone(), paused: false });
@@ -229,8 +287,9 @@ impl AgentWallet {
         require_owner(&env);
         validate(&policy)?;
         let mut record = load_agent(&env, &agent)?;
-        record.policy = policy;
+        record.policy = policy.clone();
         save_agent(&env, &agent, &record);
+        PolicyChanged { agent, policy }.publish(&env);
         Ok(())
     }
 
@@ -239,19 +298,26 @@ impl AgentWallet {
         let mut record = load_agent(&env, &agent)?;
         record.paused = paused;
         save_agent(&env, &agent, &record);
+        PausedChanged { agent, paused }.publish(&env);
         Ok(())
     }
 
-    /// Revokes an agent immediately. Its key can never authorize anything again.
+    /// Revokes an agent immediately. Its key can never authorize anything
+    /// again, and can't be added back.
     pub fn remove_agent(env: Env, agent: BytesN<32>) {
         require_owner(&env);
         env.storage().persistent().remove(&DataKey::Agent(agent.clone()));
         env.storage().persistent().remove(&DataKey::Spend(agent.clone()));
+        let removed = DataKey::Removed(agent.clone());
+        env.storage().persistent().set(&removed, &true);
+        bump(&env, &removed);
         AgentRemoved { agent }.publish(&env);
     }
 
     /// Approves one payment the policy would otherwise refuse. This is how an
-    /// "ask me first" request from an agent gets answered on-chain.
+    /// "ask me first" request from an agent gets answered on-chain. It is only
+    /// used by a payment the policy refuses, so payments the agent could make
+    /// anyway don't use it up. `expires_at` 0 means it never expires.
     pub fn approve_once(
         env: Env,
         agent: BytesN<32>,
@@ -263,10 +329,14 @@ impl AgentWallet {
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }
+        if expires_at != 0 && expires_at <= env.ledger().timestamp() {
+            return Err(Error::InvalidExpiry);
+        }
         load_agent(&env, &agent)?;
-        let key = DataKey::Allowance(agent, payee);
+        let key = DataKey::Allowance(agent.clone(), payee.clone());
         env.storage().persistent().set(&key, &Allowance { amount, expires_at });
         bump(&env, &key);
+        ApprovalGranted { agent, payee, amount, expires_at }.publish(&env);
         Ok(())
     }
 
@@ -274,6 +344,7 @@ impl AgentWallet {
     pub fn withdraw(env: Env, token: Address, to: Address, amount: i128) {
         require_owner(&env);
         token::Client::new(&env, &token).transfer(&env.current_contract_address(), &to, &amount);
+        Withdrawn { token, to, amount }.publish(&env);
     }
 
     pub fn agent(env: Env, agent: BytesN<32>) -> Option<Agent> {
@@ -343,30 +414,35 @@ fn check_agent(
     for context in auth_contexts.iter() {
         let (payee, amount) = transfer_args(&env, &context, policy)?;
 
-        // An owner approval covers this payment outright.
+        // The policy first, so a payment it allows never uses up an approval
+        // the owner gave for something else.
+        let refusal = if !policy.payees.is_empty() && !policy.payees.contains(&payee) {
+            Some(Error::PayeeNotAllowed)
+        } else if amount > policy.per_tx {
+            Some(Error::OverPerTxLimit)
+        } else if spend.spent + amount > policy.budget {
+            Some(Error::OverBudget)
+        } else {
+            None
+        };
+        let Some(refusal) = refusal else {
+            spend.spent += amount;
+            AgentSpend { agent: key.clone(), payee, amount, approved_by_owner: false }.publish(&env);
+            continue;
+        };
+
+        // Beyond the policy: only a live owner approval for this payee covers it.
         let allowance_key = DataKey::Allowance(key.clone(), payee.clone());
         let allowance: Option<Allowance> = env.storage().persistent().get(&allowance_key);
-        if let Some(allowance) = allowance {
-            let live = allowance.expires_at == 0 || now < allowance.expires_at;
-            if live && amount <= allowance.amount {
+        match allowance {
+            Some(allowance)
+                if (allowance.expires_at == 0 || now < allowance.expires_at) && amount <= allowance.amount =>
+            {
                 env.storage().persistent().remove(&allowance_key);
-                AgentSpend { agent: key.clone(), payee, amount, approved_by_owner: true }
-                    .publish(&env);
-                continue;
+                AgentSpend { agent: key.clone(), payee, amount, approved_by_owner: true }.publish(&env);
             }
+            _ => return Err(refusal),
         }
-
-        if !policy.payees.is_empty() && !policy.payees.contains(&payee) {
-            return Err(Error::PayeeNotAllowed);
-        }
-        if amount > policy.per_tx {
-            return Err(Error::OverPerTxLimit);
-        }
-        if spend.spent + amount > policy.budget {
-            return Err(Error::OverBudget);
-        }
-        spend.spent += amount;
-        AgentSpend { agent: key.clone(), payee, amount, approved_by_owner: false }.publish(&env);
     }
 
     let spend_key = DataKey::Spend(key.clone());
@@ -455,6 +531,12 @@ fn transfer_args(env: &Env, context: &Context, policy: &Policy) -> Result<(Addre
     if call.contract != policy.token {
         return Err(Error::WrongToken);
     }
+    // Only money leaving this wallet. The network only asks this wallet to
+    // authorize its own transfers, so this is a second line of defence.
+    let from = Address::try_from_val(env, &call.args.get_unchecked(0)).map_err(|_| Error::NotATransfer)?;
+    if from != env.current_contract_address() {
+        return Err(Error::NotATransfer);
+    }
     // Since protocol 23 the SAC takes a muxed destination; plain addresses convert too.
     let to = MuxedAddress::try_from_val(env, &call.args.get_unchecked(1))
         .map_err(|_| Error::NotATransfer)?;
@@ -473,7 +555,7 @@ fn require_owner(env: &Env) {
 }
 
 fn validate(policy: &Policy) -> Result<(), Error> {
-    if policy.per_tx <= 0 || policy.budget <= 0 || policy.window_secs == 0 {
+    if policy.per_tx <= 0 || policy.budget <= 0 || policy.window_secs == 0 || policy.per_tx > policy.budget {
         return Err(Error::InvalidPolicy);
     }
     Ok(())
