@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { OryneAgent, PaymentRefusedError } from '@oryne/agent'
+import { OryneAgent, parsePayeeRule, PaymentRefusedError } from '@oryne/agent'
 import { z } from 'zod'
 
 /**
@@ -12,6 +12,9 @@ import { z } from 'zod'
  *   ORYNE_AGENT_SECRET  the agent's secret key (S…), shown once when you connect it
  *   ORYNE_API_URL       defaults to the hosted API, https://oryne.onrender.com
  *   ORYNE_MAX_PER_REQUEST  optional client-side cap per request, e.g. "1"
+ *   ORYNE_PAYEES        who the agent may pay: "any" (default), "directory"
+ *                       (only listed services, at their listed address) or
+ *                       comma-separated Stellar addresses
  */
 
 const secret = process.env.ORYNE_AGENT_SECRET ?? process.env.ORYNE_AGENT_KEY
@@ -20,17 +23,20 @@ if (!secret) {
   process.exit(1)
 }
 
-const agent = new OryneAgent({
+const clientOptions = {
   secret,
   apiUrl: process.env.ORYNE_API_URL,
   maxPerRequest: process.env.ORYNE_MAX_PER_REQUEST,
-})
+  payees: parsePayeeRule(process.env.ORYNE_PAYEES),
+}
+
+const agent = new OryneAgent(clientOptions)
 
 const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
 })
 
-const mcp = new McpServer({ name: 'oryne', version: '0.1.0' })
+const mcp = new McpServer({ name: 'oryne', version: '0.2.0' })
 
 mcp.registerTool(
   'fetch_paid',
@@ -44,14 +50,17 @@ mcp.registerTool(
       url: z.string().url(),
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET'),
       body: z.string().optional().describe('Request body, for POST/PUT'),
+      maxPrice: z
+        .string()
+        .regex(/^\d+(\.\d{1,7})?$/)
+        .optional()
+        .describe('Most you expect this request to cost in USDC, e.g. "0.10". Anything higher is refused unpaid.'),
     },
   },
-  async ({ url, method, body }) => {
+  async ({ url, method, body, maxPrice }) => {
     const payments: string[] = []
     const client = new OryneAgent({
-      secret,
-      apiUrl: process.env.ORYNE_API_URL,
-      maxPerRequest: process.env.ORYNE_MAX_PER_REQUEST,
+      ...clientOptions,
       onPayment: (event) => {
         if (event.type === 'paid') payments.push(`Paid ${event.amount} USDC (tx ${event.settlement.transaction})`)
       },
@@ -61,15 +70,22 @@ mcp.registerTool(
         method,
         body,
         headers: body ? { 'content-type': 'application/json' } : undefined,
+        maxPrice,
       })
       const content = (await response.text()).slice(0, 50_000)
       return text(`${payments.join('\n')}${payments.length ? '\n' : ''}HTTP ${response.status}\n\n${content}`)
     } catch (error) {
       if (error instanceof PaymentRefusedError) {
         const r = error.requirements
+        const asked = `Service asked for ${Number(r.maxAmountRequired) / 1e7} USDC to ${r.payTo}.\n`
+        if (error.source === 'client') {
+          return text(
+            `Not paid: ${error.reason}. Nothing was signed and no money moved.\n${asked}` +
+              'Do not try to pay this another way. If you think it is legitimate, tell your owner.',
+          )
+        }
         return text(
-          `The wallet refused this payment: ${error.reason}.\n` +
-            `Service asked for ${Number(r.maxAmountRequired) / 1e7} USDC to ${r.payTo}.\n` +
+          `The wallet refused this payment: ${error.reason}.\n${asked}` +
             'If it is needed, call request_approval with payTo, amount and a short description.',
         )
       }

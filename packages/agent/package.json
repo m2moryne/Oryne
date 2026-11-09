@@ -1,6 +1,6 @@
 {
   "name": "@oryne/agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Agent SDK: a fetch() that pays x402 challenges from the agent's Oryne wallet, inside its mandate.",
@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --test src/*.test.ts"
   },
   "dependencies": {
     "@oryne/core": "*",

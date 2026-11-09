@@ -23,12 +23,13 @@ Connect an agent in the [Oryne dashboard](https://oryne.org/app) and copy its se
 | `ORYNE_AGENT_SECRET` | The agent's secret key (`S…`). Required. |
 | `ORYNE_API_URL` | Oryne API. Defaults to `https://oryne.onrender.com` (Stellar testnet). |
 | `ORYNE_MAX_PER_REQUEST` | Most it pays for one request, e.g. `1`. |
+| `ORYNE_PAYEES` | Who it may pay: `any` (default), `directory` (only services listed in the Oryne directory, at the address they're listed with) or comma-separated Stellar addresses. Checked before anything is signed. |
 
 ## Tools
 
 | Tool | |
 |---|---|
-| `fetch_paid` | Fetch a URL. If it answers 402 Payment Required, pay it within the mandate and return the response. |
+| `fetch_paid` | Fetch a URL. If it answers 402 Payment Required, pay it within the mandate and return the response. Takes an optional `maxPrice`: what the model expects the request to cost; a service asking more isn't paid. |
 | `wallet_status` | The wallet, the agent's limits and what's left of its budget. |
 | `request_approval` | Ask the owner to approve a payment over the limits, with a reason they'll read. |
 | `find_service` | Search services that accept agent payments. |

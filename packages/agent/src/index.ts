@@ -13,6 +13,15 @@ import {
   type SettleResponse,
 } from '@oryne/core'
 import { Keypair } from '@stellar/stellar-sdk'
+import {
+  hookRefusal,
+  payeeRefusal,
+  type BeforePay,
+  type DirectoryListing,
+  type PayeeRule,
+} from './guard.ts'
+
+export * from './guard.ts'
 
 /**
  * An agent's connection to Oryne. Give it the agent's secret key (S…, shown
@@ -50,17 +59,34 @@ export type Approval = {
 export type PaymentEvent =
   | { type: 'paying'; requirements: PaymentRequirements; amount: string }
   | { type: 'paid'; settlement: SettleResponse; amount: string }
-  | { type: 'refused'; reason: string; amount: string }
+  | { type: 'refused'; reason: string; amount: string; source: RefusalSource }
+
+/**
+ * Who refused: `'wallet'` is the contract (or the service failing to settle),
+ * after the agent signed; `'client'` is this SDK, before anything was signed.
+ */
+export type RefusalSource = 'wallet' | 'client'
 
 export class PaymentRefusedError extends Error {
   readonly reason: string
   readonly requirements: PaymentRequirements
-  constructor(reason: string, requirements: PaymentRequirements) {
-    super(`Payment refused by the wallet: ${reason}`)
+  readonly source: RefusalSource
+  constructor(reason: string, requirements: PaymentRequirements, source: RefusalSource = 'wallet') {
+    super(source === 'wallet' ? `Payment refused by the wallet: ${reason}` : `Payment refused before signing: ${reason}`)
     this.reason = reason
     this.requirements = requirements
+    this.source = source
   }
 }
+
+/** `fetch()` options, plus the most this one request may cost. */
+export type PaidRequestInit = RequestInit & {
+  /** Refuse to pay more than this for this request, in token units, e.g. "0.10". */
+  maxPrice?: string
+}
+
+/** How long directory lookups are reused. */
+const DIRECTORY_TTL_MS = 5 * 60_000
 
 /** The hosted Oryne API, on Stellar testnet. */
 export const DEFAULT_API_URL = 'https://oryne.onrender.com'
@@ -72,6 +98,15 @@ export type OryneAgentOptions = {
   apiUrl?: string
   /** Most this client will pay for a single request, whatever the service asks. In token units, e.g. "1". */
   maxPerRequest?: string
+  /**
+   * Who this agent may pay: `'any'` (default), `'directory'` (only services in
+   * the Oryne directory, at the address listed for that host) or a list of
+   * Stellar addresses. Checked before signing; the wallet's on-chain mandate
+   * still applies on top.
+   */
+  payees?: PayeeRule
+  /** Last say before signing. Return `true` to pay, or `false` or a reason to refuse. */
+  beforePay?: BeforePay
   onPayment?: (event: PaymentEvent) => void
 }
 
@@ -80,12 +115,17 @@ export class OryneAgent {
   readonly apiUrl: string
   private info?: Promise<AgentInfo>
   private readonly maxPerRequest?: bigint
+  private readonly payees: PayeeRule
+  private readonly beforePay?: BeforePay
   private readonly onPayment?: (event: PaymentEvent) => void
+  private readonly listings = new Map<string, { at: number; listings: Promise<DirectoryListing[]> }>()
 
   constructor(options: OryneAgentOptions) {
     this.keypair = Keypair.fromSecret(options.secret)
     this.apiUrl = (options.apiUrl ?? process.env.ORYNE_API_URL ?? DEFAULT_API_URL).replace(/\/$/, '')
     this.maxPerRequest = options.maxPerRequest ? toBaseUnits(options.maxPerRequest) : undefined
+    this.payees = options.payees ?? 'any'
+    this.beforePay = options.beforePay
     this.onPayment = options.onPayment
   }
 
@@ -119,8 +159,25 @@ export class OryneAgent {
     return this.info
   }
 
+  /** The Oryne directory's listings for an origin. Cached for a few minutes; failures aren't cached. */
+  directory(origin: string): Promise<DirectoryListing[]> {
+    const cached = this.listings.get(origin)
+    if (cached && Date.now() - cached.at < DIRECTORY_TTL_MS) return cached.listings
+    const url = new URL('/v1/services', this.apiUrl)
+    url.searchParams.set('host', new URL(origin).host)
+    const listings = fetch(url).then(async (response) => {
+      if (!response.ok) throw new Error(`directory answered ${response.status}`)
+      const data = (await response.json()) as { services?: DirectoryListing[] }
+      return data.services ?? []
+    })
+    listings.catch(() => this.listings.delete(origin))
+    this.listings.set(origin, { at: Date.now(), listings })
+    return listings
+  }
+
   /** A fetch() that pays 402 Payment Required responses from the agent's wallet. */
-  async fetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  async fetch(input: string | URL, paidInit?: PaidRequestInit): Promise<Response> {
+    const { maxPrice, ...init } = paidInit ?? {}
     const first = await fetch(input, init)
     if (first.status !== 402) return first
 
@@ -133,8 +190,11 @@ export class OryneAgent {
 
     const amount = BigInt(requirements.maxAmountRequired)
     const display = fromBaseUnits(amount)
-    if (this.maxPerRequest !== undefined && amount > this.maxPerRequest) {
-      throw new PaymentRefusedError(`Asks ${display}, above this client's maxPerRequest`, requirements)
+    const url = first.url || String(input)
+    const refusal = await this.refusal(url, requirements, amount, display, maxPrice)
+    if (refusal) {
+      this.onPayment?.({ type: 'refused', reason: refusal, amount: display, source: 'client' })
+      throw new PaymentRefusedError(refusal, requirements, 'client')
     }
 
     this.onPayment?.({ type: 'paying', requirements, amount: display })
@@ -162,11 +222,31 @@ export class OryneAgent {
     if (paid.status === 402) {
       const body = (await paid.clone().json().catch(() => ({}))) as { error?: string }
       const reason = settlement?.errorReason ?? body.error ?? 'Payment was not accepted'
-      this.onPayment?.({ type: 'refused', reason, amount: display })
+      this.onPayment?.({ type: 'refused', reason, amount: display, source: 'wallet' })
       throw new PaymentRefusedError(reason, requirements)
     }
     if (settlement) this.onPayment?.({ type: 'paid', settlement, amount: display })
     return paid
+  }
+
+  /** Why this agent shouldn't sign the payment, or undefined if it may. */
+  private async refusal(
+    url: string,
+    requirements: PaymentRequirements,
+    amount: bigint,
+    display: string,
+    maxPrice: string | undefined,
+  ): Promise<string | undefined> {
+    if (amount <= 0n) return `Asks a payment of ${display}`
+    if (this.maxPerRequest !== undefined && amount > this.maxPerRequest) {
+      return `Asks ${display}, above this client's maxPerRequest of ${fromBaseUnits(this.maxPerRequest)}`
+    }
+    if (maxPrice !== undefined && amount > toBaseUnits(maxPrice)) {
+      return `Asks ${display}, above the ${maxPrice} expected for this request`
+    }
+    const payee = await payeeRefusal(this.payees, url, requirements.payTo, (origin) => this.directory(origin))
+    if (payee) return payee
+    return hookRefusal(this.beforePay, { url, requirements, amount: display })
   }
 
   /** Asks the owner to approve a payment the mandate refused. Returns the pending approval. */

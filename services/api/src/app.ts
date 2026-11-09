@@ -332,13 +332,24 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   app.get('/v1/services', async (c) => {
     const q = `%${(c.req.query('q') ?? '').toLowerCase().slice(0, 100)}%`
     const category = c.req.query('category') ?? ''
+    // ?host=api.example.com: the listings for one host, so an agent can check
+    // that a 402 asks to be paid at the address that host is listed with.
+    const host = (c.req.query('host') ?? '').toLowerCase().slice(0, 255)
+    const hostOf = (url: string) => {
+      try {
+        return new URL(url).host
+      } catch {
+        return ''
+      }
+    }
     const rows = await db
       .prepare(
         `select * from services where lower(name || ' ' || description || ' ' || category) like ?
-         and (? = '' or category = ?) order by created_at desc limit 200`,
+         and (? = '' or category = ?) and (? = '' or lower(url) like ?) order by created_at desc limit 200`,
       )
-      .all(q, category, category) as ServiceRow[]
-    return c.json({ services: await serviceViews(rows), categories: serviceCategories })
+      .all(q, category, category, host, `%://${host}%`) as ServiceRow[]
+    const matching = host ? rows.filter((row) => hostOf(row.url) === host) : rows
+    return c.json({ services: await serviceViews(matching), categories: serviceCategories })
   })
 
   app.post('/v1/x402/verify', async (c) => {

@@ -40,6 +40,26 @@ try {
 }
 ```
 
+## Check a payment before signing
+
+The wallet contract is the hard limit. It refuses anything outside the mandate, whatever the agent signs. Before signing, the SDK can also check whether a payment request makes sense at all. That catches a request that is inside the mandate but still wrong: a service that suddenly asks for more, or a hijacked endpoint that asks to be paid at someone else's address.
+
+```ts
+const agent = new OryneAgent({
+  secret: process.env.ORYNE_AGENT_SECRET!,
+  payees: 'directory', // only services in the Oryne directory, at the address they're listed with
+  // Your own rule, last before signing: true to pay, or a reason to refuse.
+  beforePay: ({ url }) => new URL(url).hostname.endsWith('.example.com') || 'only example.com services',
+})
+
+// This search should cost at most 0.10; a 402 asking more is refused unpaid.
+await agent.fetch('https://api.example.com/search?q=stellar', { maxPrice: '0.10' })
+```
+
+A refusal here throws `PaymentRefusedError` with `source: 'client'`. Nothing was signed and no money moved. Refusals from the wallet contract have `source: 'wallet'`.
+
+The directory doesn't verify who owns a listed URL yet. `payees: 'directory'` stops payments to unlisted hosts and to addresses a host isn't listed with, but for a guarantee, set the allowed payees in the agent's on-chain mandate in the dashboard.
+
 ## Options
 
 | Option | |
@@ -47,7 +67,11 @@ try {
 | `secret` | The agent's secret key (`S…`). |
 | `apiUrl` | Oryne API. Defaults to `ORYNE_API_URL`, then `https://oryne.onrender.com` (Stellar testnet). |
 | `maxPerRequest` | Most this client pays for one request, whatever a service asks, e.g. `'1'`. |
+| `payees` | Who it may pay: `'any'` (default), `'directory'`, or an array of Stellar addresses. |
+| `beforePay` | `({ url, requirements, amount }) => true \| false \| reason`. Last say before signing. |
 | `onPayment` | Called with `paying`, `paid` and `refused` events. |
+
+Per request: `agent.fetch(url, { ...init, maxPrice: '0.10' })`.
 
 Other methods: `agent.me()` (the agent, its mandate and what's left of its budget), `agent.approval(id)`.
 
