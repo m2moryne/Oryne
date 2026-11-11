@@ -43,14 +43,14 @@ export default function Overview() {
 
           <Panel title="2. Install the SDK">
             <p className="text-sm leading-relaxed text-muted">
-              Add the agent SDK to your project. It needs Node 20 or later and comes with TypeScript types. The{' '}
+              Add the agent SDK to your project: TypeScript (Node 20 or later) or Python (3.10 or later). The{' '}
               <a href="/docs#quickstart" className="underline underline-offset-4">
                 quickstart
               </a>{' '}
               walks through it end to end.
             </p>
             <div className="mt-4">
-              <CodeBlock code="npm install @oryne/agent" />
+              <CodeBlock samples={{ TypeScript: 'npm install @oryne/agent', Python: 'pip install oryne' }} />
             </div>
           </Panel>
 
@@ -62,8 +62,8 @@ export default function Overview() {
             </p>
             <div className="mt-4">
               <CodeBlock
-                label="TypeScript"
-                code={`import { OryneAgent } from '@oryne/agent'
+                samples={{
+                  TypeScript: `import { OryneAgent } from '@oryne/agent'
 
 const agent = new OryneAgent({
   secret: process.env.ORYNE_AGENT_SECRET!,
@@ -72,7 +72,19 @@ const agent = new OryneAgent({
 })
 
 const response = await agent.fetch('https://api.example.com/search?q=stellar')
-console.log(await response.json())`}
+console.log(await response.json())`,
+                  Python: `import os
+from oryne import OryneAgent
+
+agent = OryneAgent(
+    os.environ["ORYNE_AGENT_SECRET"],
+    api_url="${API_URL}",
+    max_per_request="1",  # never pay more than 1 USDC for one request
+)
+
+response = agent.fetch("https://api.example.com/search", params={"q": "stellar"})
+print(response.json())`,
+                }}
               />
             </div>
           </Panel>

@@ -40,7 +40,8 @@ export default function About() {
                 <>A wallet contract you own, holding USDC on Stellar, with a mandate for each agent you trust.</>,
                 <>A dashboard to add agents, set their limits, approve payments beyond them, top up and withdraw.</>,
                 <>
-                  Developer tools: <code>@oryne/agent</code> and <code>@oryne/mcp</code> so agents can pay, and{' '}
+                  Developer tools: <code>@oryne/agent</code>, <code>oryne</code> for Python and <code>@oryne/mcp</code>{' '}
+                  so agents can pay, and{' '}
                   <code>@oryne/merchant</code> so services can charge them, over the x402 payment protocol.
                 </>,
                 <>A directory of paid services agents can use, with per-agent access you allow in one click.</>,

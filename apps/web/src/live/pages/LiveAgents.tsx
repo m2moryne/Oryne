@@ -153,6 +153,10 @@ export function AgentSecret({ secret }: { secret: string }) {
 
 const agent = new OryneAgent({ secret: '${secret}', apiUrl: '${API_URL}' })
 const res = await agent.fetch(url) // pays 402s inside the mandate`,
+          Python: `from oryne import OryneAgent
+
+agent = OryneAgent("${secret}", api_url="${API_URL}")
+res = agent.fetch(url)  # pays 402s inside the mandate`,
           Secret: secret,
         }}
       />

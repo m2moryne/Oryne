@@ -8,12 +8,26 @@ import { REPO, Value } from './shared'
 
 /** The real developer pages that aren't the overview: SDKs, accepting payments, contracts. */
 
-const packages = [
+const packages: Array<{
+  name: string
+  path: string
+  install: string
+  note: string
+  /** Where it's published; npm unless given. */
+  registry?: { label: string; url: string }
+}> = [
   {
     name: '@oryne/agent',
     path: 'packages/agent',
     install: 'npm install @oryne/agent',
     note: 'A fetch() that pays 402 Payment Required from the agent’s wallet, inside its mandate, and can ask the owner to approve the rest.',
+  },
+  {
+    name: 'oryne (Python)',
+    path: 'packages/python',
+    install: 'pip install oryne',
+    note: 'The agent SDK for Python: LangChain, CrewAI or a plain script. Signs exactly what @oryne/agent signs.',
+    registry: { label: 'PyPI', url: 'https://pypi.org/project/oryne/' },
   },
   {
     name: '@oryne/mcp',
@@ -49,12 +63,12 @@ export function Sdks() {
             </div>
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
               <a
-                href={`https://www.npmjs.com/package/${pkg.name}`}
+                href={pkg.registry?.url ?? `https://www.npmjs.com/package/${pkg.name}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 underline underline-offset-4"
               >
-                npm <Icon icon={ExternalLink} size={13} />
+                {pkg.registry?.label ?? 'npm'} <Icon icon={ExternalLink} size={13} />
               </a>
               <a
                 href={`${REPO}/tree/master/${pkg.path}`}

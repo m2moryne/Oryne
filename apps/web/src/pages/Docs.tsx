@@ -9,7 +9,7 @@ import { cn } from '../lib/cn'
 import { publicPages } from '../lib/seo'
 
 /**
- * Developer documentation for the published packages: @oryne/agent, @oryne/mcp,
+ * Developer documentation for the published packages: @oryne/agent, oryne (Python), @oryne/mcp,
  * @oryne/merchant and @oryne/core. Everything here matches the code on npm;
  * when a package's API changes, change it here too.
  */
@@ -32,6 +32,7 @@ const nav: Array<{ title: string; items: NavItem[] }> = [
     title: 'Packages',
     items: [
       { id: 'agent', label: '@oryne/agent' },
+      { id: 'python', label: 'oryne (Python)' },
       { id: 'mcp', label: '@oryne/mcp' },
       { id: 'merchant', label: '@oryne/merchant' },
       { id: 'core', label: '@oryne/core' },
@@ -304,7 +305,13 @@ export default function Docs() {
             <Table
               head={['You want to', 'Use']}
               rows={[
-                [<>Pay from your own agent's code</>, <a href="#agent" className="font-mono underline underline-offset-4">@oryne/agent</a>],
+                [
+                  <>Pay from your own agent's code</>,
+                  <>
+                    <a href="#agent" className="font-mono underline underline-offset-4">@oryne/agent</a> (TypeScript) ·{' '}
+                    <a href="#python" className="font-mono underline underline-offset-4">oryne</a> (Python)
+                  </>,
+                ],
                 [<>Let Claude, Cursor or any MCP client pay</>, <a href="#mcp" className="font-mono underline underline-offset-4">@oryne/mcp</a>],
                 [<>Charge agents for your API</>, <a href="#merchant" className="font-mono underline underline-offset-4">@oryne/merchant</a>],
                 [<>Build your own client on the contract</>, <a href="#core" className="font-mono underline underline-offset-4">@oryne/core</a>],
@@ -327,13 +334,13 @@ export default function Docs() {
                 <P>On the dashboard overview, add test USDC to the wallet. It's free and arrives in a few seconds.</P>
               </Step>
               <Step n={3} title="Install the SDK">
-                <Code code="npm install @oryne/agent" />
+                <Code samples={{ TypeScript: 'npm install @oryne/agent', Python: 'pip install oryne' }} />
                 <Code label=".env" code="ORYNE_AGENT_SECRET=S…" />
               </Step>
               <Step n={4} title="Make a paid request">
                 <Code
-                  label="agent.ts"
-                  code={`import { OryneAgent } from '@oryne/agent'
+                  samples={{
+                    TypeScript: `import { OryneAgent } from '@oryne/agent'
 
 const agent = new OryneAgent({
   secret: process.env.ORYNE_AGENT_SECRET!,
@@ -347,12 +354,33 @@ console.log(await response.json())
 
 // What's left of this agent's budget
 const { agent: me } = await agent.me(true)
-console.log(me.remaining, 'USDC left')`}
+console.log(me.remaining, 'USDC left')`,
+                    Python: `import os
+from oryne import OryneAgent
+
+agent = OryneAgent(
+    os.environ["ORYNE_AGENT_SECRET"],
+    max_per_request="1",  # never pay more than 1 USDC for one request
+    on_payment=lambda event: print(event.type, event.amount),
+)
+
+# If the service answers 402, it pays and retries.
+response = agent.fetch("https://api.example.com/search", params={"q": "stellar"})
+print(response.json())
+
+# What's left of this agent's budget
+print(agent.me(refresh=True)["agent"]["remaining"], "USDC left")`,
+                  }}
                 />
-                <Code label="Terminal" code="node --env-file=.env agent.ts" />
+                <Code
+                  samples={{
+                    TypeScript: 'node --env-file=.env agent.ts',
+                    Python: 'export $(cat .env) && python agent.py',
+                  }}
+                />
                 <P>
-                  Node 22.18 and later run <C>.ts</C> files directly. On older versions, use <C>npx tsx agent.ts</C>{' '}
-                  or plain JavaScript.
+                  TypeScript: Node 22.18 and later run <C>.ts</C> files directly. On older versions, use{' '}
+                  <C>npx tsx agent.ts</C> or plain JavaScript. Python: 3.10 or later.
                 </P>
               </Step>
               <Step n={5} title="Watch it on the dashboard">
@@ -407,6 +435,15 @@ console.log(me.remaining, 'USDC left')`}
               [<C>secret</C>, <C>string</C>, <>The agent's secret key, <C>S…</C>. Required. Keep it in an environment variable.</>],
               [<C>apiUrl</C>, <C>string</C>, <>Oryne API. Defaults to <C>ORYNE_API_URL</C>, then <C>{API}</C>.</>],
               [<C>maxPerRequest</C>, <C>string</C>, <>Most this client pays for one request, in USDC, e.g. <C>'1'</C>. A second guard on top of the mandate.</>],
+              [
+                <C>payees</C>,
+                <C>'any' | 'directory' | string[]</C>,
+                <>
+                  Who it may pay. <C>'directory'</C>: only services in the Oryne directory, at the address they're
+                  listed with. A list: only those Stellar addresses. Default <C>'any'</C>. Checked before signing.
+                </>,
+              ],
+              [<C>beforePay</C>, <C>(payment) =&gt; boolean | string</C>, <>Your own rule, last before signing: <C>true</C> to pay, or a reason to refuse.</>],
               [<C>onPayment</C>, <C>(event) =&gt; void</C>, <>Called with <C>paying</C>, <C>paid</C> and <C>refused</C> events. See below.</>],
             ]}
           />
@@ -419,7 +456,8 @@ console.log(me.remaining, 'USDC left')`}
               Same arguments as <C>fetch</C>. A 402 with an Oryne-compatible price (same network and token) is paid
               and the request retried with the payment; the paid response comes back. Other responses pass through
               unchanged, including a 402 this wallet can't pay in. Throws <C>PaymentRefusedError</C> when the payment
-              is refused.
+              is refused. <C>init</C> can also carry <C>maxPrice</C>, the most this one request may cost, e.g.{' '}
+              <C>{"{ maxPrice: '0.10' }"}</C>: a service asking more isn't paid.
             </P>
           </Api>
           <Api signature="agent.me(refresh = false): Promise<AgentInfo>">
@@ -456,7 +494,7 @@ console.log(me.remaining, 'USDC left')`}
             code={`type PaymentEvent =
   | { type: 'paying'; amount: string; requirements: PaymentRequirements }
   | { type: 'paid'; amount: string; settlement: { success: true; transaction: string; ledger: number } }
-  | { type: 'refused'; amount: string; reason: string }`}
+  | { type: 'refused'; amount: string; reason: string; source: 'wallet' | 'client' }`}
           />
 
           <Anchor id="agent-errors" level={3}>
@@ -465,10 +503,13 @@ console.log(me.remaining, 'USDC left')`}
           <P>
             <C>PaymentRefusedError</C> carries the <a href="#refusals" className="underline underline-offset-4">reason</a>{' '}
             and the service's <C>requirements</C> (price, payee, resource), which is everything needed to ask the owner.
+            Its <C>source</C> says who refused: <C>'wallet'</C> is the contract, after signing; <C>'client'</C> is the
+            SDK's own checks (<C>maxPerRequest</C>, <C>maxPrice</C>, <C>payees</C>, <C>beforePay</C>), before anything
+            was signed. Only ask the owner about the first kind.
           </P>
           <Code
-            label="TypeScript"
-            code={`import { OryneAgent, PaymentRefusedError } from '@oryne/agent'
+            samples={{
+              TypeScript: `import { OryneAgent, PaymentRefusedError } from '@oryne/agent'
 
 const agent = new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET! })
 
@@ -476,7 +517,7 @@ async function fetchWithApproval(url: string) {
   try {
     return await agent.fetch(url)
   } catch (error) {
-    if (!(error instanceof PaymentRefusedError)) throw error
+    if (!(error instanceof PaymentRefusedError) || error.source !== 'wallet') throw error
     console.log('Refused:', error.reason) // e.g. "OverPerTxLimit"
 
     const approval = await agent.requestApproval({
@@ -490,7 +531,90 @@ async function fetchWithApproval(url: string) {
     if (decided.status !== 'approved') throw new Error(\`Owner \${decided.status} the payment\`)
     return agent.fetch(url) // allowed once, for this payee and amount
   }
-}`}
+}`,
+              Python: `import os
+from oryne import OryneAgent, PaymentRefusedError
+
+agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
+
+def fetch_with_approval(url: str):
+    try:
+        return agent.fetch(url)
+    except PaymentRefusedError as refused:
+        if refused.source != "wallet":
+            raise
+        print("Refused:", refused.reason)  # e.g. "OverPerTxLimit"
+
+        approval = agent.request_approval(
+            pay_to=refused.requirements["payTo"],
+            amount="30",
+            description="Research report for the weekly summary",
+            resource=refused.requirements["resource"],
+            reason=refused.reason,
+        )
+        decided = agent.wait_for_approval(approval["id"])
+        if decided["status"] != "approved":
+            raise RuntimeError(f"Owner {decided['status']} the payment")
+        return agent.fetch(url)  # allowed once, for this payee and amount`,
+            }}
+          />
+
+          <Anchor id="python" level={2}>
+            oryne (Python)
+          </Anchor>
+          <P>
+            The same SDK for Python agents: LangChain, CrewAI, LlamaIndex or a plain script. It signs exactly what{' '}
+            <C>@oryne/agent</C> signs, and works with the same wallets, mandates and approvals. Python 3.10 or later.
+          </P>
+          <Code code="pip install oryne" />
+
+          <Anchor id="python-options" level={3}>
+            OryneAgent(secret, **options)
+          </Anchor>
+          <P>The options are the TypeScript ones in snake_case. Amounts are strings, never floats.</P>
+          <Table
+            head={['Option', 'Type', 'Description']}
+            rows={[
+              [<C>secret</C>, <C>str</C>, <>The agent's secret key, <C>S…</C>. Required.</>],
+              [<C>api_url</C>, <C>str</C>, <>Oryne API. Defaults to <C>ORYNE_API_URL</C>, then <C>{API}</C>.</>],
+              [<C>max_per_request</C>, <C>str</C>, <>Most this client pays for one request, e.g. <C>"1"</C>.</>],
+              [<C>payees</C>, <C>"any" | "directory" | list[str]</C>, <>Who it may pay, as for TypeScript. Checked before signing.</>],
+              [<C>before_pay</C>, <C>(PaymentCheck) -&gt; bool | str</C>, <>Last say before signing: <C>True</C> to pay, or a reason to refuse.</>],
+              [<C>on_payment</C>, <C>(PaymentEvent) -&gt; None</C>, <>Called with <C>paying</C>, <C>paid</C> and <C>refused</C> events.</>],
+              [<C>http</C>, <C>httpx.Client</C>, <>Your own HTTP client, e.g. with other timeouts or a proxy.</>],
+            ]}
+          />
+          <Api signature='agent.fetch(url, method="GET", *, max_price=None, **kwargs) -> httpx.Response'>
+            <P>
+              Takes the same keyword arguments as <C>httpx.Client.request</C> (<C>params</C>, <C>json</C>,{' '}
+              <C>headers</C>, …). Pays a 402 like the TypeScript <C>fetch</C>, and raises <C>PaymentRefusedError</C>{' '}
+              with <C>reason</C>, <C>source</C> and <C>requirements</C> when the payment isn't made.
+            </P>
+          </Api>
+          <Api signature="agent.me(refresh=False) · agent.request_approval(pay_to=, amount=, description=, …) · agent.wait_for_approval(id, timeout=600) · agent.approval(id)">
+            <P>As in TypeScript. <C>OryneAgent</C> is also a context manager that closes its HTTP client.</P>
+          </Api>
+
+          <Anchor id="python-tools" level={3}>
+            As a tool for your agent framework
+          </Anchor>
+          <P>
+            <C>fetch</C> is a plain function, so wrapping it as a tool takes a few lines. With LangChain:
+          </P>
+          <Code
+            label="Python"
+            code={`from langchain_core.tools import tool
+from oryne import OryneAgent, PaymentRefusedError
+
+agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
+
+@tool
+def fetch_paid(url: str, max_price: str = "1") -> str:
+    """Fetch a URL. If it costs money, pay up to max_price USDC from the agent's wallet."""
+    try:
+        return agent.fetch(url, max_price=max_price).text[:20_000]
+    except PaymentRefusedError as refused:
+        return f"Not paid: {refused.reason}"`}
           />
 
           <Anchor id="mcp" level={2}>
@@ -774,8 +898,9 @@ node -e "import('@oryne/agent').then(async ({ OryneAgent }) => {
             head={['Variable', 'Used by', 'Description']}
             rows={[
               [<C>ORYNE_AGENT_SECRET</C>, 'mcp', <>The agent's secret key, <C>S…</C>. Required. In code, pass it as <C>secret</C>.</>],
-              [<C>ORYNE_API_URL</C>, 'agent, mcp', <>Oryne API. Defaults to <C>{API}</C>.</>],
+              [<C>ORYNE_API_URL</C>, 'agent, oryne (Python), mcp', <>Oryne API. Defaults to <C>{API}</C>.</>],
               [<C>ORYNE_MAX_PER_REQUEST</C>, 'mcp', <>Most the assistant pays for one request, e.g. <C>1</C>.</>],
+              [<C>ORYNE_PAYEES</C>, 'mcp', <>Who the assistant may pay: <C>any</C>, <C>directory</C> or comma-separated Stellar addresses.</>],
             ]}
           />
 

@@ -108,6 +108,16 @@ const res = await agent.fetch('https://api.lumensearch.example/v1/search?q=stell
 
 console.log(await res.json())
 console.log((await agent.me(true)).agent.remaining) // budget left this window`,
+  'Python': `import os
+from oryne import OryneAgent
+
+agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
+
+# The same SDK for Python agents: LangChain, CrewAI or a plain script.
+res = agent.fetch("https://api.lumensearch.example/v1/search", params={"q": "stellar"})
+
+print(res.json())
+print(agent.me(refresh=True)["agent"]["remaining"])  # budget left this window`,
   'Merchant middleware': `import express from 'express'
 import { expressPaywall } from '@oryne/merchant'
 

@@ -42,7 +42,7 @@ export const publicPages = {
     path: '/docs',
     title: 'Documentation — Agent SDK, MCP server and merchant kit | Oryne',
     description:
-      'Developer docs for Oryne: give an AI agent a wallet with @oryne/agent or @oryne/mcp, charge agents with @oryne/merchant. Quickstart, API reference, refusal reasons and the x402 payment protocol on Stellar.',
+      'Developer docs for Oryne: give an AI agent a wallet with @oryne/agent, oryne for Python or @oryne/mcp, charge agents with @oryne/merchant. Quickstart, API reference, refusal reasons and the x402 payment protocol on Stellar.',
   },
   vision: {
     path: '/vision',
