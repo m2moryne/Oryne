@@ -1,0 +1,58 @@
+# The Python SDK (packages/python, "oryne" on PyPI).
+#
+# On every push or pull request that touches it: unit tests on the oldest and
+# newest supported Python. Run by hand from the Actions tab to also publish to
+# PyPI. Publishing uses PyPI trusted publishing, so there is no token: on
+# pypi.org, add a trusted publisher for project "oryne" with this repository,
+# workflow "python.yml" and environment "pypi". Bump the version in
+# packages/python/pyproject.toml first; PyPI refuses to publish a version twice.
+name: python
+
+on:
+  push:
+    branches: [master]
+    paths: ['packages/python/**', '.github/workflows/python.yml']
+  pull_request:
+    paths: ['packages/python/**', '.github/workflows/python.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.13']
+    defaults:
+      run:
+        working-directory: packages/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+      - run: pytest
+
+  publish:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # PyPI trusted publishing
+    defaults:
+      run:
+        working-directory: packages/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install build
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/python/dist

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oryne"
+version = "0.1.0"
+description = "Give an AI agent a wallet it can spend from, with limits it cannot break: x402 payments in USDC on Stellar."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Oryne" }]
+keywords = ["stellar", "x402", "ai-agents", "agent-payments", "usdc", "soroban"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "stellar-sdk>=17.0.1,<18",
+  "httpx>=0.27,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://oryne.org"
+Source = "https://github.com/m2moryne/Oryne/tree/master/packages/python"
+Issues = "https://github.com/m2moryne/Oryne/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oryne"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["testnet: runs against Stellar testnet and the hosted Oryne API (set ORYNE_TESTNET=1)"]

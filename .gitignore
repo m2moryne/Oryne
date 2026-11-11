@@ -18,3 +18,9 @@ packages/*/npm/
 
 # Soroban test snapshots, written by every cargo test run
 test_snapshots/
+
+# Python SDK
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/

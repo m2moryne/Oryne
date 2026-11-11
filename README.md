@@ -150,6 +150,21 @@ When the wallet refuses, `fetch` throws a `PaymentRefusedError` with the reason;
 `requestApproval(…)` and `waitForApproval(id)`. A complete agent is in
 [`examples/research-agent`](examples/research-agent).
 
+**In Python** (LangChain, CrewAI, LlamaIndex or a plain script), the same SDK is
+[`oryne`](packages/python):
+
+```sh
+pip install oryne
+```
+
+```python
+import os
+from oryne import OryneAgent
+
+agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
+res = agent.fetch("https://oryne-demo-merchant.onrender.com/search", params={"q": "stellar"})
+```
+
 The **developer console** ([oryne.org/app/developers](https://oryne.org/app/developers)) has API
 keys, a **Playground** that shows each step of a payment (and what a refusal looks like), logs,
 usage, an AI debugger, and **webhooks** for `payment.settled`, `payment.refused`,
@@ -237,6 +252,7 @@ agent secrets or owner keys.
 | Dashboard and developer console ([oryne.org/app](https://oryne.org/app)) | ✅ Live, with a Test / Live switch |
 | Sign-in: Google, GitHub, email code, Freighter; passkey-owned wallets | ✅ Working, including real device passkeys |
 | SDKs on npm: [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent), [`@oryne/merchant`](https://www.npmjs.com/package/@oryne/merchant), [`@oryne/mcp`](https://www.npmjs.com/package/@oryne/mcp), [`@oryne/core`](https://www.npmjs.com/package/@oryne/core) | ✅ Published |
+| Python SDK ([`packages/python`](packages/python), `oryne` on PyPI) | ✅ Unit tests checked against the TypeScript SDK's signatures; pays, is refused and gets approval on testnet. ⏳ Not yet on PyPI |
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
 | [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: oryne-demo-merchant.onrender.com |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
@@ -258,7 +274,8 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   ├── core/                  Contract encoders, payment signing, x402 payload format
 │   ├── agent/                 @oryne/agent: fetch() that pays from the agent wallet
 │   ├── merchant/              @oryne/merchant: paywall middleware (Hono, Express)
-│   └── mcp/                   @oryne/mcp: MCP server for Claude, Cursor, …
+│   ├── mcp/                   @oryne/mcp: MCP server for Claude, Cursor, …
+│   └── python/                oryne (PyPI): the agent SDK for Python
 ├── examples/
 │   ├── demo-merchant/         A small paid API agents buy from (hosted on testnet)
 │   └── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
@@ -375,7 +392,7 @@ Found a security problem? Please report it privately: see [SECURITY.md](SECURITY
 | Stage | Focus | What ships |
 |---|---|---|
 | **Now** | The wallet | Contract on testnet and a mainnet pilot · dashboard and developer console · SDKs and MCP server on npm · first paid services |
-| **Next** | Open mainnet | Independent audit → mainnet for everyone · card and mobile-money top-ups · anchor funding and cash-out · more examples and SDK languages |
+| **Next** | Open mainnet | Independent audit → mainnet for everyone · card and mobile-money top-ups · anchor funding and cash-out · more examples · more SDK languages after Python |
 | **Then** | The network | Agent-searchable directory with ranking · team and company policies · verifiable agent identity and reputation |
 | **Later** | The economy | Agents paying agents with escrow · credit for agents with a track record · cross-border payouts in local money |
 
