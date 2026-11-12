@@ -144,6 +144,11 @@ export function OryneAI() {
       </button>
 
       {open && (
+        // The page behind blurs a little; clicking it closes the panel.
+        <div aria-hidden onClick={close} className="oryne-ai-backdrop fixed inset-0 z-[65] bg-charcoal/10 backdrop-blur-[3px]" />
+      )}
+
+      {open && (
         <section
           id="oryne-ai"
           role="dialog"

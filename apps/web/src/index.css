@@ -320,10 +320,12 @@ body,
 
 /* OryneAI's panel slides in from the right edge. */
 .oryne-ai-panel { animation: oryne-ai-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.oryne-ai-backdrop { animation: oryne-ai-fade 220ms ease; }
+@keyframes oryne-ai-fade { from { opacity: 0; } }
 @keyframes oryne-ai-in {
   from { transform: translateX(24px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .oryne-ai-panel { animation: none; }
+  .oryne-ai-panel, .oryne-ai-backdrop { animation: none; }
 }
