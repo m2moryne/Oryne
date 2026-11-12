@@ -16,6 +16,10 @@ WORKDIR /app
 COPY --from=deps --chown=node:node /app /app
 RUN install -d -o node -g node /data
 USER node
+# The commit this image was built from, reported in /v1/info. Last, so a new
+# commit only changes this layer. autodeploy.sh passes it in.
+ARG ORYNE_COMMIT=
+ENV ORYNE_COMMIT=$ORYNE_COMMIT
 # compose.yml sets the working directory and command per service.
 CMD ["node", "src/server.ts"]
 

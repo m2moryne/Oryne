@@ -17,6 +17,8 @@ x-server: &server
     context: ../..
     dockerfile: deploy/docker/Dockerfile
     target: server
+    # Shown in /v1/info as the deployed commit; autodeploy.sh sets it.
+    args: { ORYNE_COMMIT: "${ORYNE_COMMIT:-}" }
   restart: unless-stopped
   init: true
   logging:

@@ -113,6 +113,9 @@ function addressOf(value: unknown, field: string) {
   return value
 }
 
+/** When this process started, in Unix seconds; /v1/info reports it. */
+const startedAt = Math.floor(Date.now() / 1000)
+
 export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhooks) {
   const app = new Hono()
   const decimals = chain.network.decimals
@@ -281,6 +284,8 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
         dev: config.devLogin,
       },
       features: { aiDebugger: aiDebugger.enabled, assistant: assistant.enabled },
+      /** What's running: the git commit it was built from (null outside Docker) and when it started (Unix seconds). */
+      build: { commit: process.env.ORYNE_COMMIT || null, startedAt },
       /** Card top-ups with Paystack: the currency and how much one USDC costs in it. Null when off. */
       card: funding.card,
       /** Who may create a wallet: anyone (open) or approved accounts (invite). */

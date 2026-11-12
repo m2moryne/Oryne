@@ -43,6 +43,8 @@ echo "▸ Deploying $(git log -1 --format='%h %s' "$target")"
 git merge --ff-only --quiet "$target" || fail "master can't be fast-forwarded: is the checkout edited?"
 
 echo "▸ Building"
+# Baked into the images, so /v1/info says which commit is running.
+export ORYNE_COMMIT=$target
 "${COMPOSE[@]}" build --pull || fail "build failed; the running containers were not touched"
 
 echo "▸ Starting"
