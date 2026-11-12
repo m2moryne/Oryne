@@ -1,0 +1,16 @@
+# Deploys the latest master if it changed. Started every minute by oryne-autodeploy.timer.
+#   sudo cp deploy/docker/systemd/oryne-autodeploy.* /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now oryne-autodeploy.timer
+# Logs: journalctl -u oryne-autodeploy -n 100
+
+[Unit]
+Description=Oryne: deploy the latest master with Docker
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/oryne/deploy/docker/autodeploy.sh
+# A full image build can take a few minutes.
+TimeoutStartSec=30min

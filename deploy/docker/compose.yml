@@ -1,0 +1,99 @@
+# Oryne on one server with Docker. See deploy/docker/README.md.
+#
+#   cd deploy/docker
+#   docker compose up -d --build
+#
+# Every port is published on 127.0.0.1 only: the server's nginx
+# (oryne.nginx.conf) is the only thing the internet talks to.
+#
+# Rule 1 of deploy/README.md applies: exactly one copy of each API per network.
+# Never scale these services, and stop the Render copy when this one takes over.
+
+name: oryne
+
+x-server: &server
+  image: oryne-server
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+    target: server
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: json-file
+    options: { max-size: 20m, max-file: "5" }
+
+x-health: &health
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  # The first testnet start can upload the wallet contract, which takes a while.
+  start_period: 180s
+
+services:
+  api-testnet:
+    <<: *server
+    working_dir: /app/services/api
+    env_file: env/api-testnet.env
+    # Inside the container: listen on every interface (the published port is
+    # local-only) and keep data in the volume. These override the env file.
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      ORYNE_DATA_DIR: /data
+    volumes: [api-testnet-data:/data]
+    ports: ["127.0.0.1:8787:8787"]
+    healthcheck:
+      <<: *health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/v1/info').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+
+  api-mainnet:
+    <<: *server
+    working_dir: /app/services/api
+    env_file: env/api-mainnet.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8789"
+      ORYNE_DATA_DIR: /data
+    volumes: [api-mainnet-data:/data]
+    ports: ["127.0.0.1:8789:8789"]
+    # Real money: only with `--profile mainnet` (or COMPOSE_PROFILES=mainnet in .env).
+    profiles: [mainnet]
+    healthcheck:
+      <<: *health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8789/v1/info').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+
+  demo-merchant:
+    <<: *server
+    working_dir: /app/examples/demo-merchant
+    env_file: env/demo-merchant.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8788"
+    ports: ["127.0.0.1:8788:8788"]
+    depends_on: [api-testnet]
+    healthcheck:
+      <<: *health
+      start_period: 30s
+      # Paid routes answer 402, which still means "up".
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8788/quote').then(r=>process.exit(r.status<500?0:1),()=>process.exit(1))"]
+
+  web:
+    image: oryne-web
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      target: web
+      args:
+        # From deploy/docker/.env: the APIs the dashboard talks to.
+        VITE_ORYNE_API_URL: ${VITE_ORYNE_API_URL:?set VITE_ORYNE_API_URL in deploy/docker/.env}
+        VITE_ORYNE_LIVE_API_URL: ${VITE_ORYNE_LIVE_API_URL:-}
+    restart: unless-stopped
+    ports: ["127.0.0.1:8790:80"]
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "3" }
+
+volumes:
+  api-testnet-data:
+  api-mainnet-data:

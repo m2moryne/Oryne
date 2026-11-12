@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+.git
+.github
+**/.env
+**/*.local
+services/api/data
+.oryne
+contracts/target
+**/test_snapshots
+apps/admin
+packages/*/npm
+packages/python/.venv
+**/__pycache__
+deploy/docker/env
+deploy/docker/.env

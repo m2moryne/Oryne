@@ -24,3 +24,7 @@ test_snapshots/
 __pycache__/
 .pytest_cache/
 *.egg-info/
+
+# Docker hosting: settings filled in on the server
+deploy/docker/env/
+deploy/docker/.env
