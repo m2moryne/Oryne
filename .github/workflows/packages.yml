@@ -1,8 +1,15 @@
 # Publishes the SDKs to npm (@oryne/core, agent, merchant, mcp) when run by
-# hand from the Actions tab. Needs an NPM_TOKEN repository secret: an npm
-# granular access token with publish rights on the @oryne scope.
+# hand from the Actions tab.
+#
+# Uses npm trusted publishing, so there is no token to store or expire: npm
+# checks that the release comes from this workflow in this repository. Set it
+# up once per package on npmjs.com: the package → Settings → Trusted
+# publishing → GitHub Actions, with organization "m2moryne", repository
+# "Oryne" and workflow "packages.yml" (no environment). Releases get
+# provenance automatically.
+#
 # Bump the versions in packages/*/package.json first; npm refuses to publish
-# a version twice.
+# a version twice, and versions already on npm are skipped.
 name: Publish packages
 
 on:
@@ -10,20 +17,19 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance: links each release to this workflow run
+  id-token: write # trusted publishing and provenance
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.18
           registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+      - run: npm install -g npm@11
       - run: npm ci
-      - run: npm test -w @oryne/core
+      - run: npm test -w @oryne/core -w @oryne/agent
       - run: npm run packages -- --publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
