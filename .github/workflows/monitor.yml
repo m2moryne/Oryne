@@ -1,0 +1,51 @@
+# Uptime checks from outside the server, every 10 minutes: both APIs, the demo
+# merchant, the website, the sponsors' XLM and whether the server runs the
+# latest master (scripts/monitor.ts).
+#
+# Alerts: a run fails when a check starts failing, and again every hour while
+# it keeps failing. GitHub emails a failed scheduled run to whoever last
+# changed this schedule. For Slack or Discord too, add a repository secret
+# ALERT_WEBHOOK_URL (an incoming-webhook URL); it also gets recoveries.
+name: monitor
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # to keep the last run's state in the Actions cache
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.18
+      # Which checks were already failing, so an outage alerts once (then hourly), not every run.
+      - uses: actions/cache/restore@v4
+        with:
+          path: .monitor-state.json
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: monitor-state-
+      - name: Check
+        env:
+          MASTER_COMMIT: ${{ github.sha }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          export MASTER_COMMITTED_AT=$(git log -1 --format=%ct)
+          node scripts/monitor.ts --state .monitor-state.json
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .monitor-state.json
+          key: monitor-state-${{ github.run_id }}

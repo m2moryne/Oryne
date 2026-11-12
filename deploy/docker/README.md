@@ -66,6 +66,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now oryne-autodeploy.tim
 | See what's running | `sudo docker compose ps` |
 | Follow a service's logs | `sudo docker compose logs -f api-testnet` |
 | See the deploys | `journalctl -u oryne-autodeploy -n 100` |
+| See which commit is live | `curl -s https://testnet-apiv1.oryne.org/v1/info` → `build.commit` |
 | Deploy now, without waiting | `sudo ./autodeploy.sh --force` |
 | Apply a changed env file | `sudo docker compose up -d` (recreates what changed) |
 | Pause automatic deploys | `sudo systemctl stop oryne-autodeploy.timer` |
@@ -75,6 +76,17 @@ A push to `master` is live within about a minute plus the build. If the build
 fails, nothing running is touched; if a service doesn't come up healthy, the
 log says which and shows its last lines. A failed commit isn't retried until
 the next push.
+
+## Monitoring
+
+`.github/workflows/monitor.yml` checks from outside every 10 minutes
+([`scripts/monitor.ts`](../../scripts/monitor.ts)): both APIs, the demo merchant's
+payment challenge, the website, each sponsor's XLM (they pay every network fee;
+it warns below 1,000 on testnet and 15 on mainnet) and whether the APIs run the
+latest `master` 30 minutes after a push. A run fails when a check starts failing,
+and hourly while it stays down; GitHub emails failed scheduled runs to whoever
+last changed the schedule. For Slack or Discord as well, add a repository
+secret `ALERT_WEBHOOK_URL`. Run it by hand with `node scripts/monitor.ts`.
 
 The APIs' data directory (used for the downloaded contract build, and for
 SQLite when there's no `DATABASE_URL`) is a Docker volume per network, so it

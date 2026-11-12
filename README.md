@@ -404,6 +404,8 @@ The testnet API (`testnet-apiv1.oryne.org`), the mainnet API (`apiv1.oryne.org`)
 merchant (`demo.oryne.org`) run on our own server with Docker, behind nginx with HTTPS, and are
 redeployed automatically within a minute of a push to `master`:
 [`deploy/docker/README.md`](deploy/docker/README.md). The website is on Vercel (`vercel.json`).
+A scheduled workflow checks all of it from outside every 10 minutes and alerts when something
+breaks ([`scripts/monitor.ts`](scripts/monitor.ts)).
 
 ## Contributing
 
