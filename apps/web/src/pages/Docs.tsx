@@ -749,9 +749,16 @@ for call in reply.choices[0].message.tool_calls or []:
           </Anchor>
           <P>
             Charge agents per request. Unpaid requests get 402 with your price; paid ones are settled on Stellar before
-            your handler runs. Your customers need no account or API key with you.
+            your handler runs. Your customers need no account or API key with you. In Python, the same paywall is in the{' '}
+            <C>oryne</C> package, for FastAPI and Flask.
           </P>
-          <Code code="npm install @oryne/merchant" />
+          <Code
+            samples={{
+              TypeScript: 'npm install @oryne/merchant',
+              FastAPI: 'pip install "oryne[fastapi]"',
+              Flask: 'pip install "oryne[flask]"',
+            }}
+          />
           <Code
             samples={{
               Hono: `import { Hono } from 'hono'
@@ -777,6 +784,35 @@ const pay = expressPaywall({
 const app = express()
 app.get('/search', pay('0.01', 'One search'), (req, res) => res.json({ results: [] }))
 app.listen(3000)`,
+              FastAPI: `import os
+from fastapi import FastAPI, Request
+from oryne.merchant.fastapi import paywall
+
+pay = paywall(
+    pay_to=os.environ["STELLAR_ADDRESS"],  # where the money goes
+    facilitator="${FACILITATOR}",
+)
+
+app = FastAPI()
+
+@app.get("/search")
+@pay("0.01", "One search")
+async def search(q: str, request: Request):
+    payment = request.state.oryne_settlement  # transaction, payer
+    return {"results": []}`,
+              Flask: `import os
+from flask import Flask, g
+from oryne.merchant.flask import paywall
+
+pay = paywall(pay_to=os.environ["STELLAR_ADDRESS"], facilitator="${FACILITATOR}")
+
+app = Flask(__name__)
+
+@app.get("/search")
+@pay("0.01", "One search")
+def search():
+    payment = g.oryne_settlement  # transaction, payer
+    return {"results": []}`,
               'Any framework': `import { createPaywall } from '@oryne/merchant'
 
 const paywall = createPaywall({ payTo: process.env.STELLAR_ADDRESS!, facilitator: '${FACILITATOR}' })

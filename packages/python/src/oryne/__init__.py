@@ -28,7 +28,7 @@ from .payment import (
 from .tools import OryneTool, anthropic_tools, openai_tools, oryne_tools, run_tool
 from .units import from_base_units, to_base_units
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "DEFAULT_API_URL",

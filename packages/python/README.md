@@ -4,7 +4,7 @@ Give an AI agent a wallet it can spend from, with limits it cannot break.
 
 `agent.fetch()` makes an HTTP request. When a service answers `402 Payment Required` ([x402](https://x402.org)), it pays in USDC from the agent's Oryne wallet on Stellar and retries. The wallet's smart contract checks every payment against the mandate the owner set: per-payment limit, budget, allowed payees, expiry. Nothing the agent does can get past it.
 
-The same SDK as [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent) for TypeScript, for Python agents: LangChain, CrewAI, LlamaIndex, or a plain script.
+The same SDK as [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent) for TypeScript, for Python agents: LangChain, CrewAI, LlamaIndex, or a plain script. It also has the other side: [charge agents per request](#get-paid-by-agents) from a FastAPI or Flask API.
 
 ```sh
 pip install oryne
@@ -131,6 +131,43 @@ for call in response.choices[0].message.tool_calls or []:
 ```
 
 `oryne_tools(agent, approval_timeout=120, max_response_chars=50_000, only=["fetch_paid"])` tunes them; the integrations take the same options.
+
+## Get paid by agents
+
+You run an API and want agents to pay per call, with no accounts, cards or invoices. Put `@pay(...)` under the route:
+
+```sh
+pip install "oryne[fastapi]"
+```
+
+```python
+from fastapi import FastAPI, Request
+from oryne.merchant.fastapi import paywall
+
+app = FastAPI()
+pay = paywall(pay_to="G...your Stellar address", facilitator="https://testnet-apiv1.oryne.org/v1/x402")
+
+@app.get("/search")
+@pay("0.05", "Search results")  # 0.05 USDC per call
+async def search(q: str, request: Request):
+    payment = request.state.oryne_settlement  # transaction, payer, network
+    return {"results": [...]}
+```
+
+Flask is the same with `pip install "oryne[flask]"` and `from oryne.merchant.flask import paywall`; the payment is in `g.oryne_settlement`.
+
+Unpaid requests get `402 Payment Required` with what to pay. Paid ones are settled through the Oryne facilitator before your handler runs, in about 5 seconds, and the receipt goes back in the `X-PAYMENT-RESPONSE` header. Payments are final: no chargebacks. Any [x402](https://x402.org) client can pay you, not only Oryne agents. Your address needs a trustline to the USDC the facilitator uses (on mainnet, `https://apiv1.oryne.org/v1/x402`).
+
+For another framework, `Paywall` (or `AsyncPaywall`) does the work and you send the answer:
+
+```python
+from oryne.merchant import Paywall
+
+paywall = Paywall(pay_to="G...", facilitator="https://testnet-apiv1.oryne.org/v1/x402")
+result = paywall.handle(price="0.05", url=full_request_url, payment_header=request.headers.get("X-PAYMENT"))
+# result.paid: serve the request. Otherwise answer result.status (402) with result.body as JSON.
+# Either way, send result.receipt (when set) as the X-PAYMENT-RESPONSE header.
+```
 
 ## Develop
 

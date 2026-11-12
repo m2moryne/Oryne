@@ -207,7 +207,19 @@ const pay = paywall({ payTo: process.env.STELLAR_ADDRESS, facilitator: 'https://
 app.get('/search', pay('0.05', 'Search results'), (c) => c.json(results)) // 0.05 USDC per call
 ```
 
-Express works too, with `expressPaywall`. Unpaid requests get `402 Payment Required`; paid ones go
+Express works too, with `expressPaywall`. In Python, `pip install "oryne[fastapi]"` (or `[flask]`):
+
+```python
+from oryne.merchant.fastapi import paywall
+
+pay = paywall(pay_to=os.environ["STELLAR_ADDRESS"], facilitator="https://testnet-apiv1.oryne.org/v1/x402")
+
+@app.get("/search")
+@pay("0.05", "Search results")
+async def search(q: str): ...
+```
+
+Unpaid requests get `402 Payment Required`; paid ones go
 through once the USDC settles, in about 5 seconds. Payments are final: no chargebacks. Any x402
 client can pay you, not only Oryne agents. The [demo merchant](examples/demo-merchant) is a complete
 example, about 70 lines.
@@ -271,6 +283,7 @@ agent secrets or owner keys.
 | Sign-in: Google, GitHub, email code, Freighter; passkey-owned wallets | ✅ Working, including real device passkeys |
 | SDKs on npm: [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent), [`@oryne/merchant`](https://www.npmjs.com/package/@oryne/merchant), [`@oryne/mcp`](https://www.npmjs.com/package/@oryne/mcp), [`@oryne/core`](https://www.npmjs.com/package/@oryne/core) | ✅ Published |
 | Python SDK ([`packages/python`](packages/python), `oryne` on PyPI) | ✅ Unit tests checked against the TypeScript SDK's signatures; pays, is refused and gets approval on testnet. Published on [PyPI](https://pypi.org/project/oryne/) |
+| Python paywalls for FastAPI and Flask (`oryne.merchant`) | ✅ Tested with each framework; a FastAPI paywall paid by an Oryne agent on testnet |
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
 | [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: demo.oryne.org |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
@@ -294,7 +307,7 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   ├── agent/                 @oryne/agent: fetch() that pays from the agent wallet
 │   ├── merchant/              @oryne/merchant: paywall middleware (Hono, Express)
 │   ├── mcp/                   @oryne/mcp: MCP server for Claude, Cursor, …
-│   └── python/                oryne (PyPI): the agent SDK for Python
+│   └── python/                oryne (PyPI): the agent SDK for Python, and paywalls for FastAPI and Flask
 ├── examples/
 │   ├── demo-merchant/         A small paid API agents buy from (hosted on testnet)
 │   ├── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
