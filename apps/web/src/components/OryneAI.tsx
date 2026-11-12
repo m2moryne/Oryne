@@ -1,4 +1,4 @@
-import { ArrowUp, RotateCcw, Sparkles, X } from 'lucide-react'
+import { ArrowUp, BotMessageSquare, RotateCcw, X } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { Answer } from '../app/dev/DebugChat'
 import { cn } from '../lib/cn'
@@ -7,7 +7,8 @@ import { Icon } from './Icon'
 
 /**
  * OryneAI: a chat button in the bottom-right corner of the public site. It
- * opens a panel where visitors can ask anything about Oryne; answers stream
+ * opens a full-height panel docked to the right edge (the whole screen on
+ * phones) where visitors can ask anything about Oryne; answers stream
  * from the API's /v1/assistant. The conversation lasts for the browser tab.
  */
 
@@ -58,14 +59,17 @@ export function OryneAI() {
     if (element) element.scrollTop = element.scrollHeight
   }, [messages, open])
 
+  /** Closes the panel and puts focus back on the button, once it's showing again. */
+  const close = () => {
+    setOpen(false)
+    requestAnimationFrame(() => button.current?.focus())
+  }
+
   useEffect(() => {
     if (!open) return
     input.current?.focus({ preventScroll: true })
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false)
-        button.current?.focus()
-      }
+      if (event.key === 'Escape') close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -126,17 +130,17 @@ export function OryneAI() {
       <button
         ref={button}
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(true)}
         aria-expanded={open}
         aria-controls="oryne-ai"
-        aria-label={open ? 'Close OryneAI' : 'Ask OryneAI about Oryne'}
+        aria-label="Ask OryneAI about Oryne"
         className={cn(
           'fixed bottom-5 right-5 z-50 flex h-12 items-center gap-2 rounded-full bg-charcoal pl-4 pr-5 text-sm font-medium text-cream shadow-[0_12px_40px_-10px_rgba(10,16,26,0.55)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal md:bottom-6 md:right-6',
-          open && 'max-sm:hidden',
+          open && 'hidden',
         )}
       >
-        <Icon icon={open ? X : Sparkles} size={18} />
-        {open ? 'Close' : 'Ask OryneAI'}
+        <Icon icon={BotMessageSquare} size={19} />
+        Ask OryneAI
       </button>
 
       {open && (
@@ -144,11 +148,11 @@ export function OryneAI() {
           id="oryne-ai"
           role="dialog"
           aria-label="OryneAI"
-          className="tone-white fixed inset-0 z-50 flex flex-col overflow-hidden border-taupe/60 shadow-[0_24px_80px_-20px_rgba(10,16,26,0.45)] sm:inset-auto sm:bottom-22 sm:right-5 sm:h-[min(640px,calc(100dvh-8rem))] sm:w-[400px] sm:rounded-2xl sm:border md:right-6"
+          className="oryne-ai-panel tone-white fixed inset-y-0 right-0 z-[70] flex w-full flex-col overflow-hidden border-taupe/60 shadow-[-24px_0_80px_-24px_rgba(10,16,26,0.35)] sm:w-[440px] sm:border-l"
         >
-          <header className="flex items-center gap-3 border-b border-line px-5 py-4">
+          <header className="flex items-center gap-3 border-b border-line px-5 py-4 sm:py-5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-charcoal text-cream">
-              <Icon icon={Sparkles} size={15} />
+              <Icon icon={BotMessageSquare} size={16} />
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-medium">OryneAI</h2>
@@ -167,7 +171,7 @@ export function OryneAI() {
             )}
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={close}
               aria-label="Close OryneAI"
               className="flex size-8 items-center justify-center rounded-full text-muted hover:bg-charcoal/[0.06] hover:text-charcoal"
             >

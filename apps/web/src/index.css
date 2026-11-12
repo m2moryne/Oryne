@@ -317,3 +317,13 @@ body,
 .price-slider:focus-visible { outline: none; }
 .price-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-charcoal) 20%, transparent); }
 .price-slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-charcoal) 20%, transparent); }
+
+/* OryneAI's panel slides in from the right edge. */
+.oryne-ai-panel { animation: oryne-ai-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes oryne-ai-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oryne-ai-panel { animation: none; }
+}
