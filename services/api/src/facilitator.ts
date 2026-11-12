@@ -1,6 +1,7 @@
 import {
   addressCredentialsOf,
   inclusionFee,
+  prepare,
   readAuthorization,
   StellarError,
   submitSigned,
@@ -64,7 +65,7 @@ async function buildSettlement(chain: Chain, auth: Checked) {
     .setTimeout(60)
     .build()
   // Simulating with the signed auth runs the wallet's __check_auth: policy refusals surface here.
-  return chain.rpc.prepareTransaction(tx)
+  return prepare(chain.rpc, tx)
 }
 
 export async function verify(chain: Chain, payload: PaymentPayload, requirements: PaymentRequirements) {

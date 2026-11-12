@@ -3,6 +3,7 @@ import {
   Keypair,
   rpc,
   scValToNative,
+  StrKey,
   TransactionBuilder,
   type Transaction,
   type xdr,
@@ -64,11 +65,51 @@ export async function buildTx(
     .build()
 }
 
+const plain = (value: unknown) =>
+  JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)))
+
+/**
+ * A failed simulation's error with its diagnostic events written out the way
+ * the host logs them ("contract:C…, topics:[error, Error(Contract, #7)]").
+ *
+ * Since protocol 30 a refusal in a wallet's __check_auth comes back as
+ * Error(Auth, InvalidAction); the wallet's own error code is only in the
+ * events, so `contractErrorName` needs them to name it.
+ */
+export function simulationDetail(sim: rpc.Api.SimulateTransactionErrorResponse): string {
+  const lines = [sim.error]
+  for (const diagnostic of sim.events ?? []) {
+    try {
+      const event = plain(diagnostic).event
+      const topics: Record<string, unknown>[] = event?.body?.v0?.topics ?? []
+      const contract = event?.contract_id ? String(event.contract_id) : undefined
+      const code = (topics[1]?.error as { contract?: number } | undefined)?.contract
+      if (topics[0]?.symbol === 'error' && contract && code !== undefined) {
+        lines.push(`contract:${contract}, topics:[error, Error(Contract, #${code})]`)
+      } else if (topics[0]?.symbol === 'fn_call' && typeof topics[1]?.bytes === 'string') {
+        const callee = StrKey.encodeContract(Buffer.from(topics[1].bytes, 'hex'))
+        lines.push(`topics:[fn_call, ${callee}, ${String(topics[2]?.symbol)}]`)
+      }
+    } catch {
+      // An event we can't read doesn't change the error itself.
+    }
+  }
+  return lines.join('\n')
+}
+
 /** Simulates and throws a StellarError if the contract would fail. */
 export async function simulate(rpcServer: rpc.Server, tx: Transaction) {
   const sim = await rpcServer.simulateTransaction(tx)
-  if (rpc.Api.isSimulationError(sim)) throw new StellarError('Simulation failed', sim.error)
+  if (rpc.Api.isSimulationError(sim)) throw new StellarError('Simulation failed', simulationDetail(sim))
   return sim
+}
+
+/**
+ * Like `rpcServer.prepareTransaction` (simulate, then add footprint, auth and
+ * fees), but a failure is a StellarError that names the contract's error.
+ */
+export async function prepare(rpcServer: rpc.Server, tx: Transaction): Promise<Transaction> {
+  return rpc.assembleTransaction(tx, await simulate(rpcServer, tx)).build()
 }
 
 /** Runs a read-only contract call and returns its value as a JS value. */
@@ -86,8 +127,9 @@ export async function read<T = unknown>(
 export async function prepareSignSubmit(rpcServer: rpc.Server, tx: Transaction, signer: Keypair) {
   let prepared: Transaction
   try {
-    prepared = await rpcServer.prepareTransaction(tx)
+    prepared = await prepare(rpcServer, tx)
   } catch (error) {
+    if (error instanceof StellarError) throw error
     throw new StellarError('Simulation failed', String((error as Error).message ?? error))
   }
   prepared.sign(signer)

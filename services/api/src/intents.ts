@@ -5,6 +5,8 @@ import {
   compactSignature,
   inclusionFee,
   passkeySignatureScVal,
+  prepare,
+  simulate,
   StellarError,
   submitSigned,
 } from '@oryne/core'
@@ -62,9 +64,9 @@ export async function createIntent(
   let prepared: Transaction
   try {
     const tx = await buildTx(chain.rpc, chain.network, owner, operation, 600)
-    prepared = await chain.rpc.prepareTransaction(tx)
+    prepared = await prepare(chain.rpc, tx)
   } catch (error) {
-    const message = String((error as Error).message ?? error)
+    const message = (error instanceof StellarError ? error.detail : String((error as Error).message ?? error))
     if (message.includes('Account not found')) {
       throw new HTTPException(400, { message: 'Your account has no XLM yet. Fund it (testnet: friendbot) and try again.' })
     }
@@ -96,17 +98,14 @@ async function createPasskeyIntent(
   // Simulate with the sponsor as source to learn the auth entry the wallet must sign.
   let entry: xdr.SorobanAuthorizationEntry | undefined
   try {
-    const sim = await chain.rpc.simulateTransaction(
-      await buildTx(chain.rpc, chain.network, chain.sponsor.publicKey(), operation),
-    )
-    if ('error' in sim && sim.error) throw new Error(sim.error)
+    const sim = await simulate(chain.rpc, await buildTx(chain.rpc, chain.network, chain.sponsor.publicKey(), operation))
     entry = (sim as { result?: { auth: xdr.SorobanAuthorizationEntry[] } }).result?.auth.find((candidate) => {
       const credentials = addressCredentialsOf(candidate)
       return !!credentials && Address.fromScAddress(credentials.address).toString() === wallet.id
     })
   } catch (error) {
     throw new HTTPException(400, {
-      message: new StellarError('Could not prepare the transaction', String((error as Error).message ?? error)).message,
+      message: new StellarError('Could not prepare the transaction', (error instanceof StellarError ? error.detail : String((error as Error).message ?? error))).message,
     })
   }
   if (!entry) throw new HTTPException(500, { message: 'The wallet was not asked to authorize this call' })
@@ -217,13 +216,13 @@ export async function submitIntent(
           .setTimeout(60)
           .build()
         // Simulating with the signed entry runs the wallet's passkey check.
-        const prepared = await chain.rpc.prepareTransaction(tx)
+        const prepared = await prepare(chain.rpc, tx)
         prepared.sign(chain.sponsor)
         const result = await submitSigned(chain.rpc, prepared)
         await chain.budget.spent(result.feeCharged)
         return await finish(result)
       } catch (error) {
-        return fail(new StellarError('Passkey transaction failed', String((error as Error).message ?? error)))
+        return fail(new StellarError('Passkey transaction failed', (error instanceof StellarError ? error.detail : String((error as Error).message ?? error))))
       }
     })
   }
