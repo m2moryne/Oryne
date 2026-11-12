@@ -1,23 +1,19 @@
 import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { streamSSE } from 'hono/streaming'
+import { type ChatTurn, DEFAULT_MODEL, hourlyLimiter, streamChat, validTurns } from './deepseek.ts'
 
 /**
  * The AI debugger: answers an owner's questions about their own wallet, agents
  * and payments with DeepSeek, grounded in a snapshot of that account. Streams the
- * answer as server-sent events: `text` (a JSON string chunk), then `done`, or
- * `error` (a JSON string) if it can't answer.
+ * answer as server-sent events (see deepseek.ts).
  */
 
-/** DeepSeek's chat API speaks the OpenAI format. */
-const ENDPOINT = 'https://api.deepseek.com/chat/completions'
-const MODEL = 'deepseek-chat'
 const MAX_TURNS = 20
 const MAX_CHARS = 4000
 /** Questions per owner per hour; model calls cost money. */
 const HOURLY_LIMIT = 30
 
-export type DebugTurn = { role: 'user' | 'assistant'; content: string }
+export type DebugTurn = ChatTurn
 
 /** What the debugger knows about the account, gathered by the route. */
 export type DebugSnapshot = {
@@ -55,110 +51,29 @@ How to answer:
 - Amounts are in USDC. Keep answers brief and plain; use short paragraphs or a short list, and markdown only for code.
 - Never ask for or repeat secret keys. You can't change anything yourself; tell the owner what to do.`
 
-const usage = new Map<string, number[]>()
+const checkRate = hourlyLimiter(HOURLY_LIMIT, `That's ${HOURLY_LIMIT} questions this hour. Try again a little later.`)
 
-function checkRate(owner: string) {
-  const hourAgo = Date.now() - 3_600_000
-  const recent = (usage.get(owner) ?? []).filter((at) => at > hourAgo)
-  if (recent.length >= HOURLY_LIMIT) {
-    throw new HTTPException(429, { message: `That's ${HOURLY_LIMIT} questions this hour. Try again a little later.` })
-  }
-  recent.push(Date.now())
-  usage.set(owner, recent)
-}
-
-function validTurns(input: unknown): DebugTurn[] {
-  if (!Array.isArray(input) || input.length === 0 || input.length > MAX_TURNS) {
-    throw new HTTPException(400, { message: `messages must be a list of 1 to ${MAX_TURNS} turns` })
-  }
-  const turns = input.map((turn, i) => {
-    const { role, content } = (turn ?? {}) as Partial<DebugTurn>
-    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string' || !content.trim()) {
-      throw new HTTPException(400, { message: `messages[${i}] needs a role (user or assistant) and text` })
-    }
-    return { role, content: content.slice(0, MAX_CHARS) }
-  })
-  if (turns[0].role !== 'user' || turns.at(-1)!.role !== 'user') {
-    throw new HTTPException(400, { message: 'The conversation must start and end with a user message' })
-  }
-  return turns
-}
-
-export function createDebugger(apiKey: string | undefined, model = MODEL) {
+export function createDebugger(apiKey: string | undefined, model = DEFAULT_MODEL) {
   return {
     enabled: !!apiKey,
 
     /** Streams the model's answer to the last question, as SSE. */
     answer(c: Context, owner: string, rawTurns: unknown, snapshot: DebugSnapshot) {
       if (!apiKey) throw new HTTPException(503, { message: 'The AI debugger is not set up on this server yet' })
-      const turns = validTurns(rawTurns)
+      const turns = validTurns(rawTurns, MAX_TURNS, MAX_CHARS)
       checkRate(owner)
-
-      return streamSSE(c, async (sse) => {
-        const abort = new AbortController()
-        sse.onAbort(() => abort.abort())
-        const fail = (message: string) => sse.writeSSE({ event: 'error', data: JSON.stringify(message) })
-
-        try {
-          const response = await fetch(ENDPOINT, {
-            method: 'POST',
-            signal: abort.signal,
-            headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-            body: JSON.stringify({
-              model,
-              stream: true,
-              max_tokens: 4000,
-              temperature: 0.3,
-              messages: [
-                { role: 'system', content: SYSTEM },
-                { role: 'system', content: `Account snapshot (JSON, newest first):\n${JSON.stringify(snapshot)}` },
-                ...turns,
-              ],
-            }),
-          })
-          if (!response.ok || !response.body) {
-            console.error('debugger: DeepSeek', response.status, await response.text().catch(() => ''))
-            await fail(
-              response.status === 401 || response.status === 403
-                ? 'The AI debugger is not set up correctly on this server.'
-                : response.status === 402
-                  ? 'The AI debugger is out of credit. Try again later.'
-                  : response.status === 429 || response.status === 503
-                    ? 'The debugger is busy right now. Try again in a minute.'
-                    : 'The AI service had a problem answering. Try again.',
-            )
-            return
-          }
-
-          // Server-sent events: lines of "data: {json}", ending with "data: [DONE]".
-          const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-          let buffer = ''
-          let finish: string | null = null
-          for (;;) {
-            const { value, done } = await reader.read()
-            if (done) break
-            buffer += value
-            const lines = buffer.split('\n')
-            buffer = lines.pop() ?? ''
-            for (const line of lines) {
-              const data = line.startsWith('data:') ? line.slice(5).trim() : ''
-              if (!data || data === '[DONE]') continue
-              const chunk = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }> }
-              const choice = chunk.choices?.[0]
-              if (choice?.delta?.content) await sse.writeSSE({ event: 'text', data: JSON.stringify(choice.delta.content) })
-              if (choice?.finish_reason) finish = choice.finish_reason
-            }
-          }
-          if (finish === 'content_filter') {
-            await fail("I can't help with that one. Try asking about a specific payment or agent.")
-            return
-          }
-          await sse.writeSSE({ event: 'done', data: '' })
-        } catch (error) {
-          if (abort.signal.aborted) return
-          console.error('debugger', error)
-          await fail('Something went wrong while answering.')
-        }
+      return streamChat(c, {
+        apiKey,
+        model,
+        label: 'The AI debugger',
+        refusal: "I can't help with that one. Try asking about a specific payment or agent.",
+        maxTokens: 4000,
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'system', content: `Account snapshot (JSON, newest first):
+${JSON.stringify(snapshot)}` },
+          ...turns,
+        ],
       })
     },
   }

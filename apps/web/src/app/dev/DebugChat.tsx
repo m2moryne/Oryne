@@ -16,7 +16,26 @@ export type ChatMessage = {
   failed?: boolean
 }
 
-/** `inline code` inside a line of text. */
+/** Links in a run of plain text: full https:// addresses, and markdown [text](https://…). */
+function Linked({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s)<]+[^\s)<.,;:!?'"])/)
+  return (
+    <>
+      {parts.map((part, index) => {
+        const markdown = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(part)
+        const href = markdown ? markdown[2] : /^https?:\/\//.test(part) ? part : null
+        if (!href) return part
+        return (
+          <a key={index} href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:opacity-70">
+            {markdown ? markdown[1] : part.replace(/^https:\/\//, '')}
+          </a>
+        )
+      })}
+    </>
+  )
+}
+
+/** `inline code` and links inside a line of text. */
 function Inline({ text }: { text: string }) {
   return (
     <>
@@ -26,15 +45,15 @@ function Inline({ text }: { text: string }) {
             {part.slice(1, -1)}
           </code>
         ) : (
-          part
+          <Linked key={index} text={part} />
         ),
       )}
     </>
   )
 }
 
-/** Just enough markdown for debugger answers: paragraphs, lists, **bold**, `code` and fenced code. */
-function Answer({ text }: { text: string }) {
+/** Just enough markdown for AI answers: paragraphs, lists, **bold**, `code`, links and fenced code. */
+export function Answer({ text }: { text: string }) {
   const pieces = text.split(/```[\w-]*\n?/)
   return (
     <>

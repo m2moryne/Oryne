@@ -140,6 +140,35 @@ export async function askDebugger(
     if (signal?.aborted) throw error
     throw new ApiError(`Can't reach the Oryne API right now. Try again in a minute.`, 0)
   }
+  return readAnswer(response, onText)
+}
+
+/** One turn of a conversation with OryneAI, the website's assistant. */
+export type AssistantTurn = { role: 'user' | 'assistant'; content: string }
+
+/**
+ * Asks OryneAI, the public assistant about Oryne, and streams its answer like
+ * askDebugger. Always asks the testnet API: it needs no account, and the
+ * answers are the same whichever network the visitor uses.
+ */
+export async function askOryneAI(messages: AssistantTurn[], onText: (chunk: string) => void, signal?: AbortSignal) {
+  let response: Response
+  try {
+    response = await fetch(`${TEST_API_URL}/v1/assistant`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messages }),
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted) throw error
+    throw new ApiError(`Can't reach OryneAI right now. Try again in a minute.`, 0)
+  }
+  return readAnswer(response, onText)
+}
+
+/** Reads a streamed answer: `text` chunks, then `done`, or an `error` to throw. */
+async function readAnswer(response: Response, onText: (chunk: string) => void) {
   if (!response.ok || !response.body) {
     const data = (await response.json().catch(() => ({}))) as { error?: string }
     throw new ApiError(data.error ?? `API error ${response.status}`, response.status)

@@ -24,6 +24,7 @@ import { createSession, finish, providers, startUrl, type Provider } from './oau
 import type { Config } from './config.ts'
 import { newId, now, type Db } from './db.ts'
 import { adminApi } from './admin.ts'
+import { createAssistant } from './assistant.ts'
 import { createDebugger } from './debugger.ts'
 import { settle, verify } from './facilitator.ts'
 import { listRequests, logRequests } from './requests.ts'
@@ -116,6 +117,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
   const app = new Hono()
   const decimals = chain.network.decimals
   const aiDebugger = createDebugger(config.deepseekApiKey, config.deepseekModel)
+  const assistant = createAssistant(config.deepseekApiKey, config.deepseekModel)
   const emailCodes = createEmailCodes(config, db)
   const wallets = createWallets(config, db, chain)
   const funding = createFunding(config, db, chain, wallets)
@@ -251,6 +253,13 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
 
   // ---------------------------------------------------------------- public
 
+  // OryneAI: answers visitors' questions about Oryne on the website. Public, limited per IP address.
+  app.post('/v1/assistant', async (c) => {
+    const { messages } = await body<{ messages: unknown }>(c)
+    const visitor = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    return assistant.answer(c, visitor, messages)
+  })
+
   app.get('/v1/info', (c) =>
     c.json({
       network: networkId(chain.network),
@@ -271,7 +280,7 @@ export function createApp(config: Config, db: Db, chain: Chain, webhooks: Webhoo
         email: emailCodes.enabled,
         dev: config.devLogin,
       },
-      features: { aiDebugger: aiDebugger.enabled },
+      features: { aiDebugger: aiDebugger.enabled, assistant: assistant.enabled },
       /** Card top-ups with Paystack: the currency and how much one USDC costs in it. Null when off. */
       card: funding.card,
       /** Who may create a wallet: anyone (open) or approved accounts (invite). */

@@ -21,6 +21,7 @@ import LiveFunds from './live/pages/LiveFunds'
 import { AddMoneyPage } from './live/pages/AddMoney'
 import LiveServices from './live/pages/LiveServices'
 import { Footer } from './components/Footer'
+import { OryneAI } from './components/OryneAI'
 import { Navigation } from './components/Navigation'
 import { ScrollManager } from './components/ScrollManager'
 import { soonPages } from './lib/site'
@@ -53,6 +54,7 @@ function SiteLayout() {
         <Outlet />
       </main>
       <Footer />
+      <OryneAI />
     </>
   )
 }
