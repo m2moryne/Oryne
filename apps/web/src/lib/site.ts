@@ -4,14 +4,14 @@ type FooterLink = { label: string; to?: string; href?: string }
 
 /**
  * Top navigation. Product is left out for now; its page still exists and is
- * linked from the footer.
+ * linked from the footer. The dashboard and the developer console are reached
+ * through "Sign in" (Navigation.tsx), which asks which one.
  */
 export const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/how-it-works', label: 'How it works' },
   { to: '/docs', label: 'Docs' },
   { to: '/pricing', label: 'Pricing' },
-  { to: '/app/developers', label: 'Developers' },
   { to: '/contact', label: 'Contact' },
 ]
 
@@ -42,6 +42,7 @@ export const footerGroups: Array<{ title: string; links: FooterLink[] }> = [
     links: [
       { label: 'GitHub', href: 'https://github.com/m2moryne/Oryne' },
       { label: 'npm packages', href: 'https://www.npmjs.com/org/oryne' },
+      { label: 'Python package', href: 'https://pypi.org/project/oryne/' },
     ],
   },
   {
