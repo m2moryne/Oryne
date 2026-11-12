@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { useId, useState } from 'react'
+import { type CSSProperties, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { Icon } from '../components/Icon'
@@ -92,11 +92,6 @@ export default function Pricing() {
 
       <section className="tone-white pb-20 md:pb-28">
         <Container>
-          <p className="mb-8 border border-green/50 px-5 py-4 text-sm leading-relaxed">
-            <span className="font-medium text-green">Founding accounts.</span> Sign up before mainnet opens and pay no fees
-            for your first {pricing.foundingMonths} months of live mode. Until then, everything runs free in test mode.
-          </p>
-
           <div className="grid gap-4 lg:grid-cols-3">
             {plans.map((plan) => (
               <article
@@ -134,7 +129,7 @@ export default function Pricing() {
             <div className="lg:col-span-5">
               <h2 className="type-statement max-w-[12ch]">What would you pay?</h2>
               <p className="type-lede mt-6 max-w-md text-muted">
-                Enter how much your agents spend in a month. Most agent payments are small, so the per-payment cap rarely
+                Slide to how much your agents spend in a month. Most agent payments are small, so the per-payment cap rarely
                 comes into it.
               </p>
             </div>
@@ -181,46 +176,76 @@ export default function Pricing() {
   )
 }
 
-const presets = [50, 500, 5_000, 25_000]
+/**
+ * The slider runs on a log scale, so $50 and $25,000 are both easy to reach:
+ * position 0 is $0, then $10 up to the volume-pricing threshold.
+ */
+const SLIDER_STEPS = 1000
+const SLIDER_MIN = 10
+const SLIDER_MAX = pricing.volumeContact
+const ticks = [100, 1_000, 10_000]
+
+function roundNicely(value: number) {
+  const step = value < 100 ? 5 : value < 1_000 ? 10 : value < 10_000 ? 50 : 500
+  return Math.round(value / step) * step
+}
+
+function volumeAt(position: number) {
+  if (position <= 0) return 0
+  if (position >= SLIDER_STEPS) return SLIDER_MAX
+  const exponent = Math.log10(SLIDER_MIN) + (position / SLIDER_STEPS) * Math.log10(SLIDER_MAX / SLIDER_MIN)
+  return roundNicely(10 ** exponent)
+}
+
+function positionOf(volume: number) {
+  if (volume <= 0) return 0
+  const clamped = Math.min(Math.max(volume, SLIDER_MIN), SLIDER_MAX)
+  return Math.round((Math.log10(clamped / SLIDER_MIN) / Math.log10(SLIDER_MAX / SLIDER_MIN)) * SLIDER_STEPS)
+}
 
 function Calculator() {
   const id = useId()
-  const [volume, setVolume] = useState(500)
+  const [position, setPosition] = useState(() => positionOf(500))
+  const volume = volumeAt(position)
   const fee = monthlyFee(volume)
   const effective = volume > 0 ? (fee / volume) * 100 : 0
+  const fill = `${(position / SLIDER_STEPS) * 100}%`
 
   return (
     <div className="tone-white border border-taupe p-7 md:p-10">
       <label htmlFor={id} className="text-sm font-medium">
         Your agents spend each month
       </label>
-      <div className="mt-3 flex items-center gap-2 border-b border-charcoal pb-2">
-        <span className="text-3xl text-muted">$</span>
-        <input
-          id={id}
-          type="number"
-          min={0}
-          step={50}
-          inputMode="decimal"
-          value={Number.isFinite(volume) ? volume : 0}
-          onChange={(event) => setVolume(Math.max(0, Number(event.target.value) || 0))}
-          className="w-full bg-transparent text-3xl tracking-[-0.02em] tabular-nums outline-none"
-        />
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {presets.map((preset) => (
+      <p className="mt-3 text-4xl tracking-[-0.03em] tabular-nums" aria-hidden>
+        {dollars(volume)}
+        {volume >= SLIDER_MAX && '+'}
+      </p>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={SLIDER_STEPS}
+        step={1}
+        value={position}
+        onChange={(event) => setPosition(Number(event.target.value))}
+        aria-valuetext={`${dollars(volume)} a month`}
+        className="price-slider mt-6 w-full"
+        style={{ '--fill': fill } as CSSProperties}
+      />
+      <div className="relative mt-2 h-5 text-xs text-muted tabular-nums">
+        <span className="absolute left-0">$0</span>
+        {ticks.map((tick) => (
           <button
-            key={preset}
+            key={tick}
             type="button"
-            onClick={() => setVolume(preset)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs tabular-nums transition-colors',
-              volume === preset ? 'border-charcoal bg-charcoal text-cream' : 'border-taupe hover:border-charcoal',
-            )}
+            onClick={() => setPosition(positionOf(tick))}
+            className="absolute -translate-x-1/2 hover:text-charcoal"
+            style={{ left: `${(positionOf(tick) / SLIDER_STEPS) * 100}%` }}
           >
-            {dollars(preset)}
+            {dollars(tick)}
           </button>
         ))}
+        <span className="absolute right-0">{dollars(SLIDER_MAX)}+</span>
       </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-6 border-t border-line pt-6">

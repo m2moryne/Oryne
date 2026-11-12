@@ -81,11 +81,12 @@ export default function About() {
           body: (
             <>
               <p>
-                Oryne runs on Stellar testnet with test USDC, free to use. Everything you see works end to end: wallets,
-                agents, mandates, approvals, payments, top-ups and teams.
+                Oryne is open on Stellar testnet with test USDC, free to use, and runs a small invite-only pilot on
+                mainnet with real USDC. Everything you see works end to end: wallets, agents, mandates, approvals,
+                payments, top-ups and teams.
               </p>
               <p>
-                Mainnet with real USDC comes next, after an independent audit of the wallet contract. Follow along on the{' '}
+                Mainnet opens to everyone after an independent audit of the wallet contract. Follow along on the{' '}
                 <Link to="/vision" className="underline underline-offset-4">
                   vision
                 </Link>{' '}

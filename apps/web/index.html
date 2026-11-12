@@ -48,7 +48,12 @@
             "@id": "https://oryne.org/#organization",
             "name": "Oryne",
             "url": "https://oryne.org/",
-            "logo": "https://oryne.org/brand/oryne-mark.svg",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://oryne.org/brand/oryne-logo-512.png",
+              "width": 512,
+              "height": 512
+            },
             "email": "info@oryne.org",
             "sameAs": ["https://x.com/oryneorg"],
             "description": "The mandate layer for AI agent payments on Stellar."
@@ -73,8 +78,14 @@
       }
     </script>
 
+    <!-- Icons. Google's search results use a square icon of 48px or a multiple of it,
+         so the PNG and .ico come before the SVG for crawlers that don't read SVG. -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <!-- The loader shown before the app starts; React replaces it. Same design as .loader in index.css. -->
     <style>
       .boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }

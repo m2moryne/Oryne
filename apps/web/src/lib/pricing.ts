@@ -11,8 +11,6 @@ export const pricing = {
   capPerPayment: 2,
   minimumBill: 1,
   volumeContact: 50_000,
-  /** Accounts made before mainnet opens pay no fees for this many months on mainnet. */
-  foundingMonths: 3,
 }
 
 export const feePercent = `${pricing.feeBps / 100}%`

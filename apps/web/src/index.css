@@ -273,3 +273,47 @@ body,
   75% { box-shadow: 0 -0.2em 0 0 currentcolor; }
   87% { box-shadow: 0.2em -0.2em 0 0 currentcolor; }
 }
+
+/* The pricing calculator's slider: a thin track, filled up to the thumb (--fill). */
+.price-slider {
+  appearance: none;
+  height: 1.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+.price-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-charcoal) var(--fill), var(--tone-line) var(--fill));
+}
+.price-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--tone-line);
+}
+.price-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-charcoal);
+}
+.price-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--tone-bg, #fff);
+  border: 2px solid var(--color-charcoal);
+  transition: transform 120ms ease;
+}
+.price-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--tone-bg, #fff);
+  border: 2px solid var(--color-charcoal);
+}
+.price-slider:active::-webkit-slider-thumb { transform: scale(1.1); }
+.price-slider:focus-visible { outline: none; }
+.price-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-charcoal) 20%, transparent); }
+.price-slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-charcoal) 20%, transparent); }
