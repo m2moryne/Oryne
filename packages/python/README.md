@@ -81,27 +81,56 @@ The directory doesn't verify who owns a listed URL yet. `payees="directory"` sto
 | `on_payment` | Called with a `PaymentEvent`: `paying`, then `paid` or `refused`. |
 | `http` | Your own `httpx.Client`, e.g. with other timeouts or a proxy. |
 
-Per request: `agent.fetch(url, max_price="0.10")`.
+Per request: `agent.fetch(url, max_price="0.10", on_payment=...)`.
 
 Amounts are strings (`"0.05"`), never floats, so money doesn't depend on float rounding.
 
 Other methods: `agent.me()` (the agent, its mandate and what's left of its budget), `agent.approval(id)`. `OryneAgent` is a context manager that closes its HTTP client.
 
-## As a tool for your agent framework
+## As tools for your agent framework
 
-`fetch` is a plain function, so wrapping it as a tool is a few lines. With LangChain:
+`oryne.tools` gives your model the same four tools as Oryne's MCP server: `fetch_paid` (fetch a URL, paying a 402 inside the mandate), `wallet_status`, `request_approval` and `find_service`. Each returns text for the model; a refused payment comes back as an explanation, not an exception. The wallet contract enforces the mandate whatever the model asks.
+
+**LangChain / LangGraph** (`pip install "oryne[langchain]"`):
 
 ```python
-from langchain_core.tools import tool
+from oryne.integrations.langchain import oryne_langchain_tools
 
-@tool
-def fetch_paid(url: str, max_price: str = "1") -> str:
-    """Fetch a URL. If it costs money, pay up to max_price USDC from the agent's wallet."""
-    try:
-        return agent.fetch(url, max_price=max_price).text[:20_000]
-    except PaymentRefusedError as refused:
-        return f"Not paid: {refused.reason}"
+tools = oryne_langchain_tools(agent)
+llm_with_tools = llm.bind_tools(tools)   # or langgraph's create_react_agent(llm, tools)
 ```
+
+**CrewAI** (`pip install "oryne[crewai]"`):
+
+```python
+from crewai import Agent
+from oryne.integrations.crewai import oryne_crewai_tools
+
+researcher = Agent(role="Researcher", goal="...", backstory="...", tools=oryne_crewai_tools(agent))
+```
+
+**OpenAI Agents SDK** (`pip install "oryne[openai-agents]"`):
+
+```python
+from agents import Agent, Runner
+from oryne.integrations.openai_agents import oryne_openai_agents_tools
+
+bot = Agent(name="Researcher", instructions="...", tools=oryne_openai_agents_tools(agent))
+Runner.run_sync(bot, "Find the latest notes on x402")
+```
+
+**Any OpenAI-style or Claude tool calling** (OpenAI, DeepSeek, Groq, Ollama, Anthropic):
+
+```python
+from oryne.tools import anthropic_tools, openai_tools, oryne_tools, run_tool
+
+tools = oryne_tools(agent)
+response = client.chat.completions.create(model=..., messages=messages, tools=openai_tools(tools))
+for call in response.choices[0].message.tool_calls or []:
+    result = run_tool(tools, call.function.name, call.function.arguments)  # text to send back
+```
+
+`oryne_tools(agent, approval_timeout=120, max_response_chars=50_000, only=["fetch_paid"])` tunes them; the integrations take the same options.
 
 ## Develop
 

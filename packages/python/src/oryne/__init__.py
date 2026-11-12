@@ -25,9 +25,10 @@ from .payment import (
     contract_error_name,
     sign_payment,
 )
+from .tools import OryneTool, anthropic_tools, openai_tools, oryne_tools, run_tool
 from .units import from_base_units, to_base_units
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "DEFAULT_API_URL",

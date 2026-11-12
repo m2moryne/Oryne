@@ -22,6 +22,7 @@ import {
 } from './guard.ts'
 
 export * from './guard.ts'
+export * from './tools.ts'
 
 /**
  * An agent's connection to Oryne. Give it the agent's secret key (S…, shown
@@ -83,6 +84,8 @@ export class PaymentRefusedError extends Error {
 export type PaidRequestInit = RequestInit & {
   /** Refuse to pay more than this for this request, in token units, e.g. "0.10". */
   maxPrice?: string
+  /** Told about this request's payment, in addition to the agent's own onPayment. */
+  onPayment?: (event: PaymentEvent) => void
 }
 
 /** How long directory lookups are reused. */
@@ -177,7 +180,11 @@ export class OryneAgent {
 
   /** A fetch() that pays 402 Payment Required responses from the agent's wallet. */
   async fetch(input: string | URL, paidInit?: PaidRequestInit): Promise<Response> {
-    const { maxPrice, ...init } = paidInit ?? {}
+    const { maxPrice, onPayment: onThisPayment, ...init } = paidInit ?? {}
+    const emit = (event: PaymentEvent) => {
+      this.onPayment?.(event)
+      onThisPayment?.(event)
+    }
     const first = await fetch(input, init)
     if (first.status !== 402) return first
 
@@ -193,11 +200,11 @@ export class OryneAgent {
     const url = first.url || String(input)
     const refusal = await this.refusal(url, requirements, amount, display, maxPrice)
     if (refusal) {
-      this.onPayment?.({ type: 'refused', reason: refusal, amount: display, source: 'client' })
+      emit({ type: 'refused', reason: refusal, amount: display, source: 'client' })
       throw new PaymentRefusedError(refusal, requirements, 'client')
     }
 
-    this.onPayment?.({ type: 'paying', requirements, amount: display })
+    emit({ type: 'paying', requirements, amount: display })
     const network: NetworkConfig = {
       name: info.network.replace('stellar-', '') as NetworkConfig['name'],
       rpcUrl: info.rpcUrl,
@@ -222,10 +229,10 @@ export class OryneAgent {
     if (paid.status === 402) {
       const body = (await paid.clone().json().catch(() => ({}))) as { error?: string }
       const reason = settlement?.errorReason ?? body.error ?? 'Payment was not accepted'
-      this.onPayment?.({ type: 'refused', reason, amount: display, source: 'wallet' })
+      emit({ type: 'refused', reason, amount: display, source: 'wallet' })
       throw new PaymentRefusedError(reason, requirements)
     }
-    if (settlement) this.onPayment?.({ type: 'paid', settlement, amount: display })
+    if (settlement) emit({ type: 'paid', settlement, amount: display })
     return paid
   }
 

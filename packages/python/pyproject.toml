@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oryne"
-version = "0.2.0"
+version = "0.3.0"
 description = "Give an AI agent a wallet it can spend from, with limits it cannot break: x402 payments in USDC on Stellar."
 readme = "README.md"
 license = "MIT"
@@ -25,6 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+langchain = ["langchain-core>=0.3.30"]
+crewai = ["crewai>=0.100"]
+openai-agents = ["openai-agents>=0.1"]
 dev = ["pytest>=8"]
 
 [project.urls]

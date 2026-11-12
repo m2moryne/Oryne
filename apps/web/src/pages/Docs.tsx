@@ -33,6 +33,7 @@ const nav: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { id: 'agent', label: '@oryne/agent' },
       { id: 'python', label: 'oryne (Python)' },
+      { id: 'frameworks', label: 'Framework integrations' },
       { id: 'mcp', label: '@oryne/mcp' },
       { id: 'merchant', label: '@oryne/merchant' },
       { id: 'core', label: '@oryne/core' },
@@ -595,27 +596,88 @@ def fetch_with_approval(url: str):
             <P>As in TypeScript. <C>OryneAgent</C> is also a context manager that closes its HTTP client.</P>
           </Api>
 
-          <Anchor id="python-tools" level={3}>
-            As a tool for your agent framework
+          <Anchor id="frameworks" level={2}>
+            Framework integrations
           </Anchor>
           <P>
-            <C>fetch</C> is a plain function, so wrapping it as a tool takes a few lines. With LangChain:
+            Give your model the same four tools as the MCP server: <C>fetch_paid</C> (fetch a URL, paying a 402 inside
+            the mandate), <C>wallet_status</C>, <C>request_approval</C> and <C>find_service</C>. Each returns text for the
+            model, and a refused payment comes back as an explanation the model can act on, not an exception. The wallet
+            contract enforces the mandate whatever the model asks, so the tools can be handed over as they are.
+          </P>
+          <Table
+            head={['Framework', 'TypeScript (@oryne/agent)', 'Python (oryne)']}
+            rows={[
+              ['Vercel AI SDK', <C>aiSdkTools(tools, {'{ tool, jsonSchema }'})</C>, '—'],
+              ['OpenAI Agents SDK', <C>openAIAgentsTools(tools, {'{ tool }'})</C>, <C>oryne_openai_agents_tools(agent)</C>],
+              ['LangChain / LangGraph', <C>langChainTools(tools, {'{ tool }'})</C>, <C>oryne_langchain_tools(agent)</C>],
+              ['CrewAI', '—', <C>oryne_crewai_tools(agent)</C>],
+              ['OpenAI-style tool calling (OpenAI, DeepSeek, Groq, Ollama)', <C>openAITools(tools)</C>, <C>openai_tools(tools)</C>],
+              ['Claude (Messages API)', <C>anthropicTools(tools)</C>, <C>anthropic_tools(tools)</C>],
+            ]}
+          />
+          <P>
+            The TypeScript adapters take the framework's own helpers as arguments, so <C>@oryne/agent</C> adds no
+            dependencies and works with whichever version you have. In Python, install the extra for your framework, e.g.{' '}
+            <C>pip install "oryne[langchain]"</C>, <C>"oryne[crewai]"</C> or <C>"oryne[openai-agents]"</C>.
           </P>
           <Code
-            label="Python"
-            code={`from langchain_core.tools import tool
-from oryne import OryneAgent, PaymentRefusedError
+            samples={{
+              'AI SDK': `import { generateText, jsonSchema, stepCountIs, tool } from 'ai'
+import { OryneAgent, aiSdkTools, oryneTools } from '@oryne/agent'
 
-agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
+const tools = oryneTools(new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET! }))
 
-@tool
-def fetch_paid(url: str, max_price: str = "1") -> str:
-    """Fetch a URL. If it costs money, pay up to max_price USDC from the agent's wallet."""
-    try:
-        return agent.fetch(url, max_price=max_price).text[:20_000]
-    except PaymentRefusedError as refused:
-        return f"Not paid: {refused.reason}"`}
+const { text } = await generateText({
+  model,
+  tools: aiSdkTools(tools, { tool, jsonSchema }),
+  stopWhen: stepCountIs(5),
+  prompt: 'Find the latest notes on x402 and summarise them',
+})`,
+              'OpenAI Agents': `import { Agent, run, tool } from '@openai/agents'
+import { OryneAgent, openAIAgentsTools, oryneTools } from '@oryne/agent'
+
+const tools = oryneTools(new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET! }))
+const researcher = new Agent({
+  name: 'Researcher',
+  instructions: 'Research with paid sources. Ask for approval when a payment is refused.',
+  tools: openAIAgentsTools(tools, { tool }),
+})
+const result = await run(researcher, 'Find the latest notes on x402')`,
+              LangChain: `from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from oryne import OryneAgent
+from oryne.integrations.langchain import oryne_langchain_tools
+
+tools = oryne_langchain_tools(OryneAgent(os.environ["ORYNE_AGENT_SECRET"]))
+graph = create_react_agent(ChatOpenAI(model="gpt-4o-mini"), tools)
+graph.invoke({"messages": [("user", "Find the latest notes on x402")]})`,
+              CrewAI: `from crewai import Agent
+from oryne import OryneAgent
+from oryne.integrations.crewai import oryne_crewai_tools
+
+researcher = Agent(
+    role="Researcher",
+    goal="Find and pay for the best sources",
+    backstory="Careful with money: asks for approval when a payment is refused.",
+    tools=oryne_crewai_tools(OryneAgent(os.environ["ORYNE_AGENT_SECRET"])),
+)`,
+              'Tool calling': `from openai import OpenAI
+from oryne import OryneAgent
+from oryne.tools import openai_tools, oryne_tools, run_tool
+
+tools = oryne_tools(OryneAgent(os.environ["ORYNE_AGENT_SECRET"]))
+reply = OpenAI().chat.completions.create(model="gpt-4o-mini", messages=messages, tools=openai_tools(tools))
+for call in reply.choices[0].message.tool_calls or []:
+    messages.append({"role": "tool", "tool_call_id": call.id,
+                     "content": run_tool(tools, call.function.name, call.function.arguments)})`,
+            }}
           />
+          <P>
+            Options: <C>oryneTools(agent, {'{ approvalTimeoutMs, maxResponseChars, only }'})</C> in TypeScript,{' '}
+            <C>oryne_tools(agent, approval_timeout=, max_response_chars=, only=)</C> in Python (the integrations take the
+            same keyword arguments). <C>only: ['fetch_paid']</C> gives just the paying fetch.
+          </P>
 
           <Anchor id="mcp" level={2}>
             @oryne/mcp

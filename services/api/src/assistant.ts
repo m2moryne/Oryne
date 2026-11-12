@@ -39,6 +39,7 @@ Three parts: a wallet you own, an agent with its own key, and a contract standin
 2. Build an agent that pays: npm install @oryne/agent, then new OryneAgent({ secret }) and agent.fetch(url) pays 402 responses inside the mandate and retries. Refusals throw PaymentRefusedError with the reason; the agent can requestApproval(...) and waitForApproval(id). Python: pip install oryne, OryneAgent(secret).fetch(url) (works with LangChain, CrewAI, LlamaIndex or plain scripts). A complete example is examples/research-agent (a DeepSeek agent).
 3. Get paid by agents: npm install @oryne/merchant, then paywall({ payTo, facilitator }) for Hono or expressPaywall for Express, and price each route, e.g. pay('0.05', 'Search results'). Unpaid requests get 402; paid ones go through once the USDC settles (~5 s). Payments are final, no chargebacks, and any x402 client can pay. Receiving payments and listing in the services directory are free. The hosted demo merchant is https://demo.oryne.org.
 Developer console (oryne.org/app/developers): API keys, a Playground showing each step of a payment and refusal, logs, usage, an AI debugger, and webhooks (payment.settled, payment.refused, approval.requested, approval.approved, approval.declined).
+Framework integrations: the same four tools as the MCP server (fetch_paid, wallet_status, request_approval, find_service) come ready-made for the Vercel AI SDK, the OpenAI Agents SDK, LangChain/LangGraph and CrewAI, plus OpenAI-style and Claude tool calling. TypeScript: oryneTools(agent) with aiSdkTools, openAIAgentsTools, langChainTools, openAITools, anthropicTools and runOryneTool from @oryne/agent. Python: oryne.tools (oryne_tools, openai_tools, anthropic_tools, run_tool) and oryne.integrations.langchain / .crewai / .openai_agents (pip install "oryne[langchain]", "oryne[crewai]" or "oryne[openai-agents]"). Details: https://oryne.org/docs#frameworks.
 Packages: @oryne/agent, @oryne/mcp, @oryne/merchant, @oryne/core on npm; oryne on PyPI. Docs: https://oryne.org/docs.
 
 ## Why Stellar
@@ -58,7 +59,7 @@ About 5 second finality; fees well under a cent, so a $0.01 payment makes sense;
 
 ## Roadmap
 - Now (the wallet): contract on testnet and a mainnet pilot, dashboard and console, SDKs and MCP server, first paid services.
-- Next (open mainnet): independent audit then mainnet for everyone, card and mobile-money top-ups, anchor funding and cash-out, more examples, framework integrations, more SDK languages.
+- Next (open mainnet): independent audit then mainnet for everyone, card and mobile-money top-ups, anchor funding and cash-out, more examples, more SDK languages. (Framework integrations are done.)
 - Then (the network): agent-searchable service directory with ranking, team and company policies, verifiable agent identity and reputation.
 - Later (the economy): agents paying agents with escrow, credit for agents with a track record, cross-border payouts in local money.
 

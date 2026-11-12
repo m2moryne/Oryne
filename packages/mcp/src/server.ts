@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { OryneAgent, parsePayeeRule, PaymentRefusedError } from '@oryne/agent'
+import { OryneAgent, oryneTools, parsePayeeRule, type OryneTool, type OryneToolName } from '@oryne/agent'
 import { z } from 'zod'
 
 /**
@@ -31,21 +31,18 @@ const clientOptions = {
 }
 
 const agent = new OryneAgent(clientOptions)
+// The same tools the framework integrations use (@oryne/agent's oryneTools), so they all behave alike.
+const tools = Object.fromEntries(oryneTools(agent).map((tool) => [tool.name, tool])) as Record<OryneToolName, OryneTool>
 
-const text = (value: unknown) => ({
-  content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
-})
+const text = (value: string) => ({ content: [{ type: 'text' as const, text: value }] })
 
-const mcp = new McpServer({ name: 'oryne', version: '0.3.0' })
+const mcp = new McpServer({ name: 'oryne', version: '0.4.0' })
 
 mcp.registerTool(
   'fetch_paid',
   {
     title: 'Fetch a URL, paying if required',
-    description:
-      'Fetches a URL. If the service answers 402 Payment Required, pays it in USDC from your Oryne wallet ' +
-      'within your mandate and returns the response. If the wallet refuses (over limit, payee not allowed), ' +
-      'says why; use request_approval to ask the owner.',
+    description: tools.fetch_paid.description,
     inputSchema: {
       url: z.string().url(),
       method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET'),
@@ -57,59 +54,23 @@ mcp.registerTool(
         .describe('Most you expect this request to cost in USDC, e.g. "0.10". Anything higher is refused unpaid.'),
     },
   },
-  async ({ url, method, body, maxPrice }) => {
-    const payments: string[] = []
-    const client = new OryneAgent({
-      ...clientOptions,
-      onPayment: (event) => {
-        if (event.type === 'paid') payments.push(`Paid ${event.amount} USDC (tx ${event.settlement.transaction})`)
-      },
-    })
-    try {
-      const response = await client.fetch(url, {
-        method,
-        body,
-        headers: body ? { 'content-type': 'application/json' } : undefined,
-        maxPrice,
-      })
-      const content = (await response.text()).slice(0, 50_000)
-      return text(`${payments.join('\n')}${payments.length ? '\n' : ''}HTTP ${response.status}\n\n${content}`)
-    } catch (error) {
-      if (error instanceof PaymentRefusedError) {
-        const r = error.requirements
-        const asked = `Service asked for ${Number(r.maxAmountRequired) / 1e7} USDC to ${r.payTo}.\n`
-        if (error.source === 'client') {
-          return text(
-            `Not paid: ${error.reason}. Nothing was signed and no money moved.\n${asked}` +
-              'Do not try to pay this another way. If you think it is legitimate, tell your owner.',
-          )
-        }
-        return text(
-          `The wallet refused this payment: ${error.reason}.\n${asked}` +
-            'If it is needed, call request_approval with payTo, amount and a short description.',
-        )
-      }
-      return { ...text(`Request failed: ${(error as Error).message}`), isError: true }
-    }
+  async (input) => {
+    const result = await tools.fetch_paid.execute(input)
+    return { ...text(result), ...(result.startsWith('Request failed:') ? { isError: true } : {}) }
   },
 )
 
 mcp.registerTool(
   'wallet_status',
-  {
-    title: 'Wallet and budget',
-    description: 'Shows your Oryne wallet, its balance, your limits and how much budget you have left.',
-  },
-  async () => text(await agent.me(true)),
+  { title: 'Wallet and budget', description: tools.wallet_status.description },
+  async () => text(await tools.wallet_status.execute({})),
 )
 
 mcp.registerTool(
   'request_approval',
   {
     title: 'Ask the owner to approve a payment',
-    description:
-      'Asks your owner to approve one payment your mandate does not allow. Waits up to two minutes for an ' +
-      'answer. Once approved, retry the request with fetch_paid.',
+    description: tools.request_approval.description,
     inputSchema: {
       payTo: z.string().describe('The Stellar address to pay (from the 402 response)'),
       amount: z.string().describe('Amount in USDC, e.g. "12.50"'),
@@ -117,29 +78,13 @@ mcp.registerTool(
       resource: z.string().optional(),
     },
   },
-  async (input) => {
-    const approval = await agent.requestApproval(input)
-    const decided = await agent.waitForApproval(approval.id, { timeoutMs: 120_000 })
-    return text(
-      decided.status === 'pending'
-        ? `Approval ${approval.id} is still waiting for the owner. Check again later.`
-        : `The owner ${decided.status} the request.`,
-    )
-  },
+  async (input) => text(await tools.request_approval.execute(input)),
 )
 
 mcp.registerTool(
   'find_service',
-  {
-    title: 'Find a paid service',
-    description: 'Searches the Oryne directory for services that accept agent payments.',
-    inputSchema: { query: z.string() },
-  },
-  async ({ query }) => {
-    const url = new URL('/v1/services', agent.apiUrl)
-    url.searchParams.set('q', query)
-    return text(await (await fetch(url)).json())
-  },
+  { title: 'Find a paid service', description: tools.find_service.description, inputSchema: { query: z.string() } },
+  async (input) => text(await tools.find_service.execute(input)),
 )
 
 await mcp.connect(new StdioServerTransport())

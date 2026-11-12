@@ -177,15 +177,29 @@ class OryneAgent:
 
     # ------------------------------------------------------------ paying
 
-    def fetch(self, url: str, method: str = "GET", *, max_price: str | None = None, **kwargs: Any) -> httpx.Response:
+    def fetch(
+        self,
+        url: str,
+        method: str = "GET",
+        *,
+        max_price: str | None = None,
+        on_payment: Callable[[PaymentEvent], None] | None = None,
+        **kwargs: Any,
+    ) -> httpx.Response:
         """Makes an HTTP request, paying a 402 Payment Required from the agent's wallet.
 
         Takes the same keyword arguments as ``httpx.Client.request`` (``params``,
         ``json``, ``headers``, ``content``…), plus ``max_price``: refuse to pay more
-        than this for this request, in token units, e.g. ``"0.10"``.
+        than this for this request, in token units, e.g. ``"0.10"``, and
+        ``on_payment``: told about this request's payment, as well as the agent's own.
 
         Raises :class:`PaymentRefusedError` when the payment isn't made.
         """
+        def emit(event: PaymentEvent) -> None:
+            self._emit(event)
+            if on_payment:
+                on_payment(event)
+
         first = self._http.request(method, url, **kwargs)
         if first.status_code != 402:
             return first
@@ -212,10 +226,10 @@ class OryneAgent:
         display = from_base_units(amount)
         refusal = self._refusal(str(first.url), requirements, amount, display, max_price)
         if refusal:
-            self._emit(PaymentEvent("refused", display, requirements, reason=refusal, source="client"))
+            emit(PaymentEvent("refused", display, requirements, reason=refusal, source="client"))
             raise PaymentRefusedError(refusal, requirements, "client")
 
-        self._emit(PaymentEvent("paying", display, requirements))
+        emit(PaymentEvent("paying", display, requirements))
         payload = sign_payment(
             rpc_server=SorobanServer(info["rpcUrl"]),
             network_passphrase=info["networkPassphrase"],
@@ -237,10 +251,10 @@ class OryneAgent:
             except ValueError:
                 body = {}
             reason = (settlement or {}).get("errorReason") or (body or {}).get("error") or "Payment was not accepted"
-            self._emit(PaymentEvent("refused", display, requirements, settlement, reason, "wallet"))
+            emit(PaymentEvent("refused", display, requirements, settlement, reason, "wallet"))
             raise PaymentRefusedError(reason, requirements, "wallet")
         if settlement:
-            self._emit(PaymentEvent("paid", display, requirements, settlement))
+            emit(PaymentEvent("paid", display, requirements, settlement))
         return paid
 
     def _refusal(

@@ -60,6 +60,47 @@ A refusal here throws `PaymentRefusedError` with `source: 'client'`. Nothing was
 
 The directory doesn't verify who owns a listed URL yet. `payees: 'directory'` stops payments to unlisted hosts and to addresses a host isn't listed with, but for a guarantee, set the allowed payees in the agent's on-chain mandate in the dashboard.
 
+## As tools for your agent framework
+
+`oryneTools(agent)` gives your model the same four tools as Oryne's MCP server: `fetch_paid` (fetch a URL, paying a 402 inside the mandate), `wallet_status`, `request_approval` and `find_service`. Each returns text for the model; a refused payment comes back as an explanation, not an exception. The wallet contract enforces the mandate whatever the model asks.
+
+The adapters take the framework's own helpers, so Oryne adds no dependencies and works with the version you have:
+
+```ts
+import { OryneAgent, oryneTools, aiSdkTools, openAIAgentsTools, langChainTools } from '@oryne/agent'
+
+const tools = oryneTools(new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET! }))
+```
+
+**Vercel AI SDK**
+
+```ts
+import { generateText, jsonSchema, stepCountIs, tool } from 'ai'
+
+const { text } = await generateText({ model, tools: aiSdkTools(tools, { tool, jsonSchema }), stopWhen: stepCountIs(5), prompt })
+```
+
+**OpenAI Agents SDK**
+
+```ts
+import { Agent, run, tool } from '@openai/agents'
+
+const researcher = new Agent({ name: 'Researcher', instructions: '…', tools: openAIAgentsTools(tools, { tool }) })
+await run(researcher, 'Find the latest notes on x402')
+```
+
+**LangChain.js / LangGraph.js**
+
+```ts
+import { tool } from '@langchain/core/tools'
+
+const llmWithTools = llm.bindTools(langChainTools(tools, { tool }))
+```
+
+**Any OpenAI-style or Claude tool calling** (OpenAI, DeepSeek, Groq, Ollama, Anthropic): `openAITools(tools)` or `anthropicTools(tools)` give the tool list, and `runOryneTool(tools, name, args)` runs a call and returns the text to send back.
+
+`oryneTools(agent, { approvalTimeoutMs, maxResponseChars, only: ['fetch_paid'] })` tunes them.
+
 ## Options
 
 | Option | |
@@ -71,7 +112,7 @@ The directory doesn't verify who owns a listed URL yet. `payees: 'directory'` st
 | `beforePay` | `({ url, requirements, amount }) => true \| false \| reason`. Last say before signing. |
 | `onPayment` | Called with `paying`, `paid` and `refused` events. |
 
-Per request: `agent.fetch(url, { ...init, maxPrice: '0.10' })`.
+Per request: `agent.fetch(url, { ...init, maxPrice: '0.10', onPayment })`.
 
 Other methods: `agent.me()` (the agent, its mandate and what's left of its budget), `agent.approval(id)`.
 

@@ -166,6 +166,22 @@ agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
 res = agent.fetch("https://demo.oryne.org/search", params={"q": "stellar"})
 ```
 
+**In your agent framework**, hand the model the same four tools the MCP server has (`fetch_paid`,
+`wallet_status`, `request_approval`, `find_service`), ready-made for the **Vercel AI SDK**, the
+**OpenAI Agents SDK**, **LangChain / LangGraph**, **CrewAI**, and plain OpenAI-style or Claude tool
+calling:
+
+```ts
+const tools = oryneTools(agent)                       // @oryne/agent
+generateText({ model, tools: aiSdkTools(tools, { tool, jsonSchema }), prompt })
+```
+
+```python
+tools = oryne_langchain_tools(agent)                  # pip install "oryne[langchain]"
+```
+
+See [Framework integrations](https://oryne.org/docs#frameworks) for each one.
+
 The **developer console** ([oryne.org/app/developers](https://oryne.org/app/developers)) has API
 keys, a **Playground** that shows each step of a payment (and what a refusal looks like), logs,
 usage, an AI debugger, and **webhooks** for `payment.settled`, `payment.refused`,
@@ -257,6 +273,7 @@ agent secrets or owner keys.
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
 | [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: demo.oryne.org |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
+| Framework integrations: Vercel AI SDK, OpenAI Agents SDK, LangChain, CrewAI, OpenAI-style and Claude tool calling | ✅ Tested against each framework's current release (`oryneTools` in `@oryne/agent`, `oryne.integrations` in Python) |
 | MCP server ([`@oryne/mcp`](packages/mcp)) | ✅ Every tool checked over stdio, as Claude Desktop runs it, on testnet: source and the npm package (`npm run mcp-check`) |
 | Card top-ups (Paystack) | ✅ On testnet. ⏳ Mainnet needs a live Paystack account and a funded treasury |
 | Audit, open mainnet, anchors for fiat in and out | ⏳ Roadmap |
@@ -399,7 +416,7 @@ Found a security problem? Please report it privately: see [SECURITY.md](SECURITY
 | Stage | Focus | What ships |
 |---|---|---|
 | **Now** | The wallet | Contract on testnet and a mainnet pilot · dashboard and developer console · SDKs and MCP server on npm · first paid services |
-| **Next** | Open mainnet | Independent audit → mainnet for everyone · card and mobile-money top-ups · anchor funding and cash-out · more examples · more SDK languages after Python |
+| **Next** | Open mainnet | Independent audit → mainnet for everyone · card and mobile-money top-ups · anchor funding and cash-out · more examples · more SDK languages after Python (framework integrations ✅) |
 | **Then** | The network | Agent-searchable directory with ranking · team and company policies · verifiable agent identity and reputation |
 | **Later** | The economy | Agents paying agents with escrow · credit for agents with a track record · cross-border payouts in local money |
 
