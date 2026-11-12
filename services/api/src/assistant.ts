@@ -45,7 +45,7 @@ Packages: @oryne/agent, @oryne/mcp, @oryne/merchant, @oryne/core on npm; oryne o
 About 5 second finality; fees well under a cent, so a $0.01 payment makes sense; native USDC issued by Circle (not bridged); x402 already live on Stellar; Soroban smart accounts with custom __check_auth make policy-enforcing wallets possible; anchors connect to local money including mobile money.
 
 ## Pricing (no subscription; every feature on every account)
-- Free: agents' first $100 of payments each month, no fee. Unlimited agents and wallets, every feature, up to 25 teammates. Test mode free forever.
+- Free: the first $100 of payments an account's agents make each month (all its agents together, not per agent), no fee. Unlimited agents and wallets, every feature, up to 25 teammates. Test mode free forever.
 - Pay as you go: 0.5% of agent payments past $100 in a month, never more than $2 on one payment. Months under $1 aren't billed. Pay from the wallet balance or by card.
 - Volume: custom rates for agents paying more than $50,000 a month (contact the team).
 - Always free: getting paid (merchants), Stellar network fees (Oryne pays them), withdrawals. Card top-ups (Paystack) at Paystack's fee, nothing added.
