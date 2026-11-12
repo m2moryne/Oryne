@@ -180,7 +180,8 @@ generateText({ model, tools: aiSdkTools(tools, { tool, jsonSchema }), prompt })
 tools = oryne_langchain_tools(agent)                  # pip install "oryne[langchain]"
 ```
 
-See [Framework integrations](https://oryne.org/docs#frameworks) for each one.
+See [Framework integrations](https://oryne.org/docs#frameworks) for each one, and
+[`examples/frameworks`](examples/frameworks) for the same research agent built with each framework.
 
 The **developer console** ([oryne.org/app/developers](https://oryne.org/app/developers)) has API
 keys, a **Playground** that shows each step of a payment (and what a refusal looks like), logs,
@@ -296,7 +297,8 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   └── python/                oryne (PyPI): the agent SDK for Python
 ├── examples/
 │   ├── demo-merchant/         A small paid API agents buy from (hosted on testnet)
-│   └── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
+│   ├── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
+│   └── frameworks/            The same agent with the AI SDK, OpenAI Agents, LangChain and CrewAI
 ├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
 ├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow), mcp-check.ts (MCP server), packages.ts (npm builds)
 ├── deploy/                    Hosting with Docker (deploy/docker) and the services' env templates

@@ -1,0 +1,6 @@
+# Oryne with each framework integration. Install all, or only the line you need.
+oryne[langchain,openai-agents]>=0.3.0
+langchain>=1.0
+langchain-openai>=1.0
+# CrewAI supports Python 3.10 to 3.13: pip install "oryne[crewai]>=0.3.0"
+python-dotenv>=1.0

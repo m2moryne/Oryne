@@ -678,6 +678,18 @@ for call in reply.choices[0].message.tool_calls or []:
             <C>oryne_tools(agent, approval_timeout=, max_response_chars=, only=)</C> in Python (the integrations take the
             same keyword arguments). <C>only: ['fetch_paid']</C> gives just the paying fetch.
           </P>
+          <P>
+            Complete, runnable agents for each framework are in{' '}
+            <a
+              href="https://github.com/m2moryne/Oryne/tree/master/examples/frameworks"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              examples/frameworks
+            </a>
+            : they pay the demo merchant on testnet, and show a refusal and an approval.
+          </P>
 
           <Anchor id="mcp" level={2}>
             @oryne/mcp

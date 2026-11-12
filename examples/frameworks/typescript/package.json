@@ -1,0 +1,27 @@
+{
+  "name": "oryne-framework-examples",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An AI agent that pays for services from its Oryne wallet, with the Vercel AI SDK and the OpenAI Agents SDK.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "ai-sdk": "node --env-file-if-exists=../.env src/ai-sdk.ts",
+    "openai-agents": "node --env-file-if-exists=../.env src/openai-agents.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.91",
+    "@openai/agents": "^0.21.0",
+    "@oryne/agent": "^0.4.0",
+    "ai": "^7.0.171",
+    "openai": "^7.56.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}
