@@ -253,7 +253,7 @@ agent secrets or owner keys.
 | Dashboard and developer console ([oryne.org/app](https://oryne.org/app)) | ✅ Live, with a Test / Live switch |
 | Sign-in: Google, GitHub, email code, Freighter; passkey-owned wallets | ✅ Working, including real device passkeys |
 | SDKs on npm: [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent), [`@oryne/merchant`](https://www.npmjs.com/package/@oryne/merchant), [`@oryne/mcp`](https://www.npmjs.com/package/@oryne/mcp), [`@oryne/core`](https://www.npmjs.com/package/@oryne/core) | ✅ Published |
-| Python SDK ([`packages/python`](packages/python), `oryne` on PyPI) | ✅ Unit tests checked against the TypeScript SDK's signatures; pays, is refused and gets approval on testnet. ⏳ Not yet on PyPI |
+| Python SDK ([`packages/python`](packages/python), `oryne` on PyPI) | ✅ Unit tests checked against the TypeScript SDK's signatures; pays, is refused and gets approval on testnet. Published on [PyPI](https://pypi.org/project/oryne/) |
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
 | [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: demo.oryne.org |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
