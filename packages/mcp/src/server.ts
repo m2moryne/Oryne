@@ -10,7 +10,7 @@ import { z } from 'zod'
  * so the model can't talk its way past them.
  *
  *   ORYNE_AGENT_SECRET  the agent's secret key (S…), shown once when you connect it
- *   ORYNE_API_URL       defaults to the hosted API, https://oryne.onrender.com
+ *   ORYNE_API_URL       defaults to the hosted API, https://testnet-apiv1.oryne.org
  *   ORYNE_MAX_PER_REQUEST  optional client-side cap per request, e.g. "1"
  *   ORYNE_PAYEES        who the agent may pay: "any" (default), "directory"
  *                       (only listed services, at their listed address) or
@@ -36,7 +36,7 @@ const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
 })
 
-const mcp = new McpServer({ name: 'oryne', version: '0.2.0' })
+const mcp = new McpServer({ name: 'oryne', version: '0.3.0' })
 
 mcp.registerTool(
   'fetch_paid',

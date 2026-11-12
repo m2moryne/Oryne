@@ -82,7 +82,7 @@ All of it is in [`src/agent.ts`](src/agent.ts), about 200 lines.
   | `request_approval` | Asks you to approve one payment the wallet refused, and waits for your answer |
 
 - **The shop:** Oryne's [demo merchant](../demo-merchant), hosted on testnet at
-  `https://oryne-demo-merchant.onrender.com`. It sells a quote (0.01 USDC), search (0.05 USDC) and a
+  `https://demo.oryne.org`. It sells a quote (0.01 USDC), search (0.05 USDC) and a
   report (30 USDC, deliberately over a 1 USDC per-payment limit, to show a refusal). It's 60 lines with
   [`@oryne/merchant`](https://www.npmjs.com/package/@oryne/merchant), if you want to sell your own API.
 
@@ -95,8 +95,8 @@ That's the point: you can trust the limit even if the agent is buggy or tricked.
 |---|---|---|
 | `ORYNE_AGENT_SECRET` | (required) | The agent's secret key, S… |
 | `DEEPSEEK_API_KEY` | (required) | Your DeepSeek key |
-| `ORYNE_API_URL` | `https://oryne.onrender.com` | Testnet. For real USDC: `https://oryne-api-mainnet.onrender.com`, with an agent from Live mode |
-| `MERCHANT_URL` | `https://oryne-demo-merchant.onrender.com` | Any x402 service on the same network |
+| `ORYNE_API_URL` | `https://testnet-apiv1.oryne.org` | Testnet. For real USDC: `https://apiv1.oryne.org`, with an agent from Live mode |
+| `MERCHANT_URL` | `https://demo.oryne.org` | Any x402 service on the same network |
 | `DEEPSEEK_MODEL` | `deepseek-chat` | |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | Any OpenAI-compatible API works |
 

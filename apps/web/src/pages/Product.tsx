@@ -124,7 +124,7 @@ import { expressPaywall } from '@oryne/merchant'
 const app = express()
 const pay = expressPaywall({
   payTo: process.env.STELLAR_ADDRESS,
-  facilitator: 'https://oryne.onrender.com/v1/x402',
+  facilitator: 'https://testnet-apiv1.oryne.org/v1/x402',
 })
 
 // Agents pay 0.008 USDC per call. Settles to your Stellar address.

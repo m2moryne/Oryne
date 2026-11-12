@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oryne"
-version = "0.1.0"
+version = "0.2.0"
 description = "Give an AI agent a wallet it can spend from, with limits it cannot break: x402 payments in USDC on Stellar."
 readme = "README.md"
 license = "MIT"

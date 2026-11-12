@@ -7,7 +7,7 @@
 # (oryne.nginx.conf) is the only thing the internet talks to.
 #
 # Rule 1 of deploy/README.md applies: exactly one copy of each API per network.
-# Never scale these services, and stop the Render copy when this one takes over.
+# Never scale these services, and never run a second copy elsewhere with the same keys.
 
 name: oryne
 

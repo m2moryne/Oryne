@@ -30,7 +30,7 @@ Then ask Claude something like *"Check my Oryne wallet status"* or *"Fetch https
 | Variable | |
 |---|---|
 | `ORYNE_AGENT_SECRET` | The agent's secret key (`S…`). Required. |
-| `ORYNE_API_URL` | Oryne API. Defaults to `https://oryne.onrender.com` (Stellar testnet). |
+| `ORYNE_API_URL` | Oryne API. Defaults to `https://testnet-apiv1.oryne.org` (Stellar testnet). |
 | `ORYNE_MAX_PER_REQUEST` | Most it pays for one request, e.g. `1`. |
 | `ORYNE_PAYEES` | Who it may pay: `any` (default), `directory` (only services listed in the Oryne directory, at the address they're listed with) or comma-separated Stellar addresses. Checked before anything is signed. |
 

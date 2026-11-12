@@ -24,8 +24,8 @@ const env = (name: string, fallback?: string) => {
 
 const AGENT_SECRET = env('ORYNE_AGENT_SECRET')
 const DEEPSEEK_KEY = env('DEEPSEEK_API_KEY')
-const API_URL = env('ORYNE_API_URL', 'https://oryne.onrender.com')
-const SHOP = env('MERCHANT_URL', 'https://oryne-demo-merchant.onrender.com').replace(/\/$/, '')
+const API_URL = env('ORYNE_API_URL', 'https://testnet-apiv1.oryne.org')
+const SHOP = env('MERCHANT_URL', 'https://demo.oryne.org').replace(/\/$/, '')
 const MODEL = env('DEEPSEEK_MODEL', 'deepseek-chat')
 /** Any OpenAI-compatible chat API works here; DeepSeek by default. */
 const LLM_URL = env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com').replace(/\/$/, '')

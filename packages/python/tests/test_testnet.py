@@ -28,8 +28,8 @@ pytestmark = [
     pytest.mark.skipif(os.environ.get("ORYNE_TESTNET") != "1", reason="set ORYNE_TESTNET=1 to run on testnet"),
 ]
 
-API = os.environ.get("ORYNE_API_URL", "https://oryne.onrender.com").rstrip("/")
-MERCHANT = os.environ.get("MERCHANT_URL", "https://oryne-demo-merchant.onrender.com").rstrip("/")
+API = os.environ.get("ORYNE_API_URL", "https://testnet-apiv1.oryne.org").rstrip("/")
+MERCHANT = os.environ.get("MERCHANT_URL", "https://demo.oryne.org").rstrip("/")
 
 
 class Owner:

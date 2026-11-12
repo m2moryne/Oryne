@@ -16,7 +16,7 @@ import { paywall } from '@oryne/merchant'
 
 const pay = paywall({
   payTo: 'G…', // your Stellar address
-  facilitator: 'https://oryne.onrender.com/v1/x402',
+  facilitator: 'https://testnet-apiv1.oryne.org/v1/x402',
 })
 
 const app = new Hono()
@@ -29,7 +29,7 @@ app.get('/search', pay('0.01', 'One search'), (c) => c.json({ results: [] }))
 import express from 'express'
 import { expressPaywall } from '@oryne/merchant'
 
-const pay = expressPaywall({ payTo: 'G…', facilitator: 'https://oryne.onrender.com/v1/x402' })
+const pay = expressPaywall({ payTo: 'G…', facilitator: 'https://testnet-apiv1.oryne.org/v1/x402' })
 
 const app = express()
 app.get('/search', pay('0.01'), (req, res) => res.json({ results: [] }))
@@ -44,7 +44,7 @@ app.get('/search', pay('0.01'), (req, res) => res.json({ results: [] }))
 | Option | |
 |---|---|
 | `payTo` | Your Stellar address. A `G…` account needs a trustline to USDC. |
-| `facilitator` | The Oryne facilitator, e.g. `https://oryne.onrender.com/v1/x402` (testnet). |
+| `facilitator` | The Oryne facilitator, e.g. `https://testnet-apiv1.oryne.org/v1/x402` (testnet). |
 | `network`, `asset`, `decimals` | Read from the facilitator's API if left out. |
 
 ## Links

@@ -65,7 +65,7 @@ The directory doesn't verify who owns a listed URL yet. `payees: 'directory'` st
 | Option | |
 |---|---|
 | `secret` | The agent's secret key (`S…`). |
-| `apiUrl` | Oryne API. Defaults to `ORYNE_API_URL`, then `https://oryne.onrender.com` (Stellar testnet). |
+| `apiUrl` | Oryne API. Defaults to `ORYNE_API_URL`, then `https://testnet-apiv1.oryne.org` (Stellar testnet). |
 | `maxPerRequest` | Most this client pays for one request, whatever a service asks, e.g. `'1'`. |
 | `payees` | Who it may pay: `'any'` (default), `'directory'`, or an array of Stellar addresses. |
 | `beforePay` | `({ url, requirements, amount }) => true \| false \| reason`. Last say before signing. |

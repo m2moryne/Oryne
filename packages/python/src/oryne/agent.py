@@ -31,7 +31,7 @@ from .payment import (
 from .units import from_base_units, to_base_units
 
 #: The hosted Oryne API, on Stellar testnet.
-DEFAULT_API_URL = "https://oryne.onrender.com"
+DEFAULT_API_URL = "https://testnet-apiv1.oryne.org"
 
 #: How long directory lookups are reused, in seconds.
 DIRECTORY_TTL = 5 * 60

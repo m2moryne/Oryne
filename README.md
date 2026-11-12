@@ -144,7 +144,7 @@ import { OryneAgent } from '@oryne/agent'
 
 const agent = new OryneAgent({ secret: process.env.ORYNE_AGENT_SECRET })
 // Pays 402 Payment Required from the agent's wallet, inside its mandate, then retries.
-const res = await agent.fetch('https://oryne-demo-merchant.onrender.com/search?q=stellar')
+const res = await agent.fetch('https://demo.oryne.org/search?q=stellar')
 ```
 
 When the wallet refuses, `fetch` throws a `PaymentRefusedError` with the reason; the agent can then
@@ -163,7 +163,7 @@ import os
 from oryne import OryneAgent
 
 agent = OryneAgent(os.environ["ORYNE_AGENT_SECRET"])
-res = agent.fetch("https://oryne-demo-merchant.onrender.com/search", params={"q": "stellar"})
+res = agent.fetch("https://demo.oryne.org/search", params={"q": "stellar"})
 ```
 
 The **developer console** ([oryne.org/app/developers](https://oryne.org/app/developers)) has API
@@ -185,7 +185,7 @@ import { Hono } from 'hono'
 import { paywall } from '@oryne/merchant'
 
 const app = new Hono()
-const pay = paywall({ payTo: process.env.STELLAR_ADDRESS, facilitator: 'https://oryne.onrender.com/v1/x402' })
+const pay = paywall({ payTo: process.env.STELLAR_ADDRESS, facilitator: 'https://testnet-apiv1.oryne.org/v1/x402' })
 
 app.get('/search', pay('0.05', 'Search results'), (c) => c.json(results)) // 0.05 USDC per call
 ```
@@ -249,13 +249,13 @@ agent secrets or owner keys.
 | Piece | Status |
 |---|---|
 | Agent-wallet contract ([`contracts/agent-wallet`](contracts/agent-wallet)) | ✅ 16 tests in CI; deployed on **testnet** and **mainnet**. ⏳ Not independently audited |
-| API ([`services/api`](services/api)): sign-in, wallets, agents, approvals, x402 facilitator, webhooks | ✅ Hosted on testnet ([oryne.onrender.com](https://oryne.onrender.com/v1/info)) and mainnet (invite-only) |
+| API ([`services/api`](services/api)): sign-in, wallets, agents, approvals, x402 facilitator, webhooks | ✅ Hosted on testnet ([testnet-apiv1.oryne.org](https://testnet-apiv1.oryne.org/v1/info)) and mainnet (invite-only) |
 | Dashboard and developer console ([oryne.org/app](https://oryne.org/app)) | ✅ Live, with a Test / Live switch |
 | Sign-in: Google, GitHub, email code, Freighter; passkey-owned wallets | ✅ Working, including real device passkeys |
 | SDKs on npm: [`@oryne/agent`](https://www.npmjs.com/package/@oryne/agent), [`@oryne/merchant`](https://www.npmjs.com/package/@oryne/merchant), [`@oryne/mcp`](https://www.npmjs.com/package/@oryne/mcp), [`@oryne/core`](https://www.npmjs.com/package/@oryne/core) | ✅ Published |
 | Python SDK ([`packages/python`](packages/python), `oryne` on PyPI) | ✅ Unit tests checked against the TypeScript SDK's signatures; pays, is refused and gets approval on testnet. ⏳ Not yet on PyPI |
 | [Research agent example](examples/research-agent): DeepSeek + `@oryne/agent` from npm | ✅ Pays, refused over its limit, asks for approval, pays (testnet) |
-| [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: oryne-demo-merchant.onrender.com |
+| [Demo merchant](examples/demo-merchant) | ✅ Hosted on testnet: demo.oryne.org |
 | End-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)) | ✅ Passes on testnet for both owner types: pay → refused over limit → approve once → pay |
 | MCP server ([`@oryne/mcp`](packages/mcp)) | ✅ Every tool checked over stdio, as Claude Desktop runs it, on testnet: source and the npm package (`npm run mcp-check`) |
 | Card top-ups (Paystack) | ✅ On testnet. ⏳ Mainnet needs a live Paystack account and a funded treasury |
@@ -282,8 +282,7 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   └── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
 ├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
 ├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow), mcp-check.ts (MCP server), packages.ts (npm builds)
-├── render.yaml                Hosting: testnet API and demo merchant
-├── render.mainnet.yaml        Hosting: mainnet API
+├── deploy/                    Hosting: Docker on our server (deploy/docker), or systemd
 └── .github/                   CI (contract tests and wasm, web build, npm publish), issue and PR templates
 ```
 
@@ -382,11 +381,12 @@ stellar contract build
 
 ## Hosting
 
-Testnet and mainnet run on Render today (`render.yaml`, `render.mainnet.yaml`) and the website on
-Vercel (`vercel.json`). [`deploy/`](deploy) has everything to run them all on one Linux server
-instead (systemd services, nginx with HTTPS, PostgreSQL, deploys, backups, monitoring) and the
-steps to move without breaking existing wallets, agents or SDK installs: start with
-[`deploy/README.md`](deploy/README.md).
+The testnet API (`testnet-apiv1.oryne.org`), the mainnet API (`apiv1.oryne.org`) and the demo
+merchant (`demo.oryne.org`) run on our own server with Docker, behind nginx with HTTPS, and are
+redeployed automatically within a minute of a push to `master`:
+[`deploy/docker/README.md`](deploy/docker/README.md). The website is on Vercel (`vercel.json`).
+[`deploy/README.md`](deploy/README.md) covers the same setup with systemd instead of Docker, the
+rules that keep it from failing, backups and monitoring.
 
 ## Contributing
 

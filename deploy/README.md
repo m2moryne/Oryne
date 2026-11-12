@@ -16,7 +16,6 @@ Everything the guide installs is in this folder, ready to copy:
 | `nginx/oryne.conf` | Domains, HTTPS and the website |
 | `scripts/deploy.sh` | Updates the server to the latest `master`, safely |
 | `scripts/backup.sh` | Daily database backups |
-| `render-forwarder/server.mjs` | Runs on Render after the move, so old links keep working |
 
 Read the whole guide once before starting. Budget half a day. Testnet goes
 first; mainnet only after testnet has run cleanly for a few days.
@@ -363,30 +362,21 @@ Do this per network, testnet first. The order matters because of rule 1.
    Vercel, if the website stays there) set `VITE_ORYNE_API_URL` and
    `VITE_ORYNE_LIVE_API_URL`, then deploy (`deploy.sh`, or redeploy on
    Vercel).
-3. **Turn the Render API into a forwarder**, so nothing runs twice and old
-   links keep working. Render's services are defined in `render.yaml` and
-   `render.mainnet.yaml` (Blueprints), so this is a change to those files,
-   committed and pushed at cut-over time, not an edit in Render's dashboard
-   (the next Blueprint sync would undo that). For the service being moved:
-   `startCommand: node deploy/render-forwarder/server.mjs`, an env var
-   `TARGET` with the new address (`https://testnet-apiv1.oryne.org`,
-   `https://apiv1.oryne.org`, or `https://demo.oryne.org` for the demo
-   merchant), and every other env var removed. Ask the developers for this
-   commit when you're ready; it takes a minute. Once Render has redeployed,
-   **delete the secrets** still stored on the Render services
-   (`SPONSOR_SECRET`, `TREASURY_SECRET`, `TOKEN_ISSUER_SECRET`,
-   `DATABASE_URL`, the OAuth and Paystack keys): the forwarder needs none of
-   them. Check `https://oryne.onrender.com/v1/info` still answers, now
-   through the server.
+3. **Stop and delete the Render services**, so nothing runs twice (rule 1).
+   First check the env files on the server hold every key from Render
+   (`SPONSOR_SECRET`, `TOKEN_ISSUER_SECRET`; on mainnet `TREASURY_SECRET` and
+   `WALLET_WASM_HASH`): deleting the service deletes Render's copy. Then
+   suspend the Render service, start the server's, check its `/v1/info`
+   shows the same `sponsor` and `token`, and delete the Render service.
+   The old `onrender.com` addresses stop working.
 4. **Moving the website too?** When it has been built on the server once
    (`deploy.sh`), point `oryne.org` and `www` at the VPS in DNS, run certbot
    again with `-d oryne.org -d www.oryne.org` added, and turn the Vercel
    project off.
-5. **SDKs.** The published SDKs and the docs default to the `onrender.com`
-   addresses. The forwarders keep those working, so nothing breaks. Send the
-   final addresses to the developers, so new SDK versions and the docs use
-   them directly. Keep the Render forwarders running for at least two months
-   after those versions are out, then switch them off.
+5. **SDKs.** The SDKs and the docs default to the new addresses from
+   `@oryne/agent` 0.3.0, `@oryne/mcp` 0.3.0 and the Python `oryne`
+   0.2.0. Earlier versions default to `onrender.com`; with them, set
+   `ORYNE_API_URL`.
 
 ## Troubleshooting
 

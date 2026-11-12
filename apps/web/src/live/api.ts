@@ -6,16 +6,16 @@
 /** Test mode's API (Stellar testnet). VITE_ORYNE_API_URL wins; otherwise deployed builds use the hosted one and `npm run dev:web` a local one. */
 export const TEST_API_URL =
   (import.meta.env.VITE_ORYNE_API_URL as string | undefined) ??
-  (import.meta.env.PROD ? 'https://oryne.onrender.com' : 'http://localhost:8787')
+  (import.meta.env.PROD ? 'https://testnet-apiv1.oryne.org' : 'http://localhost:8787')
 
 /**
- * Live mode's API (Stellar mainnet, real USDC; see render.mainnet.yaml).
+ * Live mode's API (Stellar mainnet, real USDC).
  * VITE_ORYNE_LIVE_API_URL wins; otherwise deployed builds use the hosted one,
  * and `npm run dev:web` has no live mode so local work never touches mainnet.
  */
 export const LIVE_API_URL =
   (import.meta.env.VITE_ORYNE_LIVE_API_URL as string | undefined) ||
-  (import.meta.env.PROD ? 'https://oryne-api-mainnet.onrender.com' : null)
+  (import.meta.env.PROD ? 'https://apiv1.oryne.org' : null)
 
 /** Test: testnet and test USDC. Live: mainnet and real USDC. Each has its own API, sign-in and data. */
 export type Mode = 'test' | 'live'

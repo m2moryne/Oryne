@@ -83,7 +83,7 @@ export default function Privacy() {
               <p>We don’t sell your data or use it for advertising. We share it only with the services that run Oryne:</p>
               <Bullets
                 items={[
-                  <>Render, which hosts our API and database, and Vercel, which hosts this website.</>,
+                  <>Supabase, which hosts our database, and Vercel, which hosts this website. Our API runs on our own server.</>,
                   <>Resend, which sends our emails.</>,
                   <>Paystack, which processes card top-ups. Your card details go to Paystack, never to us.</>,
                   <>DeepSeek, which answers questions you ask the AI debugger.</>,

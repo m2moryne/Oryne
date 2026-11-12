@@ -14,7 +14,7 @@ import { publicPages } from '../lib/seo'
  * when a package's API changes, change it here too.
  */
 
-const API = 'https://oryne.onrender.com'
+const API = 'https://testnet-apiv1.oryne.org'
 const FACILITATOR = `${API}/v1/x402`
 const REPO = 'https://github.com/m2moryne/Oryne'
 

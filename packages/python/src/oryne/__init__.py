@@ -27,7 +27,7 @@ from .payment import (
 )
 from .units import from_base_units, to_base_units
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DEFAULT_API_URL",

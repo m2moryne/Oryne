@@ -5,7 +5,7 @@ import { Hono } from 'hono'
 /**
  * A tiny paid API for trying Oryne end to end: what an AI agent buys in the
  * examples (examples/research-agent). Hosted on testnet at
- * https://oryne-demo-merchant.onrender.com (render.yaml).
+ * https://demo.oryne.org (deploy/docker).
  *
  * Locally, run `npm run setup` in the repo root first: it creates a funded
  * testnet address with a USDC trustline and writes MERCHANT_ADDRESS to .env.

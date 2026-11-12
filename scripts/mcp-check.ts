@@ -22,8 +22,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { hash, Keypair, TransactionBuilder } from '@stellar/stellar-sdk'
 
-const api = process.env.ORYNE_API_URL ?? 'https://oryne.onrender.com'
-const merchant = process.env.MERCHANT_URL ?? 'https://oryne-demo-merchant.onrender.com'
+const api = process.env.ORYNE_API_URL ?? 'https://testnet-apiv1.oryne.org'
+const merchant = process.env.MERCHANT_URL ?? 'https://demo.oryne.org'
 const fromNpm = process.argv.includes('--npm')
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
 

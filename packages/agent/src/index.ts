@@ -89,7 +89,7 @@ export type PaidRequestInit = RequestInit & {
 const DIRECTORY_TTL_MS = 5 * 60_000
 
 /** The hosted Oryne API, on Stellar testnet. */
-export const DEFAULT_API_URL = 'https://oryne.onrender.com'
+export const DEFAULT_API_URL = 'https://testnet-apiv1.oryne.org'
 
 export type OryneAgentOptions = {
   /** The agent's secret key, S… */

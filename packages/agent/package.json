@@ -1,6 +1,6 @@
 {
   "name": "@oryne/agent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Agent SDK: a fetch() that pays x402 challenges from the agent's Oryne wallet, inside its mandate.",

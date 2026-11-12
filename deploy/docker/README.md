@@ -5,8 +5,8 @@ the testnet and mainnet APIs, the demo merchant and the website, on one server,
 behind the server's own nginx, redeployed automatically when `master` changes.
 
 The rules in [`deploy/README.md`](../README.md#rules-that-keep-it-from-failing)
-apply here unchanged, above all **exactly one running API per network**: don't
-run this alongside the same network on Render with the same keys.
+apply here unchanged, above all **exactly one running API per network**: never
+run a second copy of a network elsewhere with the same keys.
 
 | Service | Container port (127.0.0.1) | Public address |
 |---|---|---|
