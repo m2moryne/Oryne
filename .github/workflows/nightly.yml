@@ -1,0 +1,64 @@
+# Every night, the whole product end to end on Stellar testnet, through the
+# hosted API and demo merchant, the way users reach them. Each job creates its
+# own owner, wallet and agent with test USDC, then pays, gets refused over its
+# limit by the wallet contract, asks for approval, is approved once, and pays.
+#
+#   e2e         the API flow directly (scripts/e2e.ts), owner as a Stellar account
+#   mcp         the MCP server from source, over stdio as Claude Desktop runs it
+#   mcp-npm     the same with the published package (npx -y @oryne/mcp@latest)
+#   python      the Python SDK's testnet tests
+#
+# A failed scheduled run is emailed to whoever last changed this schedule.
+name: nightly
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ORYNE_API_URL: https://testnet-apiv1.oryne.org
+  MERCHANT_URL: https://demo.oryne.org
+
+jobs:
+  node:
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: e2e
+            run: node scripts/e2e.ts
+          - check: mcp
+            run: node scripts/mcp-check.ts
+          - check: mcp-npm
+            run: node scripts/mcp-check.ts --npm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.18
+          cache: npm
+      - run: npm ci
+      - run: ${{ matrix.run }}
+
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -e ".[dev]"
+      - run: pytest -m testnet -v
+        env:
+          ORYNE_TESTNET: '1'
