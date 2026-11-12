@@ -6,8 +6,8 @@
 # Every port is published on 127.0.0.1 only: the server's nginx
 # (oryne.nginx.conf) is the only thing the internet talks to.
 #
-# Rule 1 of deploy/README.md applies: exactly one copy of each API per network.
-# Never scale these services, and never run a second copy elsewhere with the same keys.
+# Exactly one copy of each API per network: two copies with the same keys
+# mean failed transactions and duplicate webhooks. Never scale these services, and never run a second copy elsewhere with the same keys.
 
 name: oryne
 

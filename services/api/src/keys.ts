@@ -1,6 +1,6 @@
 /**
  * Prints the testnet keys the API generated in data/, as env lines to paste into
- * a host whose disk doesn't persist (Render's free plan). The test USDC's ID follows
+ * a host whose disk doesn't persist. The test USDC's ID follows
  * from its issuer, so TOKEN_ID stays unset (setting it turns the faucet off).
  * Usage: npm run keys -w @oryne/api
  */

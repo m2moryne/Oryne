@@ -1,12 +1,12 @@
 # Oryne with Docker
 
-The Docker way to run what [`deploy/README.md`](../README.md) runs with systemd:
-the testnet and mainnet APIs, the demo merchant and the website, on one server,
+The testnet and mainnet APIs, the demo merchant and the website, on one server,
 behind the server's own nginx, redeployed automatically when `master` changes.
 
-The rules in [`deploy/README.md`](../README.md#rules-that-keep-it-from-failing)
-apply here unchanged, above all **exactly one running API per network**: never
-run a second copy of a network elsewhere with the same keys.
+Run **exactly one API per network**: never run a second copy of a network
+elsewhere with the same keys, or transactions fail and webhooks go out twice.
+Never edit or commit in the server's checkout either; settings live in the
+gitignored `env/` files, so `master` always fast-forwards.
 
 | Service | Container port (127.0.0.1) | Public address |
 |---|---|---|

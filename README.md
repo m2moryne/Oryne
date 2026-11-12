@@ -282,7 +282,7 @@ Circle's USDC. Mainnet is **invite-only** for now: request access from the dashb
 │   └── research-agent/        A DeepSeek agent with an Oryne wallet; installs the SDK from npm
 ├── contracts/                 Soroban workspace (Rust): the agent-wallet contract
 ├── scripts/                   setup.ts (testnet merchant), e2e.ts (whole flow), mcp-check.ts (MCP server), packages.ts (npm builds)
-├── deploy/                    Hosting: Docker on our server (deploy/docker), or systemd
+├── deploy/                    Hosting with Docker (deploy/docker) and the services' env templates
 └── .github/                   CI (contract tests and wasm, web build, npm publish), issue and PR templates
 ```
 
@@ -385,8 +385,6 @@ The testnet API (`testnet-apiv1.oryne.org`), the mainnet API (`apiv1.oryne.org`)
 merchant (`demo.oryne.org`) run on our own server with Docker, behind nginx with HTTPS, and are
 redeployed automatically within a minute of a push to `master`:
 [`deploy/docker/README.md`](deploy/docker/README.md). The website is on Vercel (`vercel.json`).
-[`deploy/README.md`](deploy/README.md) covers the same setup with systemd instead of Docker, the
-rules that keep it from failing, backups and monitoring.
 
 ## Contributing
 

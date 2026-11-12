@@ -6,8 +6,8 @@ import { networks, type NetworkConfig } from '@oryne/core'
 export type Config = {
   port: number
   /**
-   * Interface to listen on. Unset: every interface, as hosts like Render
-   * expect. Behind a reverse proxy on a server, 127.0.0.1 keeps the port off
+   * Interface to listen on. Unset: every interface, as most container
+   * hosts expect. Behind a reverse proxy on a server, 127.0.0.1 keeps the port off
    * the internet.
    */
   host?: string
@@ -133,8 +133,7 @@ export function loadConfig(): Config {
       env('WEB_URL'),
       env('ADMIN_URL'),
     ),
-    // Render sets RENDER_EXTERNAL_URL to the service's https URL.
-    publicUrl: env('PUBLIC_URL') ?? env('RENDER_EXTERNAL_URL') ?? `http://localhost:${port}`,
+    publicUrl: env('PUBLIC_URL') ?? `http://localhost:${port}`,
     sponsorSecret: secret('SPONSOR_SECRET'),
     tokenId: env('TOKEN_ID'),
     tokenIssuerSecret: secret('TOKEN_ISSUER_SECRET'),

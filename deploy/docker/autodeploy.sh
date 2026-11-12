@@ -38,7 +38,7 @@ fail() {
 }
 
 echo "▸ Deploying $(git log -1 --format='%h %s' "$target")"
-# The server never has its own commits or edits (deploy/README.md, rule 5),
+# The server never has its own commits or edits to the checkout,
 # so master is always a fast-forward. Settings live in gitignored files.
 git merge --ff-only --quiet "$target" || fail "master can't be fast-forwarded: is the checkout edited?"
 
