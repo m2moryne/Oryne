@@ -5,6 +5,12 @@ import { networks, type NetworkConfig } from '@oryne/core'
 /** Everything the API reads from the environment. See .env.example. */
 export type Config = {
   port: number
+  /**
+   * Interface to listen on. Unset: every interface, as hosts like Render
+   * expect. Behind a reverse proxy on a server, 127.0.0.1 keeps the port off
+   * the internet.
+   */
+  host?: string
   network: NetworkConfig
   /** Directory for the SQLite database, used when there's no databaseUrl. */
   dataDir: string
@@ -117,6 +123,7 @@ export function loadConfig(): Config {
   const port = Number(env('PORT') ?? 8787)
   return {
     port,
+    host: env('HOST'),
     network: { ...base, rpcUrl: env('STELLAR_RPC_URL') ?? base.rpcUrl, token: env('TOKEN_ID') ?? base.token },
     dataDir: env('ORYNE_DATA_DIR') ?? fileURLToPath(new URL('../data/', import.meta.url)),
     databaseUrl: env('DATABASE_URL'),

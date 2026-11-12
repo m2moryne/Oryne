@@ -1,0 +1,25 @@
+# The demo merchant: a small paid API the examples buy from. Testnet only. See deploy/README.md.
+
+[Unit]
+Description=Oryne demo merchant (Stellar testnet)
+After=network-online.target oryne-api-testnet.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=oryne
+Group=oryne
+WorkingDirectory=/opt/oryne/examples/demo-merchant
+EnvironmentFile=/etc/oryne/demo-merchant.env
+ExecStart=/usr/bin/node src/server.ts
+Restart=always
+RestartSec=5
+MemoryMax=256M
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -20,6 +20,6 @@ console.log(`  browsers ${config.corsOrigins.join(', ')}`)
 const webhooks = createWebhooks(db, { allowLocal: config.publicUrl.startsWith('http://localhost') })
 webhooks.start()
 
-serve({ fetch: createApp(config, db, chain, webhooks).fetch, port: config.port }, (info) => {
-  console.log(`Oryne API on http://localhost:${info.port}`)
+serve({ fetch: createApp(config, db, chain, webhooks).fetch, port: config.port, hostname: config.host }, (info) => {
+  console.log(`Oryne API on http://${config.host ?? 'localhost'}:${info.port}`)
 })

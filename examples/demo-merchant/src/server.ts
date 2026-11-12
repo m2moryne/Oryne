@@ -65,4 +65,6 @@ app.get('/report', pay('30', 'A long research report'), (c) =>
 )
 
 const port = Number(process.env.PORT ?? 8788)
-serve({ fetch: app.fetch, port }, () => console.log(`Demo merchant on http://localhost:${port}, paid to ${payTo}`))
+// HOST=127.0.0.1 behind a reverse proxy; unset listens on every interface.
+const hostname = process.env.HOST
+serve({ fetch: app.fetch, port, hostname }, () => console.log(`Demo merchant on http://${hostname ?? 'localhost'}:${port}, paid to ${payTo}`))

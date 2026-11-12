@@ -29,6 +29,7 @@ approve.
 - [What's real today](#whats-real-today)
 - [Repository layout](#repository-layout)
 - [Running it locally](#running-it-locally)
+- [Hosting](#hosting)
 - [Contributing](#contributing)
 - [Roadmap](#roadmap)
 
@@ -378,6 +379,14 @@ cd contracts
 cargo test
 stellar contract build
 ```
+
+## Hosting
+
+Testnet and mainnet run on Render today (`render.yaml`, `render.mainnet.yaml`) and the website on
+Vercel (`vercel.json`). [`deploy/`](deploy) has everything to run them all on one Linux server
+instead (systemd services, nginx with HTTPS, PostgreSQL, deploys, backups, monitoring) and the
+steps to move without breaking existing wallets, agents or SDK installs: start with
+[`deploy/README.md`](deploy/README.md).
 
 ## Contributing
 
