@@ -27,8 +27,8 @@ first; mainnet only after testnet has run cleanly for a few days.
 
 | Service | Port (local only) | Public address | Replaces on Render |
 |---|---|---|---|
-| Testnet API | 8787 | `https://testnet-api.oryne.org` | `oryne-api` (`oryne.onrender.com`) |
-| Mainnet API | 8789 | `https://api.oryne.org` | `oryne-api-mainnet` |
+| Testnet API | 8787 | `https://testnet-apiv1.oryne.org` | `oryne-api` (`oryne.onrender.com`) |
+| Mainnet API | 8789 | `https://apiv1.oryne.org` | `oryne-api-mainnet` |
 | Demo merchant | 8788 | `https://demo.oryne.org` | `oryne-demo-merchant` |
 | Website and dashboard | (static files) | `https://oryne.org` | Vercel |
 | PostgreSQL | 5432 | (not public) | Supabase |
@@ -99,8 +99,8 @@ IP address (and AAAA records if the VPS has IPv6):
 
 | Name | Type | Value |
 |---|---|---|
-| `testnet-api` | A | VPS IP |
-| `api` | A | VPS IP |
+| `testnet-apiv1` | A | VPS IP |
+| `apiv1` | A | VPS IP |
 | `demo` | A | VPS IP |
 
 Leave `oryne.org` and `www` pointing at Vercel for now; they move in step 14.
@@ -274,7 +274,7 @@ sudo systemctl restart oryne-api-testnet oryne-demo-merchant oryne-api-mainnet
 sudo cp /opt/oryne/deploy/nginx/oryne.conf /etc/nginx/sites-available/oryne.conf
 sudo ln -s /etc/nginx/sites-available/oryne.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d testnet-api.oryne.org -d api.oryne.org -d demo.oryne.org
+sudo certbot --nginx -d testnet-apiv1.oryne.org -d apiv1.oryne.org -d demo.oryne.org
 ```
 
 Add `-d oryne.org -d www.oryne.org` to the certbot command only once those
@@ -283,7 +283,7 @@ mistake can't take Ardena down: if it fails, fix it before reloading.
 Certificates renew on their own (`systemctl list-timers | grep certbot`).
 
 ```sh
-curl -s https://testnet-api.oryne.org/v1/info
+curl -s https://testnet-apiv1.oryne.org/v1/info
 curl -s https://demo.oryne.org/
 ```
 
@@ -313,8 +313,8 @@ webhooks, so the backups still matter.
 Add free uptime checks (UptimeRobot or Better Stack), alerting by email or
 phone, every 1 to 5 minutes:
 
-- `https://api.oryne.org/v1/info`
-- `https://testnet-api.oryne.org/v1/info`
+- `https://apiv1.oryne.org/v1/info`
+- `https://testnet-apiv1.oryne.org/v1/info`
 - `https://demo.oryne.org/`
 - `https://oryne.org/`
 
@@ -330,8 +330,8 @@ Logs: `sudo journalctl -u oryne-api-mainnet -n 200` (or `-f` to follow).
 **Testnet**, from any machine with the repository (this pays test USDC only):
 
 ```sh
-ORYNE_API_URL=https://testnet-api.oryne.org MERCHANT_URL=https://demo.oryne.org npm run mcp-check
-cd packages/python && ORYNE_TESTNET=1 ORYNE_API_URL=https://testnet-api.oryne.org \
+ORYNE_API_URL=https://testnet-apiv1.oryne.org MERCHANT_URL=https://demo.oryne.org npm run mcp-check
+cd packages/python && ORYNE_TESTNET=1 ORYNE_API_URL=https://testnet-apiv1.oryne.org \
   MERCHANT_URL=https://demo.oryne.org .venv/bin/pytest -m testnet
 ```
 
@@ -343,7 +343,7 @@ contract, an approval, and the approved payment.
 ```sh
 sudo systemctl enable --now oryne-api-mainnet
 sudo journalctl -u oryne-api-mainnet -n 30
-curl -s https://api.oryne.org/v1/info
+curl -s https://apiv1.oryne.org/v1/info
 ```
 
 The `sponsor`, `token` (Circle's USDC) and `wallet wasm` lines must match
@@ -369,8 +369,8 @@ Do this per network, testnet first. The order matters because of rule 1.
    committed and pushed at cut-over time, not an edit in Render's dashboard
    (the next Blueprint sync would undo that). For the service being moved:
    `startCommand: node deploy/render-forwarder/server.mjs`, an env var
-   `TARGET` with the new address (`https://testnet-api.oryne.org`,
-   `https://api.oryne.org`, or `https://demo.oryne.org` for the demo
+   `TARGET` with the new address (`https://testnet-apiv1.oryne.org`,
+   `https://apiv1.oryne.org`, or `https://demo.oryne.org` for the demo
    merchant), and every other env var removed. Ask the developers for this
    commit when you're ready; it takes a minute. Once Render has redeployed,
    **delete the secrets** still stored on the Render services

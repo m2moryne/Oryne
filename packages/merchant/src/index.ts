@@ -24,7 +24,7 @@ import {
 export type PaywallOptions = {
   /** Your Stellar address. It needs a trustline to the token if it's a G… account. */
   payTo: string
-  /** Facilitator base URL, e.g. https://api.oryne.org/v1/x402 */
+  /** Facilitator base URL, e.g. https://apiv1.oryne.org/v1/x402 */
   facilitator: string
   /** Read once from GET {facilitator origin}/v1/info if not given. */
   network?: string

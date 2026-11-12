@@ -2,7 +2,7 @@
 // the server, in place of the API, so SDKs and integrations still using the
 // old onrender.com address keep working. See deploy/README.md, "Cut over".
 //
-//   TARGET=https://testnet-api.oryne.org node deploy/render-forwarder/server.mjs
+//   TARGET=https://testnet-apiv1.oryne.org node deploy/render-forwarder/server.mjs
 //
 // It holds no keys and runs nothing on Stellar, so it can never act as a
 // second copy of the API.
@@ -10,7 +10,7 @@ import { createServer } from 'node:http'
 
 const target = process.env.TARGET
 if (!target) {
-  console.error('Set TARGET to the API this forwards to, e.g. https://testnet-api.oryne.org')
+  console.error('Set TARGET to the API this forwards to, e.g. https://testnet-apiv1.oryne.org')
   process.exit(1)
 }
 const port = Number(process.env.PORT ?? 10000)
