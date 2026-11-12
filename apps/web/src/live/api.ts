@@ -241,7 +241,9 @@ export type Info = {
   /** `email` is missing on older API builds. */
   auth: { freighter: boolean; google: boolean; github: boolean; email?: boolean; dev: boolean }
   /** Missing on older API builds. */
-  features?: { aiDebugger: boolean }
+  features?: { aiDebugger: boolean; assistant?: boolean }
+  /** What the server runs: the git commit it was built from, and when it started (Unix seconds). */
+  build?: { commit: string | null; startedAt: number }
   /** Card top-ups with Paystack; null when off, missing on older API builds. */
   card?: CardInfo | null
   /** Who may create a wallet: anyone, or accounts let in from the admin site. Missing on older API builds. */

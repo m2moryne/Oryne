@@ -38,7 +38,6 @@ async function timed<T>(run: (signal: AbortSignal) => Promise<T>, ms: number) {
 const latency = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`)
 
 async function runChecks(): Promise<Check[]> {
-  // The API sleeps when idle on its current host, so the first call can take up to a minute.
   let info: Info | null = null
   const api: Check = { name: 'Oryne API (test mode)', what: 'Wallets, agents, the dashboard and the SDKs talk to this, on testnet.', state: 'down', detail: '' }
   try {
@@ -46,12 +45,13 @@ async function runChecks(): Promise<Check[]> {
       const response = await fetch(`${TEST_API_URL}/v1/info`, { signal })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       return (await response.json()) as Info
-    }, 60_000)
+    }, 20_000)
     info = result.value
     api.state = result.ms > 5000 ? 'slow' : 'up'
-    api.detail = result.ms > 5000 ? `Answered in ${latency(result.ms)}; it was probably waking up` : `Answered in ${latency(result.ms)}`
+    const version = info.build?.commit ? ` · running ${info.build.commit.slice(0, 7)}` : ''
+    api.detail = `Answered in ${latency(result.ms)}${version}`
   } catch (reason) {
-    api.detail = (reason as Error).name === 'TimeoutError' ? 'No answer within a minute' : 'Couldn’t reach it'
+    api.detail = (reason as Error).name === 'TimeoutError' ? 'No answer within 20 seconds' : 'Couldn’t reach it'
   }
 
   const facilitator: Check = {
@@ -116,7 +116,14 @@ async function runChecks(): Promise<Check[]> {
     detail: !info ? 'Down while the API is down' : info.features?.aiDebugger ? 'Enabled' : 'Not configured yet',
   }
 
-  const liveApi: Check = { name: 'Live mode (mainnet)', what: 'Real USDC on Stellar mainnet.', state: 'off', detail: 'Opens after the contract audit' }
+  const assistantCheck: Check = {
+    name: 'OryneAI',
+    what: 'Answers questions about Oryne from the button on every page.',
+    state: !info ? 'down' : info.features?.assistant ? 'up' : 'off',
+    detail: !info ? 'Down while the API is down' : info.features?.assistant ? 'Enabled' : 'Not configured yet',
+  }
+
+  const liveApi: Check = { name: 'Live mode (mainnet)', what: 'Real USDC on Stellar mainnet: an invite-only pilot.', state: 'off', detail: 'Not configured in this build' }
   if (LIVE_API_URL) {
     try {
       const result = await timed(async (signal) => {
@@ -124,14 +131,14 @@ async function runChecks(): Promise<Check[]> {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
       }, 30_000)
       liveApi.state = result.ms > 5000 ? 'slow' : 'up'
-      liveApi.detail = `Answered in ${latency(result.ms)}`
+      liveApi.detail = `Answered in ${latency(result.ms)} · invite-only pilot`
     } catch {
       liveApi.state = 'down'
       liveApi.detail = 'Couldn’t reach it'
     }
   }
 
-  return [api, facilitator, network, liveApi, signIn, faucet, card, debuggerCheck]
+  return [api, facilitator, network, liveApi, signIn, faucet, card, debuggerCheck, assistantCheck]
 }
 
 /** Live checks of Oryne's services, run from the visitor's browser. */
